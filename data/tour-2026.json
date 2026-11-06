@@ -1,0 +1,3812 @@
+{
+"tour": {
+"id": "2026",
+"name": "Bike Tour 26",
+"subtitle": "Canberra, the Central West, Blue Mountains, Southern Highlands and South Coast",
+"year": 2026,
+"startDate": "2026-10-30",
+"status": "locked",
+"roles": [
+{
+"role": "Tour leader",
+"name": "Tony"
+},
+{
+"role": "2IC, fuel and logistics",
+"name": "Ewart"
+},
+{
+"role": "Bakery audit",
+"name": "Justin"
+},
+{
+"role": "Koala Court judge",
+"name": "Melissa"
+},
+{
+"role": "Koala Court deputy",
+"name": "Marshall"
+},
+{
+"role": "Dinner bookings",
+"name": "Gary G"
+},
+{
+"role": "Weatherman",
+"name": "Mick"
+},
+{
+"role": "Video and photos",
+"name": "Mark"
+},
+{
+"role": "Coffee and breaky",
+"name": "Shannon"
+},
+{
+"role": "Visor cleaner",
+"name": "Gaz"
+}
+],
+"crew": [
+{
+"name": "Justin",
+"email": ""
+},
+{
+"name": "Tony",
+"email": ""
+},
+{
+"name": "Ewart",
+"email": ""
+},
+{
+"name": "Mel",
+"email": ""
+},
+{
+"name": "Trish",
+"email": ""
+},
+{
+"name": "Tracey",
+"email": ""
+},
+{
+"name": "Mark",
+"email": ""
+},
+{
+"name": "Shannon",
+"email": ""
+},
+{
+"name": "Mick",
+"email": ""
+},
+{
+"name": "Gary",
+"email": ""
+},
+{
+"name": "Garry",
+"email": ""
+},
+{
+"name": "Marshall",
+"email": ""
+}
+],
+"memberEmails": [],
+"brief": [
+{
+"h": "Meet",
+"p": [
+"Lanyon Shops car park, same as last year. 8:30 am coffee and catch-up, 9:00 am departure."
+],
+"li": []
+},
+{
+"h": "Fuel rule",
+"p": [
+"Refuel at the end of each day. Longest gap between fuel stops is 183 km."
+],
+"li": [
+"Day 1: Yass, Cowra, Blayney",
+"Day 2: Lithgow, Picton, Shellharbour",
+"Day 3: Bowral, Kiama, Huskisson",
+"Day 4: Bungendore"
+]
+},
+{
+"h": "Beds",
+"p": [
+"Couples in queens, everyone else in twins. Dinners booked at all three by Gary G; see Dinners."
+],
+"li": [
+"Millthorpe Motel, 26 Victoria St, Millthorpe",
+"Barrack Point Holiday Park, Jason Ave, Barrack Point",
+"Huskisson Beach Motel, 9 Hawke St, Huskisson"
+]
+},
+{
+"h": "Cornerman",
+"p": [],
+"li": [
+"Don’t overtake the nominated leader.",
+"Sweep stays at the rear unless a new sweep is named.",
+"Don’t turn at an intersection unless you can see the rider behind you.",
+"Lost? Call Tony, then Ewart, then Gary G. Numbers are in WhatsApp."
+]
+},
+{
+"h": "Tool kit",
+"p": [
+"Puncture kit with air, cable ties, Allen keys, spanners, nuts and bolts, screwdrivers, fuses, chain lube. First aid kit; confirm who is trained."
+],
+"li": []
+},
+{
+"h": "Bike prep",
+"p": [
+"Service, tyres and pressures, chain lube, mirrors, tight bolts (especially Harleys), oil and water, brake pads, lever adjustment, charged battery, comms and nav set up."
+],
+"li": []
+}
+],
+"meet": "Lanyon Shops car park, 8:30 am coffee, 9:00 am departure",
+"fuelRangeKm": 183
+},
+"days": [
+{
+"id": "d0",
+"order": 0,
+"offset": -1,
+"label": "Ride down",
+"who": "Justin only",
+"kind": "solo",
+"title": "Caringbah to Conder",
+"colour": "red",
+"km": "~315",
+"ride": "~3 h 15 m",
+"total": "~3 h 45 m",
+"feel": "Mostly motorway; an easy afternoon run",
+"roads": "M1 and Picton Rd, Hume Motorway, Federal Hwy past Lake George, Tuggeranong Parkway. Distances and times are estimates; check them in a maps app.",
+"fuelNote": "Caringbah to Goulburn is about 190 km, just over the group’s 183 km rule. If your range is tight, top up at the Sutton Forest services on the Hume.",
+"best": {
+"from": "Goulburn",
+"to": "Conder",
+"title": "Goulburn to Conder",
+"why": "The Federal Highway runs along the edge of Lake George in the afternoon light, then the Tuggeranong Parkway brings you into the south of Canberra. Not technical, just a relaxed finish to the run down."
+}
+},
+{
+"id": "d1",
+"order": 1,
+"offset": 0,
+"label": "Day 1",
+"who": "",
+"kind": "group",
+"title": "Conder to Millthorpe",
+"colour": "blue",
+"km": "335",
+"ride": "4 h 20 m",
+"total": "5 h 50 m",
+"feel": "Mostly cruisey with some tight sections",
+"roads": "Cotter, Brindabella and Mountain Creek roads, Wee Jasper, Wargeila and Rye Park, Lachlan Valley, Mid Western Hwy",
+"fuelNote": "",
+"best": {
+"from": "Tharwa",
+"to": "Cavan",
+"title": "Tharwa to Cavan",
+"why": "Cotter, Brindabella, Uriarra and Mountain Creek roads: the tightest riding of the day, with pine forest, river crossings and almost no traffic before the long open run north. Mountain Creek Rd is narrow, so keep it tidy."
+}
+},
+{
+"id": "d2",
+"order": 2,
+"offset": 1,
+"label": "Day 2",
+"who": "",
+"kind": "group",
+"title": "Millthorpe to Shellharbour",
+"colour": "orange",
+"km": "365",
+"ride": "5 h 38 m",
+"total": "8 h 38 m",
+"feel": "Tight with some cruisey sections",
+"roads": "Vittoria Rd and Mitchell Hwy, Sofala and Castlereagh, Great Western Hwy, Mulgoa and Silverdale, Old Hume, Picton and Mt Keira",
+"fuelNote": "",
+"best": {
+"from": "Bathurst",
+"to": "Ilford",
+"title": "Bathurst to Ilford",
+"why": "Sofala Rd rolls and twists through gold-rush country and down to the Turon River. Coming straight after a lap of Mount Panorama, it’s the most fun hour of a long day. Runner-up: Mt Keira Rd, with the drop to the coast."
+}
+},
+{
+"id": "d3",
+"order": 3,
+"offset": 2,
+"label": "Day 3",
+"who": "",
+"kind": "group",
+"title": "Shellharbour to Huskisson",
+"colour": "green",
+"km": "255",
+"ride": "4 h 05 m",
+"total": "7 h 50 m",
+"feel": "Tight with some cruisey sections",
+"roads": "Illawarra and Tourist roads, Moss Vale Rd, Kangaroo Valley Rd, Princes Hwy, Currarong and Jervis Bay roads",
+"fuelNote": "",
+"best": {
+"from": "Fitzroy Falls",
+"to": "Kangaroo Valley",
+"title": "Fitzroy Falls to Kangaroo Valley",
+"why": "The Moss Vale Rd descent down Barrengarry Mountain is a run of tight switchbacks off the escarpment into the valley, ending over Hampden Bridge. On Option 2, Jamberoo Mountain Rd is the tighter, more technical bonus."
+},
+"alt": {
+"label": "Option 2 hectic loop",
+"km": "304",
+"ride": "5 h 08 m",
+"total": "7 h 23 m",
+"feel": "Mostly tight roads, more technical riding",
+"roads": "Adds Jamberoo Rd, Illawarra Hwy, Pearsons Lane and Nowra Rd"
+}
+},
+{
+"id": "d4",
+"order": 4,
+"offset": 3,
+"label": "Day 4",
+"who": "",
+"kind": "group",
+"title": "Huskisson to Theodore",
+"colour": "purple",
+"km": "199",
+"ride": "2 h 40 m",
+"total": "3 h 40 m",
+"feel": "Mostly cruisey with some tight sections",
+"roads": "Huskisson, Pine Forest, Hawken and Turpentine roads, Braidwood Rd, Nerriga, Oallen, Sandy Point and Cullulla roads",
+"fuelNote": "",
+"best": {
+"from": "Huskisson",
+"to": "Nerriga",
+"title": "Huskisson to Nerriga",
+"why": "Turpentine and Braidwood roads climb off the coast through empty forest onto the tablelands. It’s quiet, flowing riding with the morning still cool, before the cruise home."
+}
+},
+{
+"id": "d5",
+"order": 5,
+"offset": 3,
+"label": "Ride home",
+"who": "Justin only",
+"kind": "solo",
+"title": "Huskisson to Caringbah",
+"colour": "red",
+"km": "~185",
+"ride": "~2 h 45 m",
+"total": "~4 h",
+"feel": "Coastal cruising, then the best coast road in NSW",
+"roads": "Princes Hwy through Berry and Gerringong, M1 to Wollongong, Lawrence Hargrave Drive over Sea Cliff Bridge, Lady Wakehurst Drive through Royal National Park. Distances and times are estimates; check them in a maps app.",
+"fuelNote": "Huskisson to Caringbah is about 185 km, just over the 183 km rule. Top up in Wollongong.",
+"best": {
+"from": "Wollongong",
+"to": "Caringbah",
+"title": "Wollongong to Caringbah",
+"why": "Up the coast on Lawrence Hargrave Drive, over Sea Cliff Bridge, then the rainforest bends of Lady Wakehurst Drive through Royal National Park, finishing almost at your door. A park entry fee may apply."
+}
+}
+],
+"stops": [
+{
+"id": "d0-00",
+"dayId": "d0",
+"order": 0,
+"town": "Caringbah",
+"road": "Home",
+"timeNote": "Depart 12:00 pm",
+"arrive": null,
+"depart": "12:00",
+"km": null,
+"tags": [
+"Start"
+],
+"fuelKm": "",
+"option": null,
+"note": "A midday start, arriving in Canberra the afternoon before so Day 1 starts fresh. Fuel up before you leave.",
+"stay": "",
+"ref": "",
+"audit": "Leaving at noon, so a pie for the road is on. FLOUR (open until 2 pm) and Bourke Street are the picks, both a few minutes from home.",
+"lat": -34.047,
+"lon": 151.122,
+"fact": "The name is said to come from a local Aboriginal word for the pademelon, a small wallaby."
+},
+{
+"id": "d0-01",
+"dayId": "d0",
+"order": 1,
+"town": "Goulburn",
+"road": "Hume Motorway",
+"timeNote": "Arrive about 2:00 pm, depart 2:30 pm",
+"arrive": "14:00",
+"depart": null,
+"km": null,
+"tags": [
+"Fuel",
+"Late lunch"
+],
+"fuelKm": "~190 km",
+"option": null,
+"note": "Wool city on the Hume, home of the Big Merino.",
+"stay": "",
+"ref": "",
+"audit": "Trappers is the obvious late-lunch stop: open until 6 pm every day, with a big car park right by the highway exit.",
+"lat": -34.754,
+"lon": 149.718,
+"fact": "Goulburn was Australia’s first inland city, proclaimed in 1863."
+},
+{
+"id": "d0-02",
+"dayId": "d0",
+"order": 2,
+"town": "Conder",
+"road": "Federal Hwy, Tuggeranong Parkway",
+"timeNote": "Arrive about 3:45 pm",
+"arrive": "15:45",
+"depart": null,
+"km": null,
+"tags": [
+"Finish"
+],
+"fuelKm": "",
+"option": null,
+"note": "",
+"stay": "",
+"ref": "Day 1 starts here tomorrow, with coffee at 8:30 am at Lanyon Shops. See Day 1 for Lanyon bakeries.",
+"audit": "",
+"lat": -35.459,
+"lon": 149.104,
+"fact": ""
+},
+{
+"id": "d1-00",
+"dayId": "d1",
+"order": 0,
+"town": "Conder",
+"road": "Start: Lanyon Shops car park",
+"timeNote": "Coffee 8:30 am, roll out 9:00 am",
+"arrive": null,
+"depart": "09:00",
+"km": 0,
+"tags": [
+"Start",
+"Coffee"
+],
+"fuelKm": "",
+"option": null,
+"note": "Same meeting point as last year. Lanyon Marketplace sits at the southern edge of Tuggeranong, a few minutes from the open country.",
+"stay": "",
+"ref": "",
+"audit": "Only one true bakery at Lanyon itself, so the rest of this list is the best of Tuggeranong within 10 minutes.",
+"lat": -35.459,
+"lon": 149.104,
+"fact": "The suburb is named after Charles Conder, one of the Heidelberg School impressionist painters.",
+"breakfast": {
+"town": "Conder",
+"note": "Coffee at 8:30 am, roll out at 9:00 am, all at Lanyon Marketplace.",
+"items": [
+[
+"Black & White Espresso",
+"ChIJG_ujSUzLF2sR2FmS8GDNbG8",
+4.5,
+239,
+"Daily 7 am to 3:30 pm",
+"In the marketplace, right by the car park. Reviewers rate the coffee five-star and the kitchen is quick even when full.",
+"Cappuccino"
+],
+[
+"Bakers Delight Lanyon",
+"ChIJg0KYJYewMioRU_JEux0n4gk",
+4.3,
+33,
+"Daily from 7 am",
+"Grab-and-go if you’d rather eat standing by the bikes.",
+"Cheese and bacon roll"
+]
+]
+}
+},
+{
+"id": "d1-01",
+"dayId": "d1",
+"order": 1,
+"town": "Tharwa",
+"road": "Tharwa Rd",
+"timeNote": "",
+"arrive": null,
+"depart": null,
+"km": null,
+"tags": [
+"Ride through"
+],
+"fuelKm": "",
+"option": null,
+"note": "The ACT’s oldest township, beside the Murrumbidgee and the 1895 Tharwa Bridge.",
+"stay": "",
+"ref": "",
+"audit": "No bakery, but the general store bakes the kind of pie and lamington riders detour for.",
+"lat": -35.509,
+"lon": 149.069,
+"fact": "The name Tharwa is taken from the local Aboriginal name for nearby Mount Tennent."
+},
+{
+"id": "d1-02",
+"dayId": "d1",
+"order": 2,
+"town": "Cavan",
+"road": "Cotter Rd, Brindabella Rd, Uriarra Rd, Mountain Creek Rd",
+"timeNote": "",
+"arrive": null,
+"depart": null,
+"km": null,
+"tags": [
+"Ride through"
+],
+"fuelKm": "",
+"option": null,
+"note": "Rural locality north-west of the ACT, reached by the Cotter loop and the twisty Mountain Creek Rd.",
+"stay": "",
+"ref": "",
+"audit": "Farmland only. No bakeries, no shops. Save room for Yass.",
+"lat": -34.98,
+"lon": 148.87,
+"fact": "Cavan Station on the Murrumbidgee was the Murdoch family’s country property for decades."
+},
+{
+"id": "d1-03",
+"dayId": "d1",
+"order": 3,
+"town": "Yass",
+"road": "Wee Jasper Rd",
+"timeNote": "Arrive 11:00 am, depart 11:30 am",
+"arrive": "11:00",
+"depart": "11:30",
+"km": 118,
+"tags": [
+"Fuel",
+"Coffee and bakery stop"
+],
+"fuelKm": "118 km",
+"option": null,
+"note": "Wool-town main street with verandahs along Comur St, on the Yass River.",
+"stay": "",
+"ref": "",
+"audit": "Clementine is the standout and has been named among the regional bakeries worth driving for, but it only trades Thursday to Sunday. On a weekday, Yass Country Kitchen is the fallback.",
+"lat": -34.842,
+"lon": 148.909,
+"fact": "Explorer Hamilton Hume settled here. His home, Cooma Cottage, still stands on the edge of town."
+},
+{
+"id": "d1-04",
+"dayId": "d1",
+"order": 4,
+"town": "Rye Park",
+"road": "Wargeila Rd, Rye Park Rd",
+"timeNote": "",
+"arrive": null,
+"depart": null,
+"km": null,
+"tags": [
+"Ride through"
+],
+"fuelKm": "",
+"option": null,
+"note": "Tiny village between Yass and Boorowa, now best known for the wind farm on the ridgeline.",
+"stay": "",
+"ref": "",
+"audit": "No bakery in the village. The nearest good one is in Boorowa, about 25 km off route.",
+"lat": -34.517,
+"lon": 148.909,
+"fact": "The turbines on the ridges belong to one of the largest wind farms in NSW."
+},
+{
+"id": "d1-05",
+"dayId": "d1",
+"order": 5,
+"town": "Cowra",
+"road": "Lachlan Valley Rd",
+"timeNote": "Arrive 1:00 pm, depart 2:00 pm",
+"arrive": "13:00",
+"depart": "14:00",
+"km": 255,
+"tags": [
+"Fuel",
+"Lunch"
+],
+"fuelKm": "137 km",
+"option": null,
+"note": "Lachlan River town known for its Japanese Garden and the 1944 POW breakout site.",
+"stay": "",
+"ref": "",
+"audit": "Two bakeries on Kendal St. Mick’s is the clear pick, but it shuts at 2 pm on weekdays and 1 pm Saturday, so lunch needs to be on time.",
+"lat": -33.835,
+"lon": 148.691,
+"fact": "Cowra’s Japanese Garden is the largest of its kind in the southern hemisphere."
+},
+{
+"id": "d1-06",
+"dayId": "d1",
+"order": 6,
+"town": "Blayney",
+"road": "Mid Western Hwy",
+"timeNote": "",
+"arrive": null,
+"depart": null,
+"km": null,
+"tags": [
+"Fuel"
+],
+"fuelKm": "80 km",
+"option": null,
+"note": "Small Central West town on the Belubula River, between Cowra and Bathurst.",
+"stay": "",
+"ref": "",
+"audit": "One bakery, and a good one.",
+"lat": -33.532,
+"lon": 149.254,
+"fact": "The wind farm on the hills outside town was one of the first built in NSW."
+},
+{
+"id": "d1-07",
+"dayId": "d1",
+"order": 7,
+"town": "Millthorpe",
+"road": "Millthorpe Rd",
+"timeNote": "Arrive 3:00 pm",
+"arrive": "15:00",
+"depart": null,
+"km": 335,
+"tags": [
+"Overnight"
+],
+"fuelKm": "",
+"option": null,
+"note": "Bluestone heritage village near Orange, all galleries, wine and old shopfronts.",
+"stay": "Millthorpe Motel, 26 Victoria St. Dinner booked.",
+"ref": "",
+"audit": "No dedicated bakery in the village. For the 7:30 am getaway, Millthorpe Providore opens at 6 am on weekdays and is a few doors from the motel.",
+"lat": -33.446,
+"lon": 149.185,
+"fact": "The whole village is classified by the National Trust as a heritage site."
+},
+{
+"id": "d2-00",
+"dayId": "d2",
+"order": 0,
+"town": "Millthorpe",
+"road": "Motel car park",
+"timeNote": "Depart 7:30 am",
+"arrive": null,
+"depart": "07:30",
+"km": 0,
+"tags": [
+"Start"
+],
+"fuelKm": "",
+"option": null,
+"note": "",
+"stay": "",
+"ref": "See Day 1 for Millthorpe.",
+"audit": "",
+"lat": -33.446,
+"lon": 149.185,
+"fact": "",
+"breakfast": {
+"town": "Millthorpe",
+"note": "Depart 7:30 am, with the Bathurst bakery stop 30 minutes later. Coffee here, breakfast in Bathurst works best.",
+"items": [
+[
+"Millthorpe Providore",
+"ChIJAQAAAMDKEWsRZBWfHZIC6hk",
+4.6,
+268,
+"Weekdays from 6 am, weekends from 7 am",
+"23 Victoria St, a few doors from the motel. Seven Miles coffee and breakfast rolls. No toilets inside (heritage building).",
+"Smoked salmon brioche"
+],
+[
+"The Old Mill Cafe",
+"ChIJzXG9pvvLEWsRW_ar0N0WHqI",
+4.5,
+416,
+"Wed to Sun from 7 am, closed Mon and Tue",
+"Proper sit-down breakfast, but 7 am is tight for a 7:30 roll-out. Staff are happy to do takeaway coffees.",
+"Eggs Benedict"
+]
+]
+}
+},
+{
+"id": "d2-01",
+"dayId": "d2",
+"order": 1,
+"town": "Bathurst",
+"road": "Vittoria Rd, Mitchell Hwy",
+"timeNote": "Arrive 8:00 am, depart 9:15 am",
+"arrive": "08:00",
+"depart": "09:15",
+"km": 40,
+"tags": [
+"Mt Panorama lap",
+"Bakery stop"
+],
+"fuelKm": "",
+"option": null,
+"note": "Gold-rush city and home of Mount Panorama. Slow lap first, then breakfast.",
+"stay": "",
+"ref": "",
+"audit": "The best field of the trip, and almost all open by 6 or 7 am. Carah’s and FoodWeDo lead on pies.",
+"lat": -33.42,
+"lon": 149.577,
+"fact": "Mount Panorama is a public road. Outside race weekends, anyone can lap it at 60 km/h."
+},
+{
+"id": "d2-02",
+"dayId": "d2",
+"order": 2,
+"town": "Ilford",
+"road": "Sofala Rd",
+"timeNote": "",
+"arrive": null,
+"depart": null,
+"km": null,
+"tags": [
+"Ride through"
+],
+"fuelKm": "",
+"option": null,
+"note": "Small stop on the Castlereagh Hwy, reached via the old gold-country road through Sofala.",
+"stay": "",
+"ref": "",
+"audit": "No bakery.",
+"lat": -32.958,
+"lon": 149.858,
+"fact": "The road in passes Sofala, often called Australia’s oldest surviving gold-rush town."
+},
+{
+"id": "d2-03",
+"dayId": "d2",
+"order": 3,
+"town": "Lithgow",
+"road": "Castlereagh Hwy",
+"timeNote": "Arrive 10:00 am, depart 10:15 am",
+"arrive": "10:00",
+"depart": "10:15",
+"km": 100,
+"tags": [
+"Fuel"
+],
+"fuelKm": "100 km",
+"option": null,
+"note": "Coal and steel town at the western foot of the Blue Mountains, home of the Zig Zag Railway.",
+"stay": "",
+"ref": "",
+"audit": "Thin pickings. Golden Sunshine is the one locals swear by.",
+"lat": -33.481,
+"lon": 150.157,
+"fact": "The Lithgow Small Arms Factory has been making rifles here since 1912."
+},
+{
+"id": "d2-04",
+"dayId": "d2",
+"order": 4,
+"town": "Penrith",
+"road": "Great Western Hwy",
+"timeNote": "Arrive 12:15 pm, depart 1:45 pm",
+"arrive": "12:15",
+"depart": "13:45",
+"km": 201,
+"tags": [
+"Lunch"
+],
+"fuelKm": "",
+"option": null,
+"note": "Big western Sydney hub on the Nepean River. Lunch is booked at Penrith Leagues Club.",
+"stay": "",
+"ref": "",
+"audit": "Lunch is at the Leagues Club, so this is one for an afternoon treat. Poles is the heavyweight.",
+"lat": -33.751,
+"lon": 150.694,
+"fact": "Penrith Whitewater Stadium was built for the canoe slalom at the Sydney 2000 Olympics."
+},
+{
+"id": "d2-05",
+"dayId": "d2",
+"order": 5,
+"town": "The Oaks",
+"road": "Mulgoa Rd, Silverdale Rd",
+"timeNote": "",
+"arrive": null,
+"depart": null,
+"km": null,
+"tags": [
+"Ride through"
+],
+"fuelKm": "",
+"option": null,
+"note": "Small Wollondilly town near the old Burragorang Valley road.",
+"stay": "",
+"ref": "",
+"audit": "One bakery, and it’s a proper country one.",
+"lat": -34.073,
+"lon": 150.571,
+"fact": "The road west of here once led into the Burragorang Valley, flooded to create Warragamba Dam."
+},
+{
+"id": "d2-06",
+"dayId": "d2",
+"order": 6,
+"town": "Camden",
+"road": "Burragorang Rd",
+"timeNote": "",
+"arrive": null,
+"depart": null,
+"km": null,
+"tags": [
+"Ride through"
+],
+"fuelKm": "",
+"option": null,
+"note": "Historic Macarthur town on the Nepean, with a heritage main street along Argyle St.",
+"stay": "",
+"ref": "",
+"audit": "Punches above its weight. B85 and Arta Atelier are worth a future dedicated visit.",
+"lat": -34.054,
+"lon": 150.696,
+"fact": "John Macarthur’s merino flock at Camden Park helped found Australia’s wool industry."
+},
+{
+"id": "d2-07",
+"dayId": "d2",
+"order": 7,
+"town": "Picton",
+"road": "Old Hume Hwy",
+"timeNote": "Arrive 2:45 pm, depart 3:00 pm",
+"arrive": "14:45",
+"depart": "15:00",
+"km": 262,
+"tags": [
+"Fuel"
+],
+"fuelKm": "162 km",
+"option": null,
+"note": "Heritage railway town known for the Mushroom Tunnel and the old stone viaduct.",
+"stay": "",
+"ref": "",
+"audit": "Parkside is the pick in town. If time allows, Loop-Line Pies in Thirlmere is the regional legend.",
+"lat": -34.17,
+"lon": 150.611,
+"fact": "The stone viaduct over Stonequarry Creek dates to 1867, among the oldest railway bridges still in use in NSW."
+},
+{
+"id": "d2-08",
+"dayId": "d2",
+"order": 8,
+"town": "Mount Keira",
+"road": "Picton Rd, Mt Keira Rd",
+"timeNote": "",
+"arrive": null,
+"depart": null,
+"km": null,
+"tags": [
+"Ride through"
+],
+"fuelKm": "",
+"option": null,
+"note": "Escarpment summit above Wollongong with one of the best coastal lookouts in NSW.",
+"stay": "",
+"ref": "",
+"audit": "No bakery on the hill. The summit cafe does good coffee, gozleme and Arabic sweets.",
+"lat": -34.397,
+"lon": 150.857,
+"fact": "Coal was first mined commercially in the Illawarra on Mount Keira’s slopes in 1849."
+},
+{
+"id": "d2-09",
+"dayId": "d2",
+"order": 9,
+"town": "Shellharbour",
+"road": "Princes Hwy, Winding Rd",
+"timeNote": "Arrive 4:30 pm",
+"arrive": "16:30",
+"depart": null,
+"km": 365,
+"tags": [
+"Fuel",
+"Overnight"
+],
+"fuelKm": "103 km",
+"option": null,
+"note": "Old harbour village with a new marina at Shell Cove, just south of Lake Illawarra.",
+"stay": "Barrack Point Holiday Park, Jason Ave. Dinner booked.",
+"ref": "",
+"audit": "Tahlia’s in the village is the morning pick before the 8:30 am departure. Queen St and Warilla are closest to Barrack Point.",
+"lat": -34.579,
+"lon": 150.87,
+"fact": "The town is named after the huge shell middens early settlers found along the shore."
+},
+{
+"id": "d3-00",
+"dayId": "d3",
+"order": 0,
+"town": "Shellharbour",
+"road": "Barrack Point",
+"timeNote": "Depart 8:30 am",
+"arrive": null,
+"depart": "08:30",
+"km": 0,
+"tags": [
+"Start"
+],
+"fuelKm": "",
+"option": null,
+"note": "",
+"stay": "",
+"ref": "See Day 2 for Shellharbour bakeries.",
+"audit": "",
+"lat": -34.579,
+"lon": 150.87,
+"fact": "",
+"breakfast": {
+"town": "Shellharbour",
+"note": "Depart Barrack Point 8:30 am. Shellharbour Village is about 3 km away, on Addison St.",
+"items": [
+[
+"De Village Cafe",
+"ChIJG-LH_cAVE2sRcUyPTYhoUlk",
+4.9,
+435,
+"Daily 7 am to 2 pm",
+"By the harbour. The best-rated breakfast in the village, beautifully presented.",
+"Halloumi stack"
+],
+[
+"Pacino’s Cafe",
+"ChIJMfdFyIYUE2sR6Logkf3CRVA",
+4.4,
+423,
+"Daily from 6 am",
+"Food arrives fast, which suits a group with a departure time. Vittoria coffee.",
+"Your usual coffee, made right"
+],
+[
+"Bayside Pantry",
+"ChIJOY-kproVE2sRrIiP_YCQiNA",
+4.5,
+208,
+"Weekdays from 6 am, Sat 6:30 am, Sun 7 am",
+"Mary St. Fresh, seasonal menu and consistently good coffee.",
+"Smashed avocado"
+]
+]
+}
+},
+{
+"id": "d3-01",
+"dayId": "d3",
+"order": 1,
+"town": "Mount Murray",
+"road": "Illawarra Rd (via Glenquarry)",
+"timeNote": "",
+"arrive": null,
+"depart": null,
+"km": null,
+"tags": [
+"Ride through"
+],
+"fuelKm": "",
+"option": null,
+"note": "Highland locality at the top of Macquarie Pass.",
+"stay": "",
+"ref": "",
+"audit": "No bakery.",
+"lat": -34.555,
+"lon": 150.66,
+"fact": "Getting here means climbing Macquarie Pass, about 600 m of rainforest hairpins up the escarpment."
+},
+{
+"id": "d3-02",
+"dayId": "d3",
+"order": 2,
+"town": "Bowral",
+"road": "Tourist Rd",
+"timeNote": "Arrive 9:30 am, depart 10:00 am",
+"arrive": "09:30",
+"depart": "10:00",
+"km": 55,
+"tags": [
+"Fuel",
+"Bakery stop"
+],
+"fuelKm": "",
+"option": null,
+"note": "Southern Highlands capital: tulips, the Bradman Museum and a long main street of cafes.",
+"stay": "",
+"ref": "",
+"audit": "The deepest field on the tour. Gumnut is the institution; Fermento is the quieter, higher-rated option a few doors along.",
+"lat": -34.478,
+"lon": 150.418,
+"fact": "Don Bradman learned his cricket here as a boy; the museum sits beside the oval named after him."
+},
+{
+"id": "d3-03",
+"dayId": "d3",
+"order": 3,
+"town": "Moss Vale",
+"road": "Argyle St",
+"timeNote": "",
+"arrive": null,
+"depart": null,
+"km": null,
+"tags": [
+"Ride through"
+],
+"fuelKm": "",
+"option": null,
+"note": "Working Highlands town with a broad main street and the old Dunmore Hotel.",
+"stay": "",
+"ref": "",
+"audit": "Kim Thi Hot Bread is the surprise of the audit: queues for banh mi and old-school pie prices.",
+"lat": -34.548,
+"lon": 150.371,
+"fact": "The town is said to take its name from Jemmy Moss, an early stockman in the district."
+},
+{
+"id": "d3-04",
+"dayId": "d3",
+"order": 4,
+"town": "Fitzroy Falls",
+"road": "Illawarra Hwy, Nowra Rd",
+"timeNote": "",
+"arrive": null,
+"depart": null,
+"km": null,
+"tags": [
+"Ride through"
+],
+"fuelKm": "",
+"option": null,
+"note": "The 81 m falls in Morton National Park, with a visitor centre right by the road.",
+"stay": "",
+"ref": "",
+"audit": "No bakery, but the cafe’s homemade pies are a pleasant surprise.",
+"lat": -34.645,
+"lon": 150.481,
+"fact": "The falls are named after Governor Charles FitzRoy and drop 81 m into the Yarrunga Valley."
+},
+{
+"id": "d3-05",
+"dayId": "d3",
+"order": 5,
+"town": "Kangaroo Valley",
+"road": "Moss Vale Rd",
+"timeNote": "Arrive 10:45 am, depart 11:45 am",
+"arrive": "10:45",
+"depart": "11:45",
+"km": 97,
+"tags": [
+"Shake a leg"
+],
+"fuelKm": "",
+"option": null,
+"note": "Village in a green bowl below the escarpment, reached by the switchbacks down Barrengarry Mountain.",
+"stay": "",
+"ref": "",
+"audit": "One bakery and it delivers. Vanilla slice and pepper pie are the orders.",
+"lat": -34.738,
+"lon": 150.534,
+"fact": "Hampden Bridge, built in 1898, is Australia’s oldest suspension bridge still carrying traffic."
+},
+{
+"id": "d3-06",
+"dayId": "d3",
+"order": 6,
+"town": "Bellawongarah",
+"road": "Kangaroo Valley Rd",
+"timeNote": "",
+"arrive": null,
+"depart": null,
+"km": null,
+"tags": [
+"Ride through"
+],
+"fuelKm": "",
+"option": null,
+"note": "Rainforest ridge road between Kangaroo Valley and Berry; the twistiest bit of the day.",
+"stay": "",
+"ref": "",
+"audit": "No bakery. Eyes on the road.",
+"lat": -34.765,
+"lon": 150.62,
+"fact": "The ridge road runs through pockets of subtropical rainforest that survive on the escarpment."
+},
+{
+"id": "d3-07",
+"dayId": "d3",
+"order": 7,
+"town": "Kiama",
+"road": "Princes Hwy",
+"timeNote": "Arrive 12:15 pm, depart 1:30 pm (Option 2: 1:00 pm)",
+"arrive": "12:15",
+"depart": "13:30",
+"km": 140,
+"tags": [
+"Fuel",
+"Lunch"
+],
+"fuelKm": "140 km",
+"option": null,
+"note": "Coastal town built around the Kiama Blowhole and its harbour.",
+"stay": "",
+"ref": "",
+"audit": "Strong field. Slow Dough is the best but only Friday to Sunday mornings; Parfait is the all-rounder by Black Beach.",
+"lat": -34.671,
+"lon": 150.854,
+"fact": "George Bass anchored here in 1797 and described the blowhole in his journal."
+},
+{
+"id": "d3-08",
+"dayId": "d3",
+"order": 8,
+"town": "Jamberoo",
+"road": "Jamberoo Rd",
+"timeNote": "",
+"arrive": null,
+"depart": null,
+"km": null,
+"tags": [
+"Ride through"
+],
+"fuelKm": "",
+"option": 2,
+"note": "Dairy village in a valley under the escarpment, start of the climb up Jamberoo Mountain Rd.",
+"stay": "",
+"ref": "",
+"audit": "One patisserie, and the curry beef pie has fans.",
+"lat": -34.647,
+"lon": 150.776,
+"fact": "Jamberoo Action Park has been sending people down waterslides here since 1980."
+},
+{
+"id": "d3-09",
+"dayId": "d3",
+"order": 9,
+"town": "Robertson",
+"road": "Jamberoo Rd, Illawarra Hwy",
+"timeNote": "",
+"arrive": null,
+"depart": null,
+"km": null,
+"tags": [
+"Ride through"
+],
+"fuelKm": "",
+"option": 2,
+"note": "Highland potato country on red volcanic soil, with the Big Potato on the main road.",
+"stay": "",
+"ref": "",
+"audit": "Pie territory. The Pie Shop is the famous one; locals say Southern Rise is the better pie.",
+"lat": -34.588,
+"lon": 150.596,
+"fact": "The farm scenes in the 1995 film Babe were shot in the hills around Robertson."
+},
+{
+"id": "d3-10",
+"dayId": "d3",
+"order": 10,
+"town": "Wildes Meadow",
+"road": "Illawarra Hwy, Pearsons Lane",
+"timeNote": "",
+"arrive": null,
+"depart": null,
+"km": null,
+"tags": [
+"Ride through"
+],
+"fuelKm": "",
+"option": 2,
+"note": "Farmland plateau between Robertson and Fitzroy Falls, rolling down to Kangaroo Valley.",
+"stay": "",
+"ref": "",
+"audit": "No bakery.",
+"lat": -34.613,
+"lon": 150.53,
+"fact": "Fitzroy Falls Reservoir here is part of the Shoalhaven Scheme, which pumps water up the escarpment."
+},
+{
+"id": "d3-11",
+"dayId": "d3",
+"order": 11,
+"town": "Bomaderry",
+"road": "Princes Hwy (Option 2: Nowra Rd)",
+"timeNote": "",
+"arrive": null,
+"depart": null,
+"km": null,
+"tags": [
+"Ride through"
+],
+"fuelKm": "",
+"option": null,
+"note": "North bank of the Shoalhaven River, facing Nowra.",
+"stay": "",
+"ref": "",
+"audit": "Two traditional bakeries side by side on Meroo St. Flour Water Salt South Nowra is the artisan choice.",
+"lat": -34.85,
+"lon": 150.61,
+"fact": "Bomaderry station is the end of the line for South Coast trains."
+},
+{
+"id": "d3-12",
+"dayId": "d3",
+"order": 12,
+"town": "Currarong",
+"road": "Greenwell Point Rd, Coonemia Rd, Currarong Rd",
+"timeNote": "Arrive 2:30 pm, depart 3:30 pm",
+"arrive": "14:30",
+"depart": "15:30",
+"km": 213,
+"tags": [
+"Look around"
+],
+"fuelKm": "",
+"option": null,
+"note": "Quiet fishing village on the Beecroft Peninsula with rock pools and a creek-mouth beach.",
+"stay": "",
+"ref": "",
+"audit": "No bakery. Zest is the reliable stop; Alma’s is a gem if the days line up.",
+"lat": -35.016,
+"lon": 150.82,
+"fact": "The wreck of the SS Merimbula, which ran aground off Beecroft Head in 1928, still lies nearby."
+},
+{
+"id": "d3-13",
+"dayId": "d3",
+"order": 13,
+"town": "Huskisson",
+"road": "Currarong Rd, Princes Hwy, Jervis Bay Rd, Huskisson Rd",
+"timeNote": "Arrive 4:00 pm",
+"arrive": "16:00",
+"depart": null,
+"km": 255,
+"tags": [
+"Fuel",
+"Overnight"
+],
+"fuelKm": "115 km (Option 2: 164 km)",
+"option": null,
+"note": "Jervis Bay town of white sand and dolphin cruises. Home of the Husky pie.",
+"stay": "Huskisson Beach Motel, 9 Hawke St. Dinner booked.",
+"ref": "",
+"audit": "Breakfast before the 8:30 am departure: Huskisson Bakery opens 6:30 am daily. Kraken is the artisan pick if it’s Thursday to Sunday.",
+"lat": -35.04,
+"lon": 150.672,
+"fact": "It’s named after William Huskisson, the British politician famous as the first widely reported railway fatality, in 1830."
+},
+{
+"id": "d4-00",
+"dayId": "d4",
+"order": 0,
+"town": "Huskisson",
+"road": "Motel",
+"timeNote": "Depart 8:30 am",
+"arrive": null,
+"depart": "08:30",
+"km": 0,
+"tags": [
+"Start"
+],
+"fuelKm": "",
+"option": null,
+"note": "",
+"stay": "",
+"ref": "See Day 3 for Huskisson bakeries. Justin peels off here and heads north; see his ride home below.",
+"audit": "",
+"lat": -35.04,
+"lon": 150.672,
+"fact": "",
+"breakfast": {
+"town": "Huskisson",
+"note": "Depart 8:30 am. All three are on Owen St, a short walk from the motel.",
+"items": [
+[
+"Harley’s @ Husky",
+"ChIJ53Gc0j2HFGsRTBpe1UVt-eU",
+4.6,
+264,
+"Daily from 6:30 am",
+"Locals’ favourite. Great coffee and fluffy focaccia.",
+"Bacon and egg burger with chilli jam"
+],
+[
+"5 Little Pigs",
+"ChIJj0TfJwaGFGsR0zyZX4_AcNo",
+4.3,
+1810,
+"Daily from 7 am",
+"Huge portions and a water view. Popular, but tables turn quickly.",
+"Salt and vinegar hash browns"
+],
+[
+"Angels Bayside Cafe",
+"ChIJQ1WhLAaGFGsR95VxXrHxDjM",
+4.2,
+673,
+"Daily from 6:30 am",
+"Corner spot facing the water. Good value and quick for an early start.",
+"Fresh juice and scones"
+]
+]
+}
+},
+{
+"id": "d4-01",
+"dayId": "d4",
+"order": 1,
+"town": "Nerriga",
+"road": "Huskisson Rd, Pine Forest Rd, Hawken Rd, Princes Hwy, Turpentine Rd, Braidwood Rd",
+"timeNote": "Arrive 9:30 am, depart 10:00 am",
+"arrive": "09:30",
+"depart": "10:00",
+"km": 72,
+"tags": [
+"Comfort stop"
+],
+"fuelKm": "",
+"option": null,
+"note": "Bush crossroads on the tableland between the coast and Braidwood, with a historic pub and not much else.",
+"stay": "",
+"ref": "",
+"audit": "No bakery. Heads up: the Nerriga Hotel is listed as opening 11 am, Wednesday to Sunday, so it will likely be shut at 9:30. Bring a snack from Huskisson.",
+"lat": -35.115,
+"lon": 150.084,
+"fact": "The pub is a survivor of the 19th-century gold era, when this road carried diggers and coaches."
+},
+{
+"id": "d4-02",
+"dayId": "d4",
+"order": 2,
+"town": "Bungendore",
+"road": "Nerriga Rd, Oallen Rd, Sandy Point Rd, Cullulla Rd",
+"timeNote": "Arrive 11:00 am, depart 11:30 am",
+"arrive": "11:00",
+"depart": "11:30",
+"km": 157,
+"tags": [
+"Fuel",
+"Shake a leg"
+],
+"fuelKm": "157 km",
+"option": null,
+"note": "Heritage village on the edge of Lake George, half an hour from Canberra.",
+"stay": "",
+"ref": "",
+"audit": "Gunna Doo is the institution and opens at 4 am. Last bakery of the tour.",
+"lat": -35.254,
+"lon": 149.443,
+"fact": "Nearby Lake George is famous for vanishing, sometimes sitting dry for years at a time."
+},
+{
+"id": "d4-03",
+"dayId": "d4",
+"order": 3,
+"town": "Theodore",
+"road": "Bungendore Rd",
+"timeNote": "Arrive 12:30 pm",
+"arrive": "12:30",
+"depart": null,
+"km": 199,
+"tags": [
+"Finish"
+],
+"fuelKm": "",
+"option": null,
+"note": "Southern Tuggeranong suburb. Home.",
+"stay": "",
+"ref": "",
+"audit": "For a celebratory finish, L’épi in Chisholm is 5 minutes away. Full Tuggeranong list is under Conder on Day 1.",
+"lat": -35.45,
+"lon": 149.12,
+"fact": "The suburb is named after Ted Theodore, Queensland premier and later federal Treasurer."
+},
+{
+"id": "d5-00",
+"dayId": "d5",
+"order": 0,
+"town": "Huskisson",
+"road": "Motel",
+"timeNote": "Depart 8:30 am, as the crew heads west",
+"arrive": null,
+"depart": "08:30",
+"km": null,
+"tags": [
+"Start"
+],
+"fuelKm": "",
+"option": null,
+"note": "",
+"stay": "",
+"ref": "See Day 3 for Huskisson bakeries. Grab breakfast before the farewells.",
+"audit": "",
+"lat": -35.04,
+"lon": 150.672,
+"fact": ""
+},
+{
+"id": "d5-01",
+"dayId": "d5",
+"order": 1,
+"town": "Berry",
+"road": "Princes Hwy",
+"timeNote": "Arrive about 9:15 am, depart 9:45 am",
+"arrive": "09:15",
+"depart": null,
+"km": null,
+"tags": [
+"Coffee and bakery stop"
+],
+"fuelKm": "",
+"option": null,
+"note": "Shoalhaven town of antique shops, old pubs and a very famous donut van.",
+"stay": "",
+"ref": "",
+"audit": "Two icons a few doors apart: Milkwood for pastries and the Donut Van for hot cinnamon donuts. The van opens at 8:30 am, so you’ll be just in time.",
+"lat": -34.775,
+"lon": 150.695,
+"fact": "The town takes its name from Alexander Berry, who set up one of the first European estates on the Shoalhaven."
+},
+{
+"id": "d5-02",
+"dayId": "d5",
+"order": 2,
+"town": "Wollongong",
+"road": "Princes Hwy, M1",
+"timeNote": "Arrive about 10:45 am, depart 11:15 am",
+"arrive": "10:45",
+"depart": null,
+"km": null,
+"tags": [
+"Fuel",
+"Coffee"
+],
+"fuelKm": "~110 km",
+"option": null,
+"note": "The Gong: steelworks, surf beaches and the escarpment rising behind the city.",
+"stay": "",
+"ref": "",
+"audit": "Crois and Millers’ both sell out, so late morning is a gamble. Royal Bakery is the safe bet, open to 4 pm daily.",
+"lat": -34.424,
+"lon": 150.893,
+"fact": "Sea Cliff Bridge, just north of town, opened in 2005 after rockfalls closed the old cliff road."
+},
+{
+"id": "d5-03",
+"dayId": "d5",
+"order": 3,
+"town": "Caringbah",
+"road": "Lawrence Hargrave Dr, Lady Wakehurst Dr",
+"timeNote": "Home about 12:30 pm",
+"arrive": "12:30",
+"depart": null,
+"km": null,
+"tags": [
+"Finish"
+],
+"fuelKm": "",
+"option": null,
+"note": "",
+"stay": "",
+"ref": "See the ride down for Caringbah bakeries. FLOUR is open until 2 pm for a welcome-home pastry.",
+"audit": "",
+"lat": -34.047,
+"lon": 151.122,
+"fact": ""
+}
+],
+"bakeries": [
+{
+"id": "caringbah--flour-coffee-doughroom",
+"town": "Caringbah",
+"name": "FLOUR coffee & doughroom",
+"rank": 1,
+"placeId": "ChIJNx-mErbHEmsRuiflwe7lB40",
+"rating": 4.7,
+"reviews": 523,
+"hours": "Daily 7 am to 2 pm",
+"why": "Caringbah South. Queues out the door for focaccia, danishes and pies.",
+"tag": "",
+"must": "Truffle and mushroom focaccia",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "caringbah--home-bakery-and-caf",
+"town": "Caringbah",
+"name": "Home Bakery and Café",
+"rank": 2,
+"placeId": "ChIJ0-sPbgq4EmsRsrabpNU6gpA",
+"rating": 4.8,
+"reviews": 129,
+"hours": "Mon to Sat 7:30 am to 3 pm, Sun from 9 am",
+"why": "Willarong Rd. Fair prices and very friendly staff.",
+"tag": "",
+"must": "Cream cheese cinnamon scroll",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "caringbah--vu-s-bakehouse-caringbah",
+"town": "Caringbah",
+"name": "Vu’s Bakehouse Caringbah",
+"rank": 3,
+"placeId": "ChIJFdab4ILHEmsRA8EyaBCuWCU",
+"rating": 4.8,
+"reviews": 28,
+"hours": "Weekdays 7 am to 6 pm, weekends to 4 pm",
+"why": "Kingsway. Homemade pies, artisan sourdough and fresh banh mi.",
+"tag": "",
+"must": "Banh mi",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "caringbah--the-family-bakehouse",
+"town": "Caringbah",
+"name": "The Family Bakehouse",
+"rank": 4,
+"placeId": "ChIJQ23lnsHHEmsRS1U7lpEzLUg",
+"rating": 4.6,
+"reviews": 68,
+"hours": "Daily from 6 am (weekends to 1:30 pm)",
+"why": "Port Hacking Rd. Old-school bread, cupcakes and sweets.",
+"tag": "",
+"must": "Pineapple tart",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "caringbah--bourke-street-bakery-caringbah",
+"town": "Caringbah",
+"name": "Bourke Street Bakery Caringbah",
+"rank": 5,
+"placeId": "ChIJeyOVzsG5EmsR1zOUVyLuxiw",
+"rating": 4.4,
+"reviews": 107,
+"hours": "Tue to Fri from 5:30 am, Mon and weekends from 7 am",
+"why": "Cawarra Rd. The earliest opener, with good pies and pastries.",
+"tag": "",
+"must": "Pork and fennel sausage roll",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "goulburn--trappers-bakery",
+"town": "Goulburn",
+"name": "Trappers Bakery",
+"rank": 1,
+"placeId": "ChIJD-mqdJCvFmsRBKTJXrLqhwk",
+"rating": 4.3,
+"reviews": 5188,
+"hours": "Daily 5:30 am to 6 pm",
+"why": "Next to the Big Merino. Huge range, barista coffee and an open fire in winter.",
+"tag": "",
+"must": "Steak and kidney pie",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "goulburn--goulburn-bakery",
+"town": "Goulburn",
+"name": "Goulburn Bakery",
+"rank": 2,
+"placeId": "ChIJ2bXjURyvFmsRmNyr6WUrSws",
+"rating": 4.5,
+"reviews": 129,
+"hours": "Mon to Sat from 5 am, closed Sun",
+"why": "Auburn St. A solid old-school bakery with pastry that holds together.",
+"tag": "",
+"must": "Cheese and bacon pie",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "goulburn--bryants-bakery-cafe",
+"town": "Goulburn",
+"name": "Bryants Bakery Cafe",
+"rank": 3,
+"placeId": "ChIJebqlTRyvFmsRENSJkLeuQ_M",
+"rating": 4.1,
+"reviews": 160,
+"hours": "Weekdays from 6 am, Sun from 8 am",
+"why": "Auburn St. Pies are hit and miss; the caramel slice is the standout.",
+"tag": "",
+"must": "Caramel slice",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "goulburn--tbp-baking",
+"town": "Goulburn",
+"name": "TBP Baking",
+"rank": 4,
+"placeId": "ChIJJT5plOGuFmsRLOq4gbJ1mQU",
+"rating": 4.4,
+"reviews": 5,
+"hours": "Weekdays and Sat from 5 am, Sun from 9 am",
+"why": "New on Auburn St with only a handful of reviews.",
+"tag": "",
+"must": "Pie",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "goulburn--bryants-pies",
+"town": "Goulburn",
+"name": "Bryants Pies",
+"rank": 5,
+"placeId": "ChIJKXIHTRyvFmsRsrozZeNWDUw",
+"rating": 4,
+"reviews": 90,
+"hours": "Weekdays from 6 am, Sat 7 am, Sun 10 am",
+"why": "Flaky pies and sausage rolls; reviews are uneven.",
+"tag": "",
+"must": "Sausage roll",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "conder--bakers-delight-lanyon",
+"town": "Conder",
+"name": "Bakers Delight Lanyon",
+"rank": 1,
+"placeId": "ChIJg0KYJYewMioRU_JEux0n4gk",
+"rating": 4.3,
+"reviews": 33,
+"hours": "Daily 7 am to 7 pm",
+"why": "In the car park, open early. Fresh rolls and cheese and bacon scrolls for the tank bag.",
+"tag": "",
+"must": "Cheese and bacon scroll",
+"hoursSpec": [
+[
+"0123456",
+700,
+1900
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "conder--under-mawson",
+"town": "Conder",
+"name": "Under (Mawson)",
+"rank": 2,
+"placeId": "ChIJIZWDjfe1F2sRIB3CilEbW7U",
+"rating": 4.8,
+"reviews": 196,
+"hours": "Wed to Sun 8 am to 2 pm",
+"why": "Canberra’s cult pick. Cardamom buns and focaccia; queues and daily sell-outs.",
+"tag": "Nearby",
+"must": "Cardamom bun",
+"hoursSpec": [
+[
+"03456",
+800,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "conder--l-pi-artisan-bakery-chisholm",
+"town": "Conder",
+"name": "L’épi Artisan Bakery (Chisholm)",
+"rank": 3,
+"placeId": "ChIJWSLb_4pLFmsReVjSTky_aM0",
+"rating": 4.5,
+"reviews": 164,
+"hours": "Daily 7 am to 2:30 pm",
+"why": "Artisan bread, flaky pastries and well-reviewed pies, with Ona coffee.",
+"tag": "Nearby",
+"must": "Lamb pie",
+"hoursSpec": [
+[
+"0123456",
+700,
+1430
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "conder--the-continental-cake-shop-greenway",
+"town": "Conder",
+"name": "The Continental Cake Shop (Greenway)",
+"rank": 4,
+"placeId": "ChIJO2hxi4XKF2sRk3wFGV1Zuyc",
+"rating": 4.3,
+"reviews": 278,
+"hours": "Mon to Fri 8 am to 7 pm, weekends 9 am to 6 pm",
+"why": "Celebration cakes and slices; strong on black forest and red velvet.",
+"tag": "Nearby",
+"must": "Black forest cake",
+"hoursSpec": [
+[
+"12345",
+800,
+1900
+],
+[
+"06",
+900,
+1800
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "conder--dobinsons-greenway",
+"town": "Conder",
+"name": "Dobinsons (Greenway)",
+"rank": 5,
+"placeId": "ChIJUWavn3vLF2sRBsWN3AJDdAE",
+"rating": 3.8,
+"reviews": 48,
+"hours": "Daily from 7:30 am",
+"why": "Reliable pies, sausage rolls and vanilla slice in the Southpoint centre.",
+"tag": "Nearby",
+"must": "Vanilla slice",
+"hoursSpec": [
+[
+"0123456",
+730,
+1730
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "tharwa--tharwa-general-store-and-clarries-cafe",
+"town": "Tharwa",
+"name": "Tharwa General Store and Clarries cafe",
+"rank": 1,
+"placeId": "ChIJ21RN0_LMF2sR4CrwoHfwU8E",
+"rating": 4.4,
+"reviews": 82,
+"hours": "Daily 9 am to 5:30 pm",
+"why": "Built in 1922. Steak and pepper pies and lamingtons reviewers call the best they’ve had. Opens after we pass, so note it for another day.",
+"tag": "",
+"must": "Steak and pepper pie",
+"hoursSpec": [
+[
+"0123456",
+900,
+1730
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "yass--clementine-bakery",
+"town": "Yass",
+"name": "Clementine Bakery",
+"rank": 1,
+"placeId": "ChIJATfKCl0RF2sRlmdTL6lvu6Y",
+"rating": 4.6,
+"reviews": 189,
+"hours": "Thu to Sun 8:30 am to 2 pm",
+"why": "Five sourdoughs, croissants, sausage rolls and lamingtons, with seats under the old balcony on Comur St.",
+"tag": "",
+"must": "Sausage roll",
+"hoursSpec": [
+[
+"0456",
+830,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "yass--yass-country-kitchen",
+"town": "Yass",
+"name": "Yass Country Kitchen",
+"rank": 2,
+"placeId": "ChIJo6LVlIUQF2sRJdAKHkmQLRg",
+"rating": 4.1,
+"reviews": 119,
+"hours": "Mon to Fri from 5 am, Sat from 8 am, closed Sun",
+"why": "Locals call its chunky beef pies the best in town. Can be short-staffed around lunch.",
+"tag": "",
+"must": "Chunky beef pie",
+"hoursSpec": [
+[
+"12345",
+500,
+1430
+],
+[
+"6",
+800,
+1430
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "yass--yass-valley-bakery",
+"town": "Yass",
+"name": "Yass Valley Bakery",
+"rank": 3,
+"placeId": "ChIJ6w9UsJARF2sRW99Ym6MujbY",
+"rating": 4.1,
+"reviews": 120,
+"hours": "Mon to Fri 9 am to 2 pm",
+"why": "Three bakers on site, big gluten-free range. Reviews are mixed on price; the chunky beef pie gets the praise.",
+"tag": "",
+"must": "Gluten-free pie",
+"hoursSpec": [
+[
+"12345",
+900,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "yass--the-yass-cafe",
+"town": "Yass",
+"name": "The Yass Cafe",
+"rank": 4,
+"placeId": "ChIJpdiRpqYRF2sRibzTzAAhGPk",
+"rating": 4.2,
+"reviews": 357,
+"hours": "Daily 6:30 am to 3 pm",
+"why": "Not a bakery, but the best-rated coffee on Comur St for those who just want a brew.",
+"tag": "",
+"must": "Flat white",
+"hoursSpec": [
+[
+"0123456",
+630,
+1500
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "rye-park--the-bakery-boorowa",
+"town": "Rye Park",
+"name": "The Bakery Boorowa",
+"rank": 1,
+"placeId": "ChIJN5imnPRJF2sRW-dDnHf8Fw8",
+"rating": 4.2,
+"reviews": 688,
+"hours": "Daily from 6 am (Sat 7, Sun 8) to 4 pm",
+"why": "Oversized country bakes, pepper pies and a huge eclair, with plenty of seating.",
+"tag": "Off route",
+"must": "Pepper pie",
+"hoursSpec": [
+[
+"12345",
+600,
+1600
+],
+[
+"6",
+700,
+1600
+],
+[
+"0",
+800,
+1600
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "cowra--mick-s-local-bakery",
+"town": "Cowra",
+"name": "Mick’s Local Bakery",
+"rank": 1,
+"placeId": "ChIJFQ_wyxuNEGsRO69PbmZMj0w",
+"rating": 4.3,
+"reviews": 31,
+"hours": "Mon to Fri 7 am to 2 pm, Sat 7:30 am to 1 pm",
+"why": "Bourbon and honey chicken and pepper pies, jalapeño sausage rolls, very friendly service.",
+"tag": "",
+"must": "Bourbon and honey chicken pie",
+"hoursSpec": [
+[
+"12345",
+700,
+1400
+],
+[
+"6",
+730,
+1300
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "cowra--royce-s-homestyle-cakes",
+"town": "Cowra",
+"name": "Royce’s Homestyle Cakes",
+"rank": 2,
+"placeId": "ChIJB80DoRONEGsRRnT8eba5pSA",
+"rating": 3.5,
+"reviews": 15,
+"hours": "Mon to Fri 6 am to 3 pm, Sat 7 am to 1 pm",
+"why": "Proper baked custard tarts and fresh sandwiches. Cash only and inconsistent reviews.",
+"tag": "",
+"must": "Baked custard tart",
+"hoursSpec": [
+[
+"12345",
+600,
+1500
+],
+[
+"6",
+700,
+1300
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "blayney--hutchison-s-bakehouse",
+"town": "Blayney",
+"name": "Hutchison’s Bakehouse",
+"rank": 1,
+"placeId": "ChIJ6e2g7gLJEWsRDWlgnvuqYPs",
+"rating": 4.3,
+"reviews": 50,
+"hours": "Mon to Fri from 5 am (Mon 6) to 3 pm, Sat to 1 pm",
+"why": "Big raspberry-and-cream lamingtons and good coffee. The cakes outshine the pies.",
+"tag": "",
+"must": "Raspberry and cream lamington",
+"hoursSpec": [
+[
+"1",
+600,
+1500
+],
+[
+"2345",
+500,
+1500
+],
+[
+"6",
+500,
+1300
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "blayney--ironbark-espresso",
+"town": "Blayney",
+"name": "Ironbark Espresso",
+"rank": 2,
+"placeId": "ChIJ08d4tiXIEWsRj4p9zx3-Sk0",
+"rating": 4.6,
+"reviews": 314,
+"hours": "Mon to Fri 5:30 am to 2 pm, weekends 7 am to noon",
+"why": "Cafe, not a bakery, but its slices (try the sour cream apple) are worth a look.",
+"tag": "",
+"must": "Sour cream apple slice",
+"hoursSpec": [
+[
+"12345",
+530,
+1400
+],
+[
+"06",
+700,
+1200
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "millthorpe--millthorpe-providore",
+"town": "Millthorpe",
+"name": "Millthorpe Providore",
+"rank": 1,
+"placeId": "ChIJAQAAAMDKEWsRZBWfHZIC6hk",
+"rating": 4.6,
+"reviews": 268,
+"hours": "Mon to Fri 6 am to 3 pm, weekends 7 am to 3 pm",
+"why": "23 Victoria St. A 5/5 sausage roll, fruit loaf and Seven Miles coffee. Right by the motel.",
+"tag": "",
+"must": "Sausage roll",
+"hoursSpec": [
+[
+"12345",
+600,
+1500
+],
+[
+"06",
+700,
+1500
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "millthorpe--the-old-mill-cafe",
+"town": "Millthorpe",
+"name": "The Old Mill Cafe",
+"rank": 2,
+"placeId": "ChIJzXG9pvvLEWsRW_ar0N0WHqI",
+"rating": 4.5,
+"reviews": 416,
+"hours": "Wed to Sun 7 am to 2 pm",
+"why": "Cakes and a lemon meringue pie that sells out fast.",
+"tag": "",
+"must": "Lemon meringue pie",
+"hoursSpec": [
+[
+"03456",
+700,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "millthorpe--millthorpe-sweets-and-treats",
+"town": "Millthorpe",
+"name": "Millthorpe Sweets and Treats",
+"rank": 3,
+"placeId": "ChIJgX2n-bXLEWsR1LEbknpHdyw",
+"rating": 4.6,
+"reviews": 24,
+"hours": "From 10 am, closed Tue",
+"why": "Handmade chocolates and German biscuits for the panniers.",
+"tag": "",
+"must": "Handmade chocolates",
+"hoursSpec": [
+[
+"013456",
+1000,
+1600
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "bathurst--carah-s-cakes-pies",
+"town": "Bathurst",
+"name": "Carah’s Cakes & Pies",
+"rank": 1,
+"placeId": "ChIJs7t0x8zlEWsRILf9Nv3V9Hc",
+"rating": 4.3,
+"reviews": 363,
+"hours": "Mon to Fri 6 am to 4:30 pm, Sat to 1:30 pm, closed Sun",
+"why": "Brisket, jalapeño and cheese pies; steak, bacon and cheese gets raves. Busy at lunch.",
+"tag": "",
+"must": "Steak, bacon and cheese pie",
+"hoursSpec": [
+[
+"12345",
+600,
+1630
+],
+[
+"6",
+600,
+1330
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "bathurst--foodwedo",
+"town": "Bathurst",
+"name": "FoodWeDo",
+"rank": 2,
+"placeId": "ChIJM449-zbkEWsRwirjBO_yTxk",
+"rating": 4.5,
+"reviews": 151,
+"hours": "Mon to Fri 6 am to 1 pm, Sat 7 am to 2 pm, Sun 8 am to 1 pm",
+"why": "Everything baked on site; a local’s tip for the best pie in town. Pastries sell out early.",
+"tag": "",
+"must": "Beef pie",
+"hoursSpec": [
+[
+"12345",
+600,
+1300
+],
+[
+"6",
+700,
+1400
+],
+[
+"0",
+800,
+1300
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "bathurst--bernard-s-bakery",
+"town": "Bathurst",
+"name": "Bernard’s Bakery",
+"rank": 3,
+"placeId": "ChIJ4Ri7RzHkEWsROac95CKVH8I",
+"rating": 4.3,
+"reviews": 263,
+"hours": "Mon to Fri 7 am to 4 pm, weekends 7 am to 3 pm",
+"why": "Pepper steak pie and possibly the best banh mi west of the mountains.",
+"tag": "",
+"must": "Pepper steak pie",
+"hoursSpec": [
+[
+"12345",
+700,
+1600
+],
+[
+"06",
+700,
+1500
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "bathurst--village-bakehouse",
+"town": "Bathurst",
+"name": "Village Bakehouse",
+"rank": 4,
+"placeId": "ChIJE7vqhxHlEWsREDqQAcvO3UY",
+"rating": 3.9,
+"reviews": 378,
+"hours": "Daily from 6 am",
+"why": "Big, with an upstairs and a drive-thru. Signature beef pie and danishes.",
+"tag": "",
+"must": "Signature beef pie",
+"hoursSpec": [
+[
+"12345",
+600,
+1730
+],
+[
+"06",
+600,
+1630
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "bathurst--bathurst-french-hot-bread",
+"town": "Bathurst",
+"name": "Bathurst French Hot Bread",
+"rank": 5,
+"placeId": "ChIJK_dU1jPkEWsRRUQiDo4snx0",
+"rating": 3.9,
+"reviews": 80,
+"hours": "Mon to Fri 6 am to 6 pm, Sat to 4 pm, closed Sun",
+"why": "Go for the pork roll, not the pies. Card surcharge.",
+"tag": "",
+"must": "Pork roll",
+"hoursSpec": [
+[
+"12345",
+600,
+1800
+],
+[
+"6",
+600,
+1600
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "lithgow--golden-sunshine-bakery",
+"town": "Lithgow",
+"name": "Golden Sunshine Bakery",
+"rank": 1,
+"placeId": "ChIJWYTZKE4KEmsRjA5rAmY_ixc",
+"rating": 4,
+"reviews": 31,
+"hours": "Daily 6 am to 5 pm",
+"why": "Lithgow Valley centre. Cream horns, lamingtons and famous fruit mince tarts.",
+"tag": "",
+"must": "Fruit mince tart",
+"hoursSpec": [
+[
+"0123456",
+600,
+1700
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "lithgow--el-latte-lithgow",
+"town": "Lithgow",
+"name": "El Latte Lithgow",
+"rank": 2,
+"placeId": "ChIJ7xxuOkQLEmsRv0ISbbX-5A0",
+"rating": 4.5,
+"reviews": 302,
+"hours": "Mon to Fri 5 am to 4 pm, weekends 7 am to 3 pm",
+"why": "Cafe on Main St with homemade apple crumble and brownies.",
+"tag": "",
+"must": "Apple crumble",
+"hoursSpec": [
+[
+"12345",
+500,
+1600
+],
+[
+"06",
+700,
+1500
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "lithgow--the-lithgow-tin-shed",
+"town": "Lithgow",
+"name": "The Lithgow Tin Shed",
+"rank": 3,
+"placeId": "ChIJCx-tKVkKEmsRIXG4Xocnp4k",
+"rating": 4.5,
+"reviews": 1439,
+"hours": "Most days from 6:30 or 8 am to 3 pm",
+"why": "Cafe; slow-cooked beef pie with mash and peas, good almond croissant.",
+"tag": "",
+"must": "Slow-cooked beef pie",
+"hoursSpec": [
+[
+"2345",
+630,
+1500
+],
+[
+"016",
+800,
+1500
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "lithgow--chi-cong-hot-bread",
+"town": "Lithgow",
+"name": "Chi Cong Hot Bread",
+"rank": 4,
+"placeId": "ChIJ5-6M91oKEmsR07KtkQvooAA",
+"rating": 3.4,
+"reviews": 32,
+"hours": "Mon to Fri 6 am to 3:30 pm",
+"why": "Pizza breads and sausage rolls; skip the pies. No coffee.",
+"tag": "",
+"must": "Pizza bread",
+"hoursSpec": [
+[
+"12345",
+600,
+1530
+],
+[
+"06",
+700,
+1300
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "penrith--poles-patisserie",
+"town": "Penrith",
+"name": "Poles Patisserie",
+"rank": 1,
+"placeId": "ChIJF37oXfSFEmsRYbZMYKYlAsM",
+"rating": 4.7,
+"reviews": 1734,
+"hours": "Daily 7:30 am to 5 pm (Sun 8 to 4)",
+"why": "Westfield. Steak and kidney pie worth driving an hour for, plus scallop pies.",
+"tag": "",
+"must": "Steak and kidney pie",
+"hoursSpec": [
+[
+"123456",
+730,
+1700
+],
+[
+"0",
+800,
+1600
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "penrith--la-bakehouse-cafe",
+"town": "Penrith",
+"name": "La Bakehouse Cafe",
+"rank": 2,
+"placeId": "ChIJCd5rsvSFEmsRc1-Hk-uF1uU",
+"rating": 4,
+"reviews": 79,
+"hours": "Mon to Fri 6:30 am to 3 pm, weekends 7 am to 2:30 pm",
+"why": "High St. Loaded steak, bacon and cheese pies at old-school prices.",
+"tag": "",
+"must": "Steak, bacon and cheese pie",
+"hoursSpec": [
+[
+"12345",
+630,
+1500
+],
+[
+"06",
+700,
+1430
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "penrith--profiterole-patisserie",
+"town": "Penrith",
+"name": "Profiterole Patisserie",
+"rank": 3,
+"placeId": "ChIJm3lYu4-FEmsRaafotYQ1gdQ",
+"rating": 4.3,
+"reviews": 357,
+"hours": "Daily 6 am to 10 pm",
+"why": "Opposite the station. Cakes, crepes and pastries; all halal.",
+"tag": "",
+"must": "Profiteroles",
+"hoursSpec": [
+[
+"0123456",
+600,
+2200
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "penrith--penrith-pies-and-pastries",
+"town": "Penrith",
+"name": "Penrith Pies and Pastries",
+"rank": 4,
+"placeId": "ChIJWyysjUWPEmsRQ836gS07db4",
+"rating": 4,
+"reviews": 177,
+"hours": "Mon to Fri 7:30 am to 5 pm, Sat 8 am to 3 pm",
+"why": "Jamisontown. The gluten-free option, including gluten-free banh mi.",
+"tag": "",
+"must": "Gluten-free banh mi",
+"hoursSpec": [
+[
+"12345",
+730,
+1700
+],
+[
+"6",
+800,
+1500
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "penrith--taddy-s-cakes-and-pies",
+"town": "Penrith",
+"name": "Taddy’s Cakes and Pies",
+"rank": 5,
+"placeId": "ChIJiwUHyRyFEmsR2-QtGlw5xag",
+"rating": 5,
+"reviews": 7,
+"hours": "Mon to Fri 6 am to 3 pm, Sat 7 am to 2 pm",
+"why": "New and small. Beef and jalapeño pie and a great latte.",
+"tag": "",
+"must": "Beef and jalapeño pie",
+"hoursSpec": [
+[
+"12345",
+600,
+1500
+],
+[
+"6",
+700,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "the-oaks--glen-s-bakery-cafe",
+"town": "The Oaks",
+"name": "Glen’s Bakery Cafe",
+"rank": 1,
+"placeId": "ChIJK4mXK9tXEmsRCmlZFkAl8SY",
+"rating": 4.2,
+"reviews": 177,
+"hours": "Mon to Fri 5:30 am to 6 pm, weekends 6 am to 1 pm",
+"why": "Timber shed cafe. Lamingtons with real cream, apple turnovers and gourmet pies.",
+"tag": "",
+"must": "Fresh cream lamington",
+"hoursSpec": [
+[
+"12345",
+530,
+1800
+],
+[
+"06",
+600,
+1300
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "camden--b85-artisan-bakery",
+"town": "Camden",
+"name": "B85 Artisan Bakery",
+"rank": 1,
+"placeId": "ChIJvw2LChvxEmsRFrteolEAFt4",
+"rating": 4.8,
+"reviews": 233,
+"hours": "Thu to Sun 6:30 am to 2 pm",
+"why": "Sourdough that beats Sonoma, according to locals. Crème brûlée tart and almond croissant.",
+"tag": "",
+"must": "Almond croissant",
+"hoursSpec": [
+[
+"0456",
+630,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "camden--lahaina-banh-mi-pie",
+"town": "Camden",
+"name": "Lahaina Banh Mi & Pie",
+"rank": 2,
+"placeId": "ChIJQbzoIdvxEmsRiN-sPS66Xjw",
+"rating": 4.9,
+"reviews": 48,
+"hours": "Daily 6 am to 4:30 pm",
+"why": "Run by the original Le Bakery owner. Crispy pork rolls plus pies.",
+"tag": "",
+"must": "Crispy pork roll",
+"hoursSpec": [
+[
+"0123456",
+600,
+1630
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "camden--arta-atelier",
+"town": "Camden",
+"name": "Arta Atelier",
+"rank": 3,
+"placeId": "ChIJ1SaK8MvxEmsRjoMh0nFAoY0",
+"rating": 4.9,
+"reviews": 80,
+"hours": "Wed to Sun 8 am to 3 pm",
+"why": "Fine patisserie tarts and choux. Listed in the Good Food Guide.",
+"tag": "",
+"must": "Choux pastry",
+"hoursSpec": [
+[
+"345",
+800,
+1500
+],
+[
+"06",
+800,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "camden--cafe-creme-della-creme",
+"town": "Camden",
+"name": "Cafe Creme Della Creme",
+"rank": 4,
+"placeId": "ChIJ2fYwwcLwEmsRtt9CO2N7U-Q",
+"rating": 4.2,
+"reviews": 510,
+"hours": "Mon to Fri 6:30 am to 4 pm, weekends shorter",
+"why": "Gourmet buttery pies with huge beef chunks. Recent reviews mixed.",
+"tag": "",
+"must": "Gourmet beef pie",
+"hoursSpec": [
+[
+"12345",
+630,
+1600
+],
+[
+"6",
+700,
+1500
+],
+[
+"0",
+800,
+1430
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "camden--saint-nicks-patisserie",
+"town": "Camden",
+"name": "Saint Nicks Patisserie",
+"rank": 5,
+"placeId": "ChIJRXdGLNjxEmsR52m-9WT4uFY",
+"rating": 4.1,
+"reviews": 92,
+"hours": "Mon to Sat 7:30 am to 4 pm",
+"why": "Cakes are the stars: custard tarts, vanilla slice, lemon cheesecake.",
+"tag": "",
+"must": "Vanilla slice",
+"hoursSpec": [
+[
+"1",
+730,
+1500
+],
+[
+"23456",
+730,
+1600
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "picton--parkside-patisserie",
+"town": "Picton",
+"name": "Parkside Patisserie",
+"rank": 1,
+"placeId": "ChIJs28b7Rb_EmsRhpSfZk9ZkzI",
+"rating": 4.4,
+"reviews": 70,
+"hours": "Mon to Fri 6 am to 4 pm, Sat to 2:30 pm, closed Sun",
+"why": "Flaky pies, top vanilla slice and lamingtons, cheap prices. Also does banh mi.",
+"tag": "",
+"must": "Vanilla slice",
+"hoursSpec": [
+[
+"12345",
+600,
+1600
+],
+[
+"6",
+600,
+1430
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "picton--loop-line-pies-thirlmere",
+"town": "Picton",
+"name": "Loop-Line Pies (Thirlmere)",
+"rank": 2,
+"placeId": "ChIJI960B1BVEmsR38WVdmHE4AU",
+"rating": 4.6,
+"reviews": 310,
+"hours": "Tue to Sun from 5 am to 3 pm",
+"why": "Massive pies with great pastry; bacon and cheese is the one to get.",
+"tag": "Nearby",
+"must": "Bacon and cheese pie",
+"hoursSpec": [
+[
+"23456",
+500,
+1500
+],
+[
+"0",
+530,
+1500
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "picton--thien-dinh-hot-bread",
+"town": "Picton",
+"name": "Thien Dinh Hot Bread",
+"rank": 3,
+"placeId": "ChIJw4inThH_EmsR8L8AKS0A8Gg",
+"rating": 3.9,
+"reviews": 32,
+"hours": "Daily 7 am (weekends to 4 pm)",
+"why": "Argyle St. Vietnamese rolls and crusty bread; decent coffee.",
+"tag": "",
+"must": "Pork roll",
+"hoursSpec": [
+[
+"12345",
+700,
+1730
+],
+[
+"06",
+700,
+1600
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "picton--michel-s-patisserie-picton",
+"town": "Picton",
+"name": "Michel’s Patisserie Picton",
+"rank": 4,
+"placeId": "ChIJ81R_LRH_EmsRGICsiwJpHKg",
+"rating": 3.8,
+"reviews": 21,
+"hours": "Mon to Sat 7 am to 4:30 pm",
+"why": "Chain, in the mall. A safe coffee and slice.",
+"tag": "",
+"must": "Coffee and a slice",
+"hoursSpec": [
+[
+"12345",
+700,
+1630
+],
+[
+"6",
+700,
+1600
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "mount-keira--mount-keira-coffee",
+"town": "Mount Keira",
+"name": "Mount Keira Coffee",
+"rank": 1,
+"placeId": "ChIJ7x0zKiYbE2sRMEFHfHne4h8",
+"rating": 4.6,
+"reviews": 27,
+"hours": "Wed to Sun 8:30 am to 3:30 pm",
+"why": "At the lookout. Strong coffee and Arabic sweets with the view.",
+"tag": "",
+"must": "Arabic sweets",
+"hoursSpec": [
+[
+"03456",
+830,
+1530
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "shellharbour--tahlia-s-bakery-and-cafe",
+"town": "Shellharbour",
+"name": "Tahlia’s Bakery and Cafe",
+"rank": 1,
+"placeId": "ChIJfzhpoEkVE2sRNEeaz737bwc",
+"rating": 4.7,
+"reviews": 89,
+"hours": "Daily from 6:30 am",
+"why": "Shellharbour village. Meat pies that ended up in a pie-lovers’ Facebook group.",
+"tag": "",
+"must": "Meat pie",
+"hoursSpec": [
+[
+"01234",
+630,
+1430
+],
+[
+"56",
+630,
+1530
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "shellharbour--baked-oak-flats",
+"town": "Shellharbour",
+"name": "Baked Oak Flats",
+"rank": 2,
+"placeId": "ChIJsVuBKZATE2sR5EIbF9qEhKc",
+"rating": 4.8,
+"reviews": 125,
+"hours": "Mon to Fri 6 am to 4 pm, Sat 7 am to 2 pm",
+"why": "Chilli pies, cannoli and cakes; pizza nights Thu to Sat.",
+"tag": "",
+"must": "Chilli pie",
+"hoursSpec": [
+[
+"12345",
+600,
+1600
+],
+[
+"6",
+700,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "shellharbour--queen-st-bakery",
+"town": "Shellharbour",
+"name": "Queen St Bakery",
+"rank": 3,
+"placeId": "ChIJvWWzBvQTE2sR5QQKeXvTAQw",
+"rating": 4.6,
+"reviews": 338,
+"hours": "Mon to Fri 6 am to 5 pm, Sat to 2 pm",
+"why": "Lake Illawarra. Good pies, cheap cakes, quick service.",
+"tag": "",
+"must": "Classic meat pie",
+"hoursSpec": [
+[
+"12345",
+600,
+1700
+],
+[
+"6",
+600,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "shellharbour--warilla-bakery",
+"town": "Shellharbour",
+"name": "Warilla Bakery",
+"rank": 4,
+"placeId": "ChIJLw7AkgkUE2sRpNqQBtaVubs",
+"rating": 4.2,
+"reviews": 157,
+"hours": "Weekdays from 6 am, Sun 8:30 am",
+"why": "Closest to Barrack Point. Kidney pies, mint slice and barbecue pork rolls.",
+"tag": "",
+"must": "Mint slice",
+"hoursSpec": [
+[
+"12345",
+600,
+1700
+],
+[
+"6",
+630,
+1530
+],
+[
+"0",
+830,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "shellharbour--matthew-marcs-cafe",
+"town": "Shellharbour",
+"name": "Matthew Marcs Cafe",
+"rank": 5,
+"placeId": "ChIJo0d4V9sTE2sR8G1kP2EfRto",
+"rating": 4.9,
+"reviews": 48,
+"hours": "Mon to Fri 8 am to 2 pm",
+"why": "Barrack Heights. Fully gluten-free menu with house-made desserts.",
+"tag": "",
+"must": "Gluten-free dessert",
+"hoursSpec": [
+[
+"12345",
+800,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "bowral--gumnut-patisserie-bowral",
+"town": "Bowral",
+"name": "Gumnut Patisserie Bowral",
+"rank": 1,
+"placeId": "ChIJCQdzvDqWE2sR87okUQx5Sms",
+"rating": 4.5,
+"reviews": 1170,
+"hours": "Daily 8 am to 4 pm",
+"why": "Grand Arcade. Cakes compared to Paris, flaky danishes, almond croissants. Expect a moving queue.",
+"tag": "",
+"must": "Almond croissant",
+"hoursSpec": [
+[
+"0123456",
+800,
+1600
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "bowral--fermento-bakery",
+"town": "Bowral",
+"name": "Fermento Bakery",
+"rank": 2,
+"placeId": "ChIJS-aqcXCjE2sREEiujMdBWEg",
+"rating": 4.8,
+"reviews": 194,
+"hours": "Mon to Fri 6 am to 4 pm, weekends 7 am to 4 pm",
+"why": "275 Bong Bong St. Everything house-made; calmer than Gumnut.",
+"tag": "",
+"must": "Sourdough loaf",
+"hoursSpec": [
+[
+"12345",
+600,
+1600
+],
+[
+"06",
+700,
+1600
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "bowral--sonoma-bakery-bowral",
+"town": "Bowral",
+"name": "Sonoma Bakery Bowral",
+"rank": 3,
+"placeId": "ChIJl0ceqpqjE2sRfQhXfr2Lnfg",
+"rating": 4.5,
+"reviews": 133,
+"hours": "Daily 7 am to 2 pm",
+"why": "Buttery pie pastry and a 10/10 jalapeño cheese fold.",
+"tag": "",
+"must": "Jalapeño and cheese fold",
+"hoursSpec": [
+[
+"0123456",
+700,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "bowral--italo-bowral",
+"town": "Bowral",
+"name": "Italo Bowral",
+"rank": 4,
+"placeId": "ChIJh6I2VgCjE2sRxlQjWo4_JbA",
+"rating": 4.5,
+"reviews": 113,
+"hours": "Wed to Sun 8 am to 3 pm",
+"why": "Italian bakery-cafe. Mortadella focaccia, cannoli and cornetti.",
+"tag": "",
+"must": "Mortadella focaccia",
+"hoursSpec": [
+[
+"03456",
+800,
+1500
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "bowral--gumnut-patisserie-mittagong",
+"town": "Bowral",
+"name": "Gumnut Patisserie Mittagong",
+"rank": 5,
+"placeId": "ChIJ771CEgWjE2sRIrAes-fMPwU",
+"rating": 4.6,
+"reviews": 636,
+"hours": "Mon to Fri from 6:30 am, weekends from 7 am",
+"why": "The sister shop, opens earlier. Caramel slice is the hit.",
+"tag": "Nearby",
+"must": "Caramel slice",
+"hoursSpec": [
+[
+"12345",
+630,
+1630
+],
+[
+"06",
+700,
+1600
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "moss-vale--kim-thi-hot-bread",
+"town": "Moss Vale",
+"name": "Kim Thi Hot Bread",
+"rank": 1,
+"placeId": "ChIJVYN1eD-XE2sR1J4_8deXU4I",
+"rating": 4.8,
+"reviews": 110,
+"hours": "Tue to Fri 6 am to 4:30 pm, weekends to 2 pm",
+"why": "Best pork banh mi in the Highlands, good pies, cinnamon donuts.",
+"tag": "",
+"must": "Pork banh mi",
+"hoursSpec": [
+[
+"2345",
+600,
+1630
+],
+[
+"06",
+600,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "moss-vale--polly-s-pies-pastries",
+"town": "Moss Vale",
+"name": "Polly’s Pies & Pastries",
+"rank": 2,
+"placeId": "ChIJbxn-MDmXE2sRFRg3tTiLTUk",
+"rating": 4.3,
+"reviews": 320,
+"hours": "Mon to Fri 6 am to 3 pm, Sat to 2:30 pm",
+"why": "Melbourne-standard coffee, egg and bacon rolls, neenish tarts.",
+"tag": "",
+"must": "Neenish tart",
+"hoursSpec": [
+[
+"12345",
+600,
+1500
+],
+[
+"6",
+700,
+1430
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "moss-vale--southern-rise-bakery",
+"town": "Moss Vale",
+"name": "Southern Rise Bakery",
+"rank": 3,
+"placeId": "ChIJSYN1eD-XE2sRgCb1ah3I3us",
+"rating": 4.3,
+"reviews": 166,
+"hours": "Mon to Fri 6 am to 4 pm, Sat to 2:30 pm",
+"why": "Shepherd’s pie and pepper steak; parent of the Robertson shop.",
+"tag": "",
+"must": "Pepper steak pie",
+"hoursSpec": [
+[
+"12345",
+600,
+1600
+],
+[
+"6",
+700,
+1430
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "moss-vale--mums-secret-bakehouse",
+"town": "Moss Vale",
+"name": "Mums Secret Bakehouse",
+"rank": 4,
+"placeId": "ChIJbwCHhNuXE2sR9ygtvYCC42I",
+"rating": 4.9,
+"reviews": 20,
+"hours": "Tue to Sat 8:30 am to 5 pm",
+"why": "Cupcakes, sponge and coeliac-friendly breakfasts.",
+"tag": "",
+"must": "Cupcakes",
+"hoursSpec": [
+[
+"23456",
+830,
+1700
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "moss-vale--baked-in-berrima",
+"town": "Moss Vale",
+"name": "Baked in Berrima",
+"rank": 5,
+"placeId": "ChIJwY8KFzuXE2sR5iQN4lhJNbU",
+"rating": 4.7,
+"reviews": 306,
+"hours": "Thu to Sun 7 am to 3:30 pm",
+"why": "Italian village bakery; the lumberjack cake is famous.",
+"tag": "Nearby",
+"must": "Lumberjack cake",
+"hoursSpec": [
+[
+"0456",
+700,
+1530
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "fitzroy-falls--the-burrow-cafe",
+"town": "Fitzroy Falls",
+"name": "The Burrow Cafe",
+"rank": 1,
+"placeId": "ChIJM-Ob85SbE2sRfOwOmt73igw",
+"rating": 4.2,
+"reviews": 59,
+"hours": "Thu to Sun from 8 or 8:30 am to 4 pm",
+"why": "Creamy chicken and bacon pie and homemade tomato sauce.",
+"tag": "",
+"must": "Chicken and bacon pie",
+"hoursSpec": [
+[
+"45",
+830,
+1600
+],
+[
+"06",
+800,
+1600
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "kangaroo-valley--kangaroo-valley-bakehouse",
+"town": "Kangaroo Valley",
+"name": "Kangaroo Valley Bakehouse",
+"rank": 1,
+"placeId": "ChIJA_CuiqyDE2sRUWRoka69oq0",
+"rating": 4.5,
+"reviews": 396,
+"hours": "Daily 9 am to 4 pm",
+"why": "Packed pepper steak pie and a vanilla slice reviewers call the best in Australia.",
+"tag": "",
+"must": "Vanilla slice",
+"hoursSpec": [
+[
+"0123456",
+900,
+1600
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "kangaroo-valley--the-general-cafe",
+"town": "Kangaroo Valley",
+"name": "The General Cafe",
+"rank": 2,
+"placeId": "ChIJfYXBh6yDE2sRYKjL9L14vk0",
+"rating": 4.3,
+"reviews": 482,
+"hours": "Fri to Mon from 8 am to 1:30 pm",
+"why": "Cafe. Scones that sell out by noon and lamingtons to go.",
+"tag": "",
+"must": "Scones",
+"hoursSpec": [
+[
+"056",
+800,
+1330
+],
+[
+"1",
+800,
+1230
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "kangaroo-valley--kv-coffee-co",
+"town": "Kangaroo Valley",
+"name": "KV Coffee Co.",
+"rank": 3,
+"placeId": "ChIJHU_Rf5aDE2sRpmofNRwU2dM",
+"rating": 4.8,
+"reviews": 125,
+"hours": "Weekdays 7 am to noon, weekends 8 am to 1 pm",
+"why": "Croissants and loaded cookies by the fire pit.",
+"tag": "",
+"must": "Loaded cookie",
+"hoursSpec": [
+[
+"12345",
+700,
+1200
+],
+[
+"06",
+800,
+1300
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "kangaroo-valley--valley-bliss-eatery",
+"town": "Kangaroo Valley",
+"name": "Valley Bliss Eatery",
+"rank": 4,
+"placeId": "ChIJSZ6AORODE2sRdGTZILLEO3k",
+"rating": 4.8,
+"reviews": 84,
+"hours": "Daily 8 am to 2 pm",
+"why": "Cafe with good sourdough.",
+"tag": "",
+"must": "Sourdough toast",
+"hoursSpec": [
+[
+"0123456",
+800,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "kiama--slow-dough",
+"town": "Kiama",
+"name": "Slow Dough",
+"rank": 1,
+"placeId": "ChIJA5RxSqNtE2sRm-kwY_n-OV4",
+"rating": 4.8,
+"reviews": 114,
+"hours": "Fri to Sun 7 am to 1 pm",
+"why": "Old stone building. Sourdough, pain suisse, custard tarts. Queues even in rain.",
+"tag": "",
+"must": "Pain suisse",
+"hoursSpec": [
+[
+"56",
+700,
+1300
+],
+[
+"0",
+800,
+1300
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "kiama--parfait-patisserie",
+"town": "Kiama",
+"name": "Parfait Patisserie",
+"rank": 2,
+"placeId": "ChIJC5pq3IxtE2sRqMuP_8i2OvA",
+"rating": 4.5,
+"reviews": 414,
+"hours": "Wed to Mon from 6:30 am, closed Tue",
+"why": "Croissants, sourdough loaves, pies and quiche on Manning St.",
+"tag": "",
+"must": "Croissant",
+"hoursSpec": [
+[
+"3456",
+630,
+1500
+],
+[
+"01",
+630,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "kiama--flour-water-salt",
+"town": "Kiama",
+"name": "Flour Water Salt",
+"rank": 3,
+"placeId": "ChIJoVHUdnNsE2sRW-IvHaA77O4",
+"rating": 4.5,
+"reviews": 281,
+"hours": "Tue to Sat 8 am to 3 pm",
+"why": "Chicken and leek pies, beef sausage rolls, vegan pies.",
+"tag": "",
+"must": "Chicken and leek pie",
+"hoursSpec": [
+[
+"23456",
+800,
+1500
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "kiama--kiama-pie-shop",
+"town": "Kiama",
+"name": "Kiama Pie Shop",
+"rank": 4,
+"placeId": "ChIJmyqYgnRsE2sRhx7mK07m8l0",
+"rating": 4.4,
+"reviews": 354,
+"hours": "Thu to Tue from 8 or 9 am to 4 pm, closed Wed",
+"why": "By the station. Scallop and lamb pies. Some reviews say mince-heavy.",
+"tag": "",
+"must": "Scallop pie",
+"hoursSpec": [
+[
+"1245",
+800,
+1600
+],
+[
+"06",
+900,
+1600
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "kiama--the-gainsborough-bakery",
+"town": "Kiama",
+"name": "The Gainsborough Bakery",
+"rank": 5,
+"placeId": "ChIJV_nQL5hsE2sRHzUy9hlXd2c",
+"rating": 4.6,
+"reviews": 96,
+"hours": "Daily 6 am to 6 pm",
+"why": "Kiama Downs. Old-style vanilla slice. New owners, recent reviews mixed.",
+"tag": "Nearby",
+"must": "Vanilla slice",
+"hoursSpec": [
+[
+"0123456",
+600,
+1800
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "jamberoo--kings-patisserie-cafe",
+"town": "Jamberoo",
+"name": "Kings Patisserie & Cafe",
+"rank": 1,
+"placeId": "ChIJKzgcR4xtE2sRFejymXLapnE",
+"rating": 4.5,
+"reviews": 164,
+"hours": "Tue to Sun from 6:30 am",
+"why": "Curry beef pie, apple turnovers and a breakfast quiche.",
+"tag": "",
+"must": "Curry beef pie",
+"hoursSpec": [
+[
+"234",
+630,
+1430
+],
+[
+"056",
+630,
+1530
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "robertson--southern-rise-bakery-robertson",
+"town": "Robertson",
+"name": "Southern Rise Bakery Robertson",
+"rank": 1,
+"placeId": "ChIJV5HhgoN1E2sRxxBYShd21qc",
+"rating": 4.4,
+"reviews": 345,
+"hours": "Mon to Fri 6 am to 5 pm, weekends shorter",
+"why": "Main street. Brisket and lamb korma pies plus a famous mint slice.",
+"tag": "",
+"must": "Brisket pie",
+"hoursSpec": [
+[
+"12345",
+600,
+1700
+],
+[
+"6",
+600,
+1500
+],
+[
+"0",
+800,
+1430
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "robertson--robertson-pie-shop",
+"town": "Robertson",
+"name": "Robertson Pie Shop",
+"rank": 2,
+"placeId": "ChIJjQtSXAJ1E2sRdL3HcHnSjJM",
+"rating": 4.2,
+"reviews": 2761,
+"hours": "Mon to Fri 6 am to 4:30 pm, weekends 8 am to 5 pm",
+"why": "The landmark. Wagyu pies and cherry and cream pie; busy and loud.",
+"tag": "",
+"must": "Cherry and cream pie",
+"hoursSpec": [
+[
+"12345",
+600,
+1630
+],
+[
+"06",
+800,
+1700
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "robertson--robbo-donut-van",
+"town": "Robertson",
+"name": "Robbo Donut Van",
+"rank": 3,
+"placeId": "ChIJwSNQ0y11E2sREX-jtBAB5tc",
+"rating": 5,
+"reviews": 64,
+"hours": "Wed to Sun from 9 or 10 am",
+"why": "Hot cinnamon donuts by a fire pit.",
+"tag": "",
+"must": "Hot cinnamon donuts",
+"hoursSpec": [
+[
+"3456",
+900,
+1600
+],
+[
+"0",
+1000,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "bomaderry--flour-water-salt-south-nowra",
+"town": "Bomaderry",
+"name": "Flour Water Salt (South Nowra)",
+"rank": 1,
+"placeId": "ChIJb_LUOU2BFGsRUiZsRHoW6NE",
+"rating": 4.7,
+"reviews": 138,
+"hours": "Tue to Fri 6:30 am to 3 pm, Sat 7 am to 2 pm",
+"why": "Big production bakery with viewing windows. Sausage rolls and tarts.",
+"tag": "Nearby",
+"must": "Sausage roll",
+"hoursSpec": [
+[
+"2345",
+630,
+1500
+],
+[
+"6",
+700,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "bomaderry--bakehouse-delights-nowra",
+"town": "Bomaderry",
+"name": "Bakehouse Delights (Nowra)",
+"rank": 2,
+"placeId": "ChIJ-cxi-z6AFGsR7OLQaMoemoU",
+"rating": 4.5,
+"reviews": 204,
+"hours": "Mon to Fri 5 am to 5:30 pm, Sat to 1 pm",
+"why": "Almond croissant and apple turnovers; good bread.",
+"tag": "Nearby",
+"must": "Almond croissant",
+"hoursSpec": [
+[
+"12345",
+500,
+1730
+],
+[
+"6",
+500,
+1300
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "bomaderry--bomaderry-bakehouse",
+"town": "Bomaderry",
+"name": "Bomaderry Bakehouse",
+"rank": 3,
+"placeId": "ChIJ57ydHMF_E2sRjaklaIOT3eE",
+"rating": 4.4,
+"reviews": 63,
+"hours": "Mon to Fri 5 am to 4 pm, Sat to 2:30 pm",
+"why": "Beef and mushroom pie, neenish tarts and banoffee pie at fair prices.",
+"tag": "",
+"must": "Beef and mushroom pie",
+"hoursSpec": [
+[
+"12345",
+500,
+1600
+],
+[
+"6",
+530,
+1430
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "bomaderry--andrews-cafe-bakehouse",
+"town": "Bomaderry",
+"name": "Andrews Cafe Bakehouse",
+"rank": 4,
+"placeId": "ChIJGWYLHsF_E2sReDGtmm3MG2o",
+"rating": 4.2,
+"reviews": 54,
+"hours": "Mon to Fri 5 am to 4 pm, weekends 6 am to 1 pm",
+"why": "Old-fashioned value pies and chicken schnitzel rolls.",
+"tag": "",
+"must": "Chicken schnitzel roll",
+"hoursSpec": [
+[
+"12345",
+500,
+1600
+],
+[
+"06",
+600,
+1300
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "currarong--zest-currarong",
+"town": "Currarong",
+"name": "Zest Currarong",
+"rank": 1,
+"placeId": "ChIJlzflLQCbFGsROrLVhcA15Vo",
+"rating": 4.5,
+"reviews": 41,
+"hours": "Daily 7:30 am to 3 pm",
+"why": "Cafe with beach views and a deck.",
+"tag": "",
+"must": "Breakfast on the deck",
+"hoursSpec": [
+[
+"0123456",
+730,
+1500
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "currarong--alma-s-currarong-kombi-cafe",
+"town": "Currarong",
+"name": "Alma’s Currarong Kombi Cafe",
+"rank": 2,
+"placeId": "ChIJ26uiEJubFGsRsIumZJrtuWw",
+"rating": 4.8,
+"reviews": 106,
+"hours": "Listed Thu and Fri 10 am to 2 pm; check before",
+"why": "Homemade carrot cake and bread-and-butter pudding in a family’s front garden.",
+"tag": "",
+"must": "Carrot cake",
+"hoursSpec": [
+[
+"45",
+1000,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "huskisson--huskisson-bakery-cafe",
+"town": "Huskisson",
+"name": "Huskisson Bakery & Cafe",
+"rank": 1,
+"placeId": "ChIJb5qmFwaGFGsRZra661h6dBg",
+"rating": 4.2,
+"reviews": 637,
+"hours": "Daily 6:30 am to 4:30 pm",
+"why": "The signature Husky steak pie and breakie pie; lots of seating near the beach.",
+"tag": "",
+"must": "The Husky pie",
+"hoursSpec": [
+[
+"0123456",
+630,
+1630
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "huskisson--kraken-sourdough",
+"town": "Huskisson",
+"name": "Kraken Sourdough",
+"rank": 2,
+"placeId": "ChIJv8NUCcKJFGsRNw3d5yCSOxM",
+"rating": 4.6,
+"reviews": 431,
+"hours": "Thu to Sun from 7 am (Sun 8) to 2 pm",
+"why": "Pear danish and fruit sourdough with cultured butter. Vegetarian bakery.",
+"tag": "",
+"must": "Pear danish",
+"hoursSpec": [
+[
+"456",
+700,
+1400
+],
+[
+"0",
+800,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "huskisson--bakehouse-espresso",
+"town": "Huskisson",
+"name": "Bakehouse Espresso",
+"rank": 3,
+"placeId": "ChIJiQ8RUtCHFGsRFs8f1C1bEBU",
+"rating": 4.4,
+"reviews": 54,
+"hours": "Mon to Fri 6 am to 2:30 pm, weekends 7 am to 2 pm",
+"why": "Cornish pasties, sausage rolls, cannoli and good coffee.",
+"tag": "",
+"must": "Cornish pastie",
+"hoursSpec": [
+[
+"12345",
+600,
+1430
+],
+[
+"06",
+700,
+1400
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "nerriga--nerriga-hotel",
+"town": "Nerriga",
+"name": "Nerriga Hotel",
+"rank": 1,
+"placeId": "ChIJbRUAU2g8FGsRJBSXNiIwdts",
+"rating": 4.5,
+"reviews": 888,
+"hours": "Wed to Sun 11 am to 8 pm",
+"why": "Classic bush pub with good food, but not open at our ETA.",
+"tag": "",
+"must": "Pub lunch, if open",
+"hoursSpec": [
+[
+"03456",
+1100,
+2000
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "bungendore--gunna-doo-bakery",
+"town": "Bungendore",
+"name": "Gunna Doo Bakery",
+"rank": 1,
+"placeId": "ChIJg-lh8EJeFmsRQVwVwFCXM40",
+"rating": 4.2,
+"reviews": 589,
+"hours": "Daily from 4 am (weekends 5) to 5 pm",
+"why": "Flaky quiche, bee sting slice and a wide cake range.",
+"tag": "",
+"must": "Bee sting slice",
+"hoursSpec": [
+[
+"12345",
+400,
+1700
+],
+[
+"06",
+500,
+1700
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "bungendore--nerson-s-pie-place",
+"town": "Bungendore",
+"name": "Nerson’s Pie Place",
+"rank": 2,
+"placeId": "ChIJP1ZY1mleFmsRCGbsLJnzlB0",
+"rating": 3.9,
+"reviews": 283,
+"hours": "Daily 9 am to 7 pm",
+"why": "On the Kings Hwy. Pepper steak pie, crumbles and very hot coffee. Halal.",
+"tag": "",
+"must": "Pepper steak pie",
+"hoursSpec": [
+[
+"0123456",
+900,
+1900
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "theodore--l-pi-artisan-bakery-chisholm",
+"town": "Theodore",
+"name": "L’épi Artisan Bakery (Chisholm)",
+"rank": 1,
+"placeId": "ChIJWSLb_4pLFmsReVjSTky_aM0",
+"rating": 4.5,
+"reviews": 164,
+"hours": "Daily 7 am to 2:30 pm",
+"why": "Lamb pie and escargot pastries. Closest good bakery to the finish.",
+"tag": "Nearby",
+"must": "Lamb pie",
+"hoursSpec": [
+[
+"0123456",
+700,
+1430
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "theodore--friendly-grocer-theodore",
+"town": "Theodore",
+"name": "Friendly Grocer Theodore",
+"rank": 2,
+"placeId": "ChIJQ27TrT41FmsRei3kVx_wQoI",
+"rating": 4.3,
+"reviews": 66,
+"hours": "Daily from 7:30 am",
+"why": "The local shop does good pies and coffee.",
+"tag": "",
+"must": "Pie and coffee",
+"hoursSpec": [
+[
+"0123456",
+730,
+2000
+]
+],
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "berry--milkwood-bakery",
+"town": "Berry",
+"name": "Milkwood Bakery",
+"rank": 1,
+"placeId": "ChIJrVi_jsp7E2sR9Nb8AMMNsoc",
+"rating": 4.2,
+"reviews": 1088,
+"hours": "Daily 6 am to 4 pm",
+"why": "A Berry fixture for years. European-style bakes and solid pies.",
+"tag": "",
+"must": "Portuguese tart",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "berry--berry-donut-van",
+"town": "Berry",
+"name": "Berry Donut Van",
+"rank": 2,
+"placeId": "ChIJ___jBst7E2sRa_7Bfwk4kNY",
+"rating": 4.4,
+"reviews": 2748,
+"hours": "Daily from 8:30 am",
+"why": "The institution. Made to order, so expect a short wait.",
+"tag": "",
+"must": "Hot cinnamon donuts",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "berry--the-berry-general-store",
+"town": "Berry",
+"name": "The Berry General Store",
+"rank": 3,
+"placeId": "ChIJpxhbP6h7E2sRfdnV_Pa9y2E",
+"rating": 4.7,
+"reviews": 175,
+"hours": "Daily 6:30 am to 3 pm",
+"why": "Cafe and produce store with house-made baked goods.",
+"tag": "",
+"must": "Chilli eggs",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "berry--berry-bakery",
+"town": "Berry",
+"name": "Berry Bakery",
+"rank": 4,
+"placeId": "ChIJMyO6hsp7E2sRccpu5CUcZH8",
+"rating": 3.9,
+"reviews": 301,
+"hours": "Daily from 6 am (Sat 6:30, Sun 7)",
+"why": "Old-fashioned cakes: vanilla slice, matchsticks, custard tarts.",
+"tag": "",
+"must": "Pineapple tart",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "berry--gerringong-bakery",
+"town": "Berry",
+"name": "Gerringong Bakery",
+"rank": 5,
+"placeId": "ChIJ0TxqmGFvE2sRK6lGXA-TyhI",
+"rating": 4,
+"reviews": 290,
+"hours": "Weekdays from 5 am, weekends from 6 am",
+"why": "On the way north. Generous pies, some with fresh chilli baked in.",
+"tag": "Nearby",
+"must": "Chilli pie",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "wollongong--crois",
+"town": "Wollongong",
+"name": "Crois",
+"rank": 1,
+"placeId": "ChIJiXsWwnEZE2sRu3PF_AUK-VY",
+"rating": 5,
+"reviews": 42,
+"hours": "Daily from 7:30 am to 1 pm (weekends to noon)",
+"why": "Market St croissanterie. Everything baked fresh each morning.",
+"tag": "",
+"must": "Strawberry and almond croissant",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "wollongong--royal-bakery",
+"town": "Wollongong",
+"name": "Royal Bakery",
+"rank": 2,
+"placeId": "ChIJp3QobKwZE2sR6_Rokrk-McM",
+"rating": 4.7,
+"reviews": 266,
+"hours": "Daily 7 am to 4 pm",
+"why": "Keira St. Danishes, quiche and proper sausage rolls.",
+"tag": "",
+"must": "Pulled pork and cheese pie",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "wollongong--millers-local-bakehouse",
+"town": "Wollongong",
+"name": "Millers’ Local Bakehouse",
+"rank": 3,
+"placeId": "ChIJq6ra-6IZE2sRnPNSLVO-9fg",
+"rating": 4.6,
+"reviews": 64,
+"hours": "From 7 am (weekends 8), often sold out by mid-morning",
+"why": "Kembla St. Pastries worth the trip, if any are left.",
+"tag": "",
+"must": "Almond croissant",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+},
+{
+"id": "wollongong--cakes-by-rach-on-keira",
+"town": "Wollongong",
+"name": "Cakes By Rach On Keira",
+"rank": 4,
+"placeId": "ChIJdd7PFeIZE2sRehjw0Pdyb3I",
+"rating": 4.7,
+"reviews": 26,
+"hours": "Weekdays 7 am to 3 pm",
+"why": "Cafe with fresh sweet treats and Campos coffee.",
+"tag": "",
+"must": "Slice of the day",
+"hoursSpec": null,
+"source": "Google Maps, 4 Oct 2026"
+}
+]
+}

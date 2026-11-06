@@ -1,0 +1,45 @@
+// =====================================================================================
+// Bike Tours R Us (2027 app): Firestore rules ADDITIONS.
+//
+// Your Firebase project already has rules for the 2026 crew app (isCrew(), /crew, /wall, /live).
+// KEEP those exactly as they are, so the 2026 app keeps working.
+// Copy ONLY the block between the two marker lines below and paste it inside your existing
+//     match /databases/{database}/documents { ... }
+// block, just before its final closing brace. Then tap Publish.
+// No emails go in this file: editors live in Firestore at admins/editors (see README).
+// =====================================================================================
+
+    // ----- Bike Tours R Us: copy from here -----
+    function signedInWithEmail() {
+      return request.auth != null && request.auth.token.email != null;
+    }
+    function myEmail() {
+      return request.auth.token.email.lower();
+    }
+    function isEditor() {
+      return signedInWithEmail()
+        && exists(/databases/$(database)/documents/admins/editors)
+        && myEmail() in get(/databases/$(database)/documents/admins/editors).data.emails;
+    }
+    function onTour(t) {
+      return signedInWithEmail()
+        && myEmail() in get(/databases/$(database)/documents/tours/$(t)).data.memberEmails;
+    }
+
+    // The editors list: anyone signed in can check it; only you can change it, in the Firebase console.
+    match /admins/{doc} {
+      allow read: if signedInWithEmail();
+      allow write: if false;
+    }
+
+    // Tours: editors (you and Tony) read and change everything; riders read tours they're on.
+    match /tours/{t} {
+      allow read: if isEditor() || (signedInWithEmail() && myEmail() in resource.data.memberEmails);
+      allow write: if isEditor();
+
+      match /{rest=**} {
+        allow read: if isEditor() || onTour(t);
+        allow write: if isEditor();
+      }
+    }
+    // ----- Bike Tours R Us: copy to here -----
