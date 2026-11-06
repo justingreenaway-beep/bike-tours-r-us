@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='2.0';
+const APP_VERSION='2.1';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -286,7 +286,9 @@ function viewPlan(){
   const T=S.tour, L=locked(), days=daysSorted();
   if(!S.planDay||!days.some(d=>d.id===S.planDay)) S.planDay=days[0]?days[0].id:null;
   const has2026=S.tours.some(t=>t.id==='2026');
-  let h=`<div class="plan">${L?'<p class="notice">This tour is locked, so its route can\u2019t be changed. Unlock it below to edit.</p>':''}
+  const empty=!days.length&&!S.bakeries.length, others=S.tours.filter(t=>t.id!==S.tourId);
+  let h=`<div class="plan">${S.tourId==='2026'&&empty?'<div class="notice"><b>The 2026 route didn’t come through.</b> The days, stops and bakeries are missing. <div class="planbar"><button type="button" class="btn small primary" data-act="import2026">Reload 2026 details</button></div></div>':''}
+   ${S.tourId!=='2026'&&empty&&others.length?'<div class="notice">This tour has no days or bakeries yet. Start from an earlier tour’s route? <div class="planbar"><button type="button" class="btn small primary" data-act="copyroute">Copy route and bakeries</button></div></div>':''}${L?'<p class="notice">This tour is locked, so its route can\u2019t be changed. Unlock it below to edit.</p>':''}
    <h2>Tour</h2><div class="card"><div class="prow" style="border:0;padding-top:0"><div class="pmain"><b>${esc(T.name||T.id)}</b><small>${T.startDate?`Day 1: ${esc(longDate(dateFor({offset:0})))}`:'No start date yet'}${T.subtitle?` \u2022 ${esc(T.subtitle)}`:''}</small></div><div class="pact"><button type="button" class="btn small" data-act="edittour"${L?' disabled':''}>Edit</button></div></div>
      <div class="statusrow" role="group" aria-label="Who can see it">${[['draft','Draft'],['published','Published'],['locked','Locked']].map(([k,l])=>`<button type="button" class="btn small" data-status="${k}" aria-pressed="${T.status===k}">${l}</button>`).join('')}</div>
      <p class="muted" style="font-size:13.5px;margin:4px 0 0">${T.status==='draft'?'Draft: only you and the other editor can see it.':T.status==='published'?'Published: everyone on the crew list can see it.':'Locked: visible to the crew, route frozen.'}</p>${edited(T)}
@@ -504,6 +506,8 @@ document.addEventListener('click',async e=>{
   if(act==='addcrew')return crewDialog();
   if(act==='copycrew'){ const others=S.tours.filter(t=>t.id!==S.tourId);
     return dlg(`<h3>Copy crew</h3><label class="fl">From<select name="from">${others.map(t=>`<option value="${esc(t.id)}">${esc(t.name||t.id)}</option>`).join('')}</select></label><p class="muted" style="font-size:13.5px">Riders already on this tour are kept; new names are added.</p><div class="dbtns"><button type="button" class="btn primary" data-save="copycrew">Copy</button><button type="button" class="btn" data-close>Cancel</button></div>`); }
+  if(act==='copyroute'){ const others=S.tours.filter(t=>t.id!==S.tourId);
+    return dlg(`<h3>Copy route</h3><label class="fl">From<select name="from">${others.map(t=>`<option value="${esc(t.id)}">${esc(t.name||t.id)}</option>`).join('')}</select></label><p class="muted" style="font-size:13.5px">Brings across the days, stops and bakeries, ready to edit. Beds, crew and dates aren’t changed.</p><div class="dbtns"><button type="button" class="btn primary" data-save="copyroute">Copy</button><button type="button" class="btn" data-close>Cancel</button></div>`); }
   if(act==='hadd')return $('#hrows').insertAdjacentHTML('beforeend',hoursRow());
   if(act==='radd')return $('#rrows').insertAdjacentHTML('beforeend',roomRow());
   if(act==='addbak')return bakeryDialog();
@@ -577,6 +581,14 @@ async function doSave(btn){
     if(i==null)arr.push(item); else arr[i]=item;
     return save(()=>FB.update(`tours/${S.tourId}`,{[key]:arr,...stamp()}),k==='role'?'Role saved':'Brief saved');
   }
+  if(k==='copyroute'){ const from=val('from'); if(!from)return;
+    let days,stops,baks;
+    try{ [days,stops,baks]=await Promise.all(['days','stops','bakeries'].map(c=>FB.list(`tours/${from}/${c}`))); }catch(e){ dlgError('Couldn’t read that tour. Check your signal.'); return }
+    if(!days.length&&!baks.length){ dlgError('That tour has no route to copy yet.'+(from==='2026'?' Reload 2026 first.':'')); return }
+    return save(async()=>{ const id=S.tourId, now=stamp(); const ops=[]; days.forEach(d=>ops.push({op:'set',path:`tours/${id}/days/${d.id}`,data:{...d.data,...now}}));
+      stops.forEach(d=>ops.push({op:'set',path:`tours/${id}/stops/${d.id}`,data:{...d.data,...now}}));
+      baks.forEach(d=>ops.push({op:'set',path:`tours/${id}/bakeries/${d.id}`,data:{...d.data}}));
+      await FB.batch(ops); },'Route copied'); }
   if(k==='copybrief'){ const from=S.tours.find(t=>t.id===val('from')); if(!from)return; return save(()=>FB.update(`tours/${S.tourId}`,{brief:from.brief||[],...stamp()}),'Brief copied'); }
   if(k==='announce'||k==='publish'){
     const text=val('text'), tell=k==='announce'||btn.dataset.announce==='1';
@@ -660,11 +672,13 @@ async function createTour(id,base,fromId){
   await loadTours(); openTour(id); S.tab='plan';
 }
 async function import2026(){
-  if(!confirm('Bring the 2026 tour (route, stops, 105 bakeries, brief and crew names) into the app as a locked archive?'))return;
+  const had=S.tours.find(t=>t.id==='2026');
+  if(!confirm(had?'Reload the 2026 route, stops and 105 bakeries from the archive file? The crew list, emails and status are kept.':'Bring the 2026 tour (route, stops, 105 bakeries, brief and crew names) into the app as a locked archive?'))return;
   toast('Bringing in 2026\u2026');
   try{
     const r=await fetch('data/tour-2026.json'); const j=await r.json(); const now=stamp();
-    await FB.set('tours/2026',{...j.tour,createdAt:FB.now(),...now});
+    if(had){ const {crew,memberEmails,status,...rest}=j.tour; await FB.set('tours/2026',{...rest,...now},true); }
+    else await FB.set('tours/2026',{...j.tour,createdAt:FB.now(),...now});
     const ops=[];
     j.days.forEach(d=>ops.push({op:'set',path:`tours/2026/days/${d.id}`,data:{...d,...now}}));
     // Firestore can't store arrays inside arrays, so reshape the 2026 file's hours and breakfast lists into objects
