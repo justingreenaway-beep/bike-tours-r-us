@@ -58,7 +58,11 @@ $('#aureset').addEventListener('click',async()=>{ const em=$('#auemail').value.t
 
 async function enter(u){
   S.user=u; $('#bootmsg').textContent='Loading your tours\u2026';
-  try{ const ed=await FB.get('admins/editors'); S.editors=((ed.data&&ed.data.emails)||[]).map(x=>String(x).toLowerCase()); }catch(e){ S.editors=[]; }
+  try{ const ed=await FB.get('admins/editors'); let em=ed.data&&ed.data.emails;
+    if(typeof em==='string') em=em.split(/[,;\s]+/); // tolerate a text field instead of an array
+    S.editors=(Array.isArray(em)?em:[]).map(x=>String(x).trim().toLowerCase()).filter(Boolean);
+    S.editorCheck=!ed.exists?'missing':!S.editors.length?'empty':'ok';
+  }catch(e){ S.editors=[]; S.editorCheck=(e&&e.code)||'error'; }
   S.editor=S.editors.includes(u.email);
   await loadTours();
   $('#auth').hidden=true; $('#boot').hidden=true; $('#app').hidden=false;
@@ -100,7 +104,9 @@ function openTour(id){
 
 /* ---------- account menu ---------- */
 $('#mebtn').addEventListener('click',()=>{
-  dlg(`<h3>Your account</h3><p class="muted" style="margin:0 0 12px">${esc(S.user.email)}${S.editor?' \u2014 tour editor':''}</p>
+  const why={missing:'The editors record (admins \u2192 editors) wasn\u2019t found in Firestore.',empty:'The editors record has no emails in its emails field.',ok:'Your email isn\u2019t in the editors list (admins \u2192 editors \u2192 emails).','permission-denied':'Firebase blocked reading the editors list. Check the new rules were pasted in and published.'}[S.editorCheck]||`Couldn\u2019t check the editors list (${esc(S.editorCheck||'unknown')}).`;
+  dlg(`<h3>Your account</h3><p class="muted" style="margin:0 0 8px">Signed in as <b>${esc(S.user.email)}</b></p>
+    <p class="notice" style="margin:0 0 12px">${S.editor?'You\u2019re a tour editor, so you can see the Plan tab.':'Not an editor: '+why}</p>
     <div class="dbtns"><button type="button" class="btn danger" data-act="signout">Sign out</button><button type="button" class="btn" data-close>Close</button></div>`);
 });
 
