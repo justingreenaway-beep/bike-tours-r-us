@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='2.2';
+const APP_VERSION='2.3';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -196,7 +196,7 @@ function dayHead(day){
 const bakeriesIn=town=>S.bakeries.filter(b=>b.town===town).sort((a,b)=>(a.rank||99)-(b.rank||99)||String(a.name).localeCompare(b.name));
 function bakeryList(town,when){
   return bakeriesIn(town).map((b,i)=>{ const os=openState(b,when);
-    return `<li><span class="rk">${i+1}</span><div><div class="bn"><a href="${mapsUrl(b)}" target="_blank" rel="noopener">${esc(b.name)}</a>${b.tag?`<span class="near">${esc(b.tag)}</span>`:''}</div>${b.must?`<div class="must">Must try: ${esc(b.must)}</div>`:''}<div class="meta">${b.rating?`${Number(b.rating).toFixed(1)}\u2605${b.reviews?` (${Number(b.reviews).toLocaleString()})`:''}. `:''}${esc(b.hours||fmtHours(b.hoursSpec))}</div>${os?`<div class="ostate ${os.cls}">${esc(os.txt)}</div>`:''}${b.why?`<div class="why">${esc(b.why)}</div>`:''}</div></li>`; }).join('');
+    return `<li><span class="rk">${i+1}</span><div><div class="bn"><a href="${mapsUrl(b)}" target="_blank" rel="noopener">${esc(b.name)}</a>${b.tag?`<span class="near">${esc(b.tag)}</span>`:''}</div>${b.must?`<div class="must">Must try: ${esc(b.must)}</div>`:''}<div class="meta">${b.rating?`${Number(b.rating).toFixed(1)}\u2605${b.reviews?` (${Number(b.reviews).toLocaleString()})`:''}. `:''}${esc(b.hours||fmtHours(b.hoursSpec))}${/^OpenStreetMap/.test(b.hoursSource||"")?" <span class=\"osmcredit\">(hours \u00a9 OpenStreetMap contributors)</span>":""}</div>${os?`<div class="ostate ${os.cls}">${esc(os.txt)}</div>`:''}${b.why?`<div class="why">${esc(b.why)}</div>`:''}</div></li>`; }).join('');
 }
 const nightsOf=dayId=>S.nights.filter(n=>n.dayId===dayId);
 function nightCard(n){
@@ -374,15 +374,83 @@ function hoursRow(r={}){
   return `<div class="drow hrow"><div class="chips">${WEEK.map(d=>`<label><input type="checkbox" value="${d}"${days.has(d)?' checked':''}>${DAYN[d]}</label>`).join('')}</div>
     <div class="frow3"><label class="fl">Opens<input type="time" data-h="open" value="${hm(r.open)}"></label><label class="fl">Closes<input type="time" data-h="close" value="${hm(r.close)}"></label><button type="button" class="ib" data-rowdel aria-label="Remove these hours">✕</button></div></div>`;
 }
+/* OpenStreetMap lookup: free, storable (credit "© OpenStreetMap contributors"). No ratings. Nominatim allows ~1 request a second. */
+const OSM_DAYS={Mo:1,Tu:2,We:3,Th:4,Fr:5,Sa:6,Su:0};
+function parseOsmHours(txt){ // "Mo-Fr 06:00-15:00; Sa 07:00-13:00; Su off" -> {spec} or {err}
+  const s=String(txt||'').trim(); if(!s)return {err:'empty'};
+  if(s==='24/7')return {spec:[{days:[0,1,2,3,4,5,6],open:'0000',close:'2359'}]};
+  const byDay={}; // jsDay -> [[open,close]...]
+  // a comma after a time or "off" starts another rule ("Tu-Su 07:00-15:00, PH 08:00-12:00")
+  const rules=s.replace(/(\d|off|closed)\s*,\s*(?=(?:Mo|Tu|We|Th|Fr|Sa|Su|PH|SH)\b)/g,'$1;').split(/\s*(?:;|\|\|)\s*/).filter(Boolean);
+  for(let rule of rules){
+    if(/^(PH|SH)\b/.test(rule))continue; // public/school holidays: skip
+    rule=rule.replace(/^([A-Za-z,\- ]*?[a-z]),\s*(PH|SH)(?=\s)/,'$1'); // "Mo-Fr,PH 07:00-15:00"
+    const m=rule.match(/^((?:Mo|Tu|We|Th|Fr|Sa|Su)(?:\s*-\s*(?:Mo|Tu|We|Th|Fr|Sa|Su))?(?:\s*,\s*(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:\s*-\s*(?:Mo|Tu|We|Th|Fr|Sa|Su))?)*)?\s*(.*)$/);
+    if(!m)return {err:rule};
+    let days=[];
+    if(m[1]) for(const part of m[1].split(/\s*,\s*/)){ const [a,b]=part.split(/\s*-\s*/).map(d=>WEEK.indexOf(OSM_DAYS[d])); if(b==null)days.push(WEEK[a]); else for(let i=a;;i=(i+1)%7){ days.push(WEEK[i]); if(i===b)break; } }
+    else days=[0,1,2,3,4,5,6];
+    const rest=m[2].trim();
+    if(/^(off|closed)$/i.test(rest)){ days.forEach(d=>delete byDay[d]); continue; }
+    const spans=[]; for(const t of rest.split(/\s*,\s*/)){ const tm=t.match(/^(\d{1,2}):(\d\d)\s*-\s*(\d{1,2}):(\d\d)$/); if(!tm)return {err:rule};
+      const o=pad(tm[1])+tm[2], c=tm[3]==='24'&&tm[4]==='00'?'2359':pad(tm[3])+tm[4]; if(c<=o)return {err:rule}; spans.push([o,c]); }
+    days.forEach(d=>byDay[d]=spans); // later rules replace earlier ones for the same days
+  }
+  const groups={}; Object.entries(byDay).forEach(([d,spans])=>spans.forEach(([o,c])=>{ (groups[o+'|'+c]=groups[o+'|'+c]||[]).push(+d); }));
+  const spec=Object.entries(groups).map(([k,days])=>({days:days.sort((a,b)=>WEEK.indexOf(a)-WEEK.indexOf(b)),open:k.split('|')[0],close:k.split('|')[1]}))
+    .sort((a,b)=>WEEK.indexOf(a.days[0])-WEEK.indexOf(b.days[0])||a.open.localeCompare(b.open));
+  return spec.length?{spec}:{err:'no times'};
+}
+const words=s=>String(s||'').toLowerCase().replace(/['’]/g,'').replace(/&/g,' and ').replace(/[^a-z0-9 ]+/g,' ').split(/\s+/).filter(w=>w&&!['the','and','cafe','café','bakery','bakehouse','co'].includes(w));
+function nameMatch(a,b){ const A=words(a), B=new Set(words(b)); if(!A.length)return 0; return A.filter(w=>B.has(w)).length/A.length; }
+async function osmFetch(url){ const r=await fetch(url); if(!r.ok)throw new Error('osm '+r.status); return r.json(); }
+async function osmSearch(name,town){
+  const NOM='https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=au&extratags=1&addressdetails=1&limit=8&q=';
+  const out=[], seen=new Set(), add=x=>{ const k=x.osm; if(!seen.has(k)){seen.add(k);out.push(x);} };
+  const conv=h=>({name:h.name||h.display_name.split(',')[0],addr:[h.address&&((h.address.house_number?h.address.house_number+' ':'')+(h.address.road||'')).trim(),h.address&&(h.address.suburb||h.address.town||h.address.village||h.address.city)].filter(Boolean).join(', '),
+    hours:(h.extratags||{}).opening_hours||'',osm:h.osm_type+'/'+h.osm_id,lat:+h.lat,lon:+h.lon,kind:h.type});
+  (await osmFetch(NOM+encodeURIComponent(`${name}, ${town}`))).forEach(h=>add(conv(h)));
+  // then bakeries and cafés in the town, in case OpenStreetMap spells the name differently (spaced out: Nominatim allows 1 request a second)
+  for(const kind of ['bakery','cafe']){ await new Promise(r=>setTimeout(r,1100));
+    try{ (await osmFetch(NOM.replace('limit=8','limit=30')+encodeURIComponent(`${kind} in ${town}`))).forEach(h=>add(conv(h))); }catch(x){} }
+  return out.map(x=>({...x,score:nameMatch(name,x.name)})).filter(x=>x.score>0||x.hours&&/bakery|pastry/.test(x.kind||''))
+    .sort((a,b)=>b.score-a.score||(!!b.hours-!!a.hours)).slice(0,6);
+}
+let osmResults=[], osmPicked=null;
+async function osmLookup(auto){
+  const name=val('name'), town=val('town'), box=$('#osmres'); if(!box)return;
+  if(!name||!town){ if(!auto)box.innerHTML='<p class="err">Add the town and name first.</p>'; return }
+  box.innerHTML='<p class="muted">Searching OpenStreetMap…</p>';
+  try{ osmResults=await osmSearch(name,town); }catch(e){ box.innerHTML='<p class="err">Couldn’t reach OpenStreetMap. Check your signal, or set the times by hand.</p>'; return }
+  if(!$('#osmres'))return; // dialog closed meanwhile
+  if(!osmResults.length){ box.innerHTML=`<p class="muted">Nothing found on OpenStreetMap for ${esc(name)} in ${esc(town)}. Set the times by hand.</p>`; return }
+  box.innerHTML=`<p class="muted" style="margin:0 0 4px">From OpenStreetMap. Pick the right one to use its hours:</p>`+osmResults.map((r,i)=>{ const p=r.hours?parseOsmHours(r.hours):null;
+    return `<div class="osmhit"><div><b>${esc(r.name)}</b>${r.addr?`<small>${esc(r.addr)}</small>`:''}<small>${r.hours?(p.spec?esc(fmtHours(p.spec)):'Hours listed but too complex to read: '+esc(r.hours)):'No hours listed'}</small></div>${p&&p.spec?`<button type="button" class="btn small" data-osmuse="${i}">Use</button>`:''}</div>`; }).join('')+'<p class="osmcredit">© OpenStreetMap contributors</p>';
+  const best=osmResults[0], bp=best.hours&&parseOsmHours(best.hours);
+  const empty=!$$('#hrows input[type=checkbox]:checked').length;
+  if(auto&&empty&&best.score>=0.6&&bp&&bp.spec) osmUse(0,true);
+}
+function osmUse(i,auto){
+  const r=osmResults[i], p=parseOsmHours(r.hours); if(!p.spec)return;
+  $('#hrows').innerHTML=p.spec.map(hoursRow).join(''); const h=$('#dlg [name="hours"]'); if(h)h.value='';
+  osmPicked={osm:r.osm,lat:r.lat,lon:r.lon,hoursRaw:r.hours};
+  $$('#osmres .osmhit').forEach((el,k)=>el.classList.toggle('on',k===i));
+  toast(auto?`Hours filled from OpenStreetMap (${r.name}). Check them before saving.`:'Hours filled in. Check them before saving.');
+}
+document.addEventListener('click',e=>{ const u=e.target.closest('[data-osmuse]'); if(u)osmUse(+u.dataset.osmuse); if(e.target.closest('[data-act="osmfind"]'))osmLookup(false); });
+document.addEventListener('change',e=>{ if(e.target.matches('#dlg [name="name"]')&&$('#osmres')&&$('#osmres').dataset.auto==='1')osmLookup(true); });
+
 function bakeryDialog(b){
   const isNew=!b; b=b||{town:S.bakTown||''};
   const spec=normSpec(b.hoursSpec)||[];
   const custom=b.hours&&b.hours!==fmtHours(spec)?b.hours:'';
+  osmResults=[]; osmPicked=null;
   dlg(`<h3>${isNew?'Add a bakery':'Edit bakery'}</h3>
    <label class="fl">Town<input name="town" list="townlist" value="${esc(b.town||'')}" maxlength="80"></label><datalist id="townlist">${planTowns().map(t=>`<option value="${esc(t)}">`).join('')}</datalist>
    ${field('Name','name',b.name,{ph:'e.g. Yass Bakery'})}${field('Must try','must',b.must,{ph:'e.g. Pepper steak pie'})}
    ${field('Why it’s on the list','why',b.why,{area:true,max:400})}${field('Short label (optional)','tag',b.tag,{ph:'e.g. 5 min off route',max:40})}
-   <div class="fl">Opening times<div id="hrows">${(spec.length?spec:[{}]).map(hoursRow).join('')}</div><button type="button" class="btn small" data-act="hadd">+ More times</button></div>
+   <div class="fl">Opening times<div id="hrows">${(spec.length?spec:[{}]).map(hoursRow).join('')}</div><div class="planbar" style="margin-top:0"><button type="button" class="btn small" data-act="hadd">+ More times</button><button type="button" class="btn small" data-act="osmfind">Find hours on OpenStreetMap</button></div>
+     <div id="osmres" data-auto="${isNew?1:0}">${b.hoursSource?`<p class="osmcredit">Hours from ${esc(b.hoursSource)}</p>`:''}</div></div>
    ${field('Hours in words (leave blank to use the times above)','hours',custom,{ph:'e.g. Daily from 6 am, closed Christmas Day'})}
    ${b.rating?`<p class="muted" style="font-size:13px">${Number(b.rating).toFixed(1)}★ from ${Number(b.reviews||0).toLocaleString()} reviews${b.source?` (${esc(b.source)})`:''}.</p>`:''}
    <div class="dbtns"><button type="button" class="btn primary" data-save="bakery" data-id="${isNew?'':esc(b.id)}">Save</button><button type="button" class="btn" data-close>Cancel</button>${isNew?'':`<button type="button" class="btn danger" data-del="bakery|${esc(b.id)}">Delete</button>`}</div>`);
@@ -591,6 +659,8 @@ async function doSave(btn){
     const typed=val('hours'), timesChanged=JSON.stringify(normSpec(existing&&existing.hoursSpec)||[])!==JSON.stringify(H.spec);
     const hours=typed&&!(H.spec.length&&timesChanged&&existing&&typed===existing.hours)?typed:fmtHours(H.spec);
     const data={town,name,must:val('must'),why:val('why'),tag:val('tag'),hoursSpec:H.spec.length?H.spec:null,hours,...stamp()};
+    if(osmPicked){ Object.assign(data,{osm:osmPicked.osm,hoursSource:`OpenStreetMap, ${new Date().toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})}`});
+      if(osmPicked.lat!=null&&isFinite(osmPicked.lat)){ data.lat=+osmPicked.lat; data.lon=+osmPicked.lon; } }
     if(!existing||existing.town!==town){ const inTown=bakeriesIn(town).filter(b=>b.id!==id); data.rank=inTown.length?Math.max(...inTown.map(b=>b.rank||0))+1:1; }
     return save(async()=>{ await FB.set(tp('bakeries',id),data,true); S.bakTown=town; },existing?'Bakery saved':'Bakery added');
   }
