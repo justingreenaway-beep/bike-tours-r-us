@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='2.3';
+const APP_VERSION='3.0';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -169,6 +169,7 @@ function doRender(){
   if(S.tab==='today')v.innerHTML=viewToday();
   else if(S.tab==='roadbook')v.innerHTML=viewRoadbook();
   else v.innerHTML=viewPlan();
+  drawMaps();
 }
 document.addEventListener('click',e=>{ const t=e.target.closest('.tabbar [data-tab]'); if(t){S.tab=t.dataset.tab;sessionStorage.setItem('tru-tab',S.tab);window.scrollTo(0,0);render();} });
 
@@ -235,7 +236,7 @@ function stopCard(s,k,day){
 function viewRoadbook(){
   const T=S.tour, days=daysSorted();
   const first=days.find(d=>d.kind!=='solo'), last=days.slice().reverse().find(d=>d.kind!=='solo');
-  const totalKm=days.filter(d=>d.kind!=='solo').reduce((a,d)=>a+(parseFloat(d.km)||0),0);
+  const totalKm=days.filter(d=>d.kind!=='solo').reduce((a,d)=>a+(parseFloat(String(d.km||'').replace(/[^\d.]/g,''))||0),0);
   const range=first&&last&&dateFor(first)?`${shortDate(dateFor(first))} to ${shortDate(dateFor(last))}`:'Dates to be set';
   let h=annBanner()+`<section class="hero"><h1>${esc(T.name||T.id)}</h1>${T.status==='draft'?' <span class="pill draft">Draft: only editors can see this</span>':''}${T.status==='locked'?' <span class="pill locked">Locked</span>':''}
     <p class="sub">${esc(T.subtitle||'')}</p><div class="stats"><div>${totalKm?totalKm.toLocaleString():'\u2014'} km<small>group route</small></div><div>${days.filter(d=>d.kind!=='solo').length}<small>days</small></div><div>${esc(range)}<small>dates</small></div></div></section>`;
@@ -243,7 +244,7 @@ function viewRoadbook(){
   days.forEach(day=>{
     const opt=day.alt?(S.opt[day.id]||1):null;
     const st=stopsOf(day.id,opt);
-    h+=`<section class="day" style="--c:var(--${esc(day.colour||'blue')})" id="day-${esc(day.id)}">${dayHead(day)}<ol class="stops">${st.map((s,i)=>stopCard(s,i+1,day)).join('')||'<li class="muted" style="padding-left:46px">No stops yet.</li>'}</ol>${nightsOf(day.id).map(nightCard).join('')}</section>`;
+    h+=`<section class="day" style="--c:var(--${esc(day.colour||'blue')})" id="day-${esc(day.id)}">${dayHead(day)}<ol class="stops">${st.map((s,i)=>stopCard(s,i+1,day)).join('')||'<li class="muted" style="padding-left:46px">No stops yet.</li>'}</ol>${mapBlock(day)}${nightsOf(day.id).map(nightCard).join('')}</section>`;
   });
   if(T.brief&&T.brief.length) h+=`<section class="sec"><h2>Tour brief</h2><div class="brief">${T.brief.map(c=>`<div class="card"><h3>${esc(c.h)}</h3>${(c.p||[]).map(p=>`<p>${esc(p)}</p>`).join('')}${c.li&&c.li.length?`<ul>${c.li.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}</div>`).join('')}</div></section>`;
   if(T.roles&&T.roles.length) h+=`<section class="sec"><h2>The crew</h2><div class="roles">${T.roles.map(r=>`<div><span>${esc(r.role)}</span><span>${esc(r.name)}</span></div>`).join('')}</div>${T.crew&&T.crew.length?`<p class="muted">Riders: ${esc(T.crew.map(c=>c.name).filter(Boolean).join(', '))}.</p>`:''}</section>`;
@@ -264,7 +265,7 @@ function todayBody(){
     return now.map(({d,date})=>{
       const st=stopsOf(d.id,d.alt?(S.opt[d.id]||1):null);
       return `<div class="tdhead" style="--c:var(--${esc(d.colour||'blue')})"><span class="tdday">${esc(d.label)}${d.who?`, ${esc(d.who)}`:''}, ${esc(longDate(date))}</span><h2>${esc(d.title)}</h2></div>
-        <ul class="tdlist">${st.map(s=>`<li><span class="t">${esc(t12(s.depart&&!s.arrive?s.depart:s.arrive)||'')}</span><div><b>${esc(s.town)}</b>${(s.tags||[]).length?`<div class="muted" style="font-size:14px">${esc(s.tags.join(', '))}</div>`:''}</div></li>`).join('')}</ul>${nightsOf(d.id).map(nightCard).join('')}`;
+        <ul class="tdlist">${st.map(s=>`<li><span class="t">${esc(t12(s.depart&&!s.arrive?s.depart:s.arrive)||'')}</span><div><b>${esc(s.town)}</b>${(s.tags||[]).length?`<div class="muted" style="font-size:14px">${esc(s.tags.join(', '))}</div>`:''}</div></li>`).join('')}</ul><div style="--c:var(--${esc(d.colour||'blue')})">${mapBlock(d)}</div>${nightsOf(d.id).map(nightCard).join('')}`;
     }).join('')+`<p style="margin-top:14px"><button type="button" class="btn" data-tab-go="roadbook">Open the full roadbook</button></p>`;
   }
   const firstG=group[0], lastG=group[group.length-1];
@@ -307,7 +308,8 @@ function viewPlan(){
   if(day){
     const st=stopsOf(day.id);
     h+=`<h2 style="color:var(--${esc(day.colour||'blue')})">${esc(day.label)} stops</h2><div class="card">${st.map((s,i)=>`<div class="prow"><div class="pmain"><b>${i+1}. ${esc(s.town||'Unnamed stop')}${s.option?` <span class="pill">Option ${s.option}</span>`:''}</b><small>${esc(timeText(s)||'No times')}${s.km!=null&&s.km!==''?` \u2022 ${esc(s.km)} km`:''}${(s.tags||[]).length?' \u2022 '+esc(s.tags.join(', ')):''}${s.updatedBy?` \u2022 edited by ${esc(s.updatedBy)} ${ago(s.updatedAt)}`:''}</small></div>${pact('stop',s.id,`<button type="button" class="ib" data-move="stop|${esc(s.id)}|-1" aria-label="Move up"${i===0||L?' disabled':''}>\u2191</button><button type="button" class="ib" data-move="stop|${esc(s.id)}|1" aria-label="Move down"${i===st.length-1||L?' disabled':''}>\u2193</button><button type="button" class="ib" data-editstop="${esc(s.id)}" aria-label="Edit stop"${L?' disabled':''}>\u270e</button>`)}</div>`).join('')||'<p class="muted">No stops yet.</p>'}
-      ${selBar('stop',st.map(s=>s.id),`<button type="button" class="btn primary small" data-act="addstop"${L?' disabled':''}>+ Add stop</button>`,L)}</div>`;
+      ${selBar('stop',st.map(s=>s.id),`<button type="button" class="btn primary small" data-act="addstop"${L?' disabled':''}>+ Add stop</button>${st.length>1?`<button type="button" class="btn small" data-estimate="${esc(day.id)}"${L?' disabled':''}>Estimate distances</button>`:''}`,L)}
+      ${day.estimatedAt?`<p class="edited">Distances estimated ${ago(day.estimatedAt)}${day.lineKey&&day.lineKey!==lineKey(stopsOf(day.id,day.alt?1:null))?'. <span style="color:var(--warn)">Stops have changed since, so estimate again.</span>':''}</p>`:''}</div>`;
   }
   return h+'</div>';
 }
@@ -561,6 +563,129 @@ function dayDialog(day){
    ${field('Best leg: title','bestTitle',day.best&&day.best.title,{ph:'e.g. Tharwa to Cavan'})}${field('Best leg: why','bestWhy',day.best&&day.best.why,{area:true,max:400})}
    <div class="dbtns"><button type="button" class="btn primary" data-save="day" data-id="${isNew?'':esc(day.id)}">Save</button><button type="button" class="btn" data-close>Cancel</button>${isNew?'':`<button type="button" class="btn danger" data-del="day|${esc(day.id)}">Delete day</button>`}</div>`);
 }
+/* ---------- Phase 3: places, distances, maps ----------
+   Place search: Open-Meteo geocoding (free, no key). Routing: FOSSGIS OSRM car profile at routing.openstreetmap.de (free, fair use).
+   Maps: Leaflet (js/leaflet.js, loaded on first use) with OpenStreetMap tiles. */
+async function placeSearch(q){
+  const r=await fetch('https://geocoding-api.open-meteo.com/v1/search?count=6&language=en&format=json&countryCode=AU&name='+encodeURIComponent(q));
+  if(!r.ok)throw new Error('geocode '+r.status); const j=await r.json();
+  return (j.results||[]).map(x=>({name:x.name,area:[x.admin2,x.admin1].filter(Boolean).join(', '),lat:+x.latitude.toFixed(5),lon:+x.longitude.toFixed(5)}));
+}
+let placeResults=[];
+async function placeLookup(auto){
+  const town=val('town'), box=$('#placeres'); if(!box)return;
+  if(!town){ if(!auto)box.innerHTML='<p class="err">Type the town or place first.</p>'; return }
+  box.innerHTML='<p class="muted">Searching…</p>';
+  try{ placeResults=await placeSearch(town.replace(/\s*\(.*\)$/,'')); }catch(e){ box.innerHTML='<p class="err">Couldn’t search. Check your signal, or type the coordinates.</p>'; return }
+  if(!$('#placeres'))return;
+  if(!placeResults.length){ box.innerHTML=`<p class="muted">No town called ${esc(town)} found. Search searches town names, so try the nearest town.</p>`; return }
+  box.innerHTML=placeResults.map((p,i)=>`<div class="osmhit"><div><b>${esc(p.name)}</b><small>${esc(p.area)}</small></div><button type="button" class="btn small" data-placeuse="${i}">Use</button></div>`).join('');
+  if(auto&&!val('lat')) placeUse(0);
+}
+function placeUse(i){ const p=placeResults[i]; if(!p)return; $('#dlg [name="lat"]').value=p.lat; $('#dlg [name="lon"]').value=p.lon;
+  $$('#placeres .osmhit').forEach((el,k)=>el.classList.toggle('on',k===i)); toast(`Location set to ${p.name}, ${p.area.split(', ').pop()}`); }
+document.addEventListener('click',e=>{ const u=e.target.closest('[data-placeuse]'); if(u)placeUse(+u.dataset.placeuse); if(e.target.closest('[data-act="placefind"]'))placeLookup(false); });
+document.addEventListener('change',e=>{ if(e.target.matches('#dlg [name="town"]')&&$('#placeres')&&$('#placeres').dataset.auto==='1')placeLookup(true); });
+
+const hasLL=s=>s&&s.lat!=null&&s.lon!=null&&s.lat!==''&&isFinite(s.lat)&&isFinite(s.lon);
+const lineKey=st=>st.filter(hasLL).map(s=>`${s.id}:${(+s.lat).toFixed(4)},${(+s.lon).toFixed(4)}`).join('|');
+const fmtDur=min=>{ const h=Math.floor(min/60), m=Math.round(min%60); return h?`${h} h ${pad(m)} m`:`${m} m`; };
+async function routeVia(pts){
+  const coords=pts.map(p=>`${(+p.lon).toFixed(5)},${(+p.lat).toFixed(5)}`).join(';');
+  const r=await fetch(`https://routing.openstreetmap.de/routed-car/route/v1/driving/${coords}?overview=simplified&geometries=polyline`);
+  if(!r.ok)throw new Error('route '+r.status); const j=await r.json(); if(j.code!=='Ok')throw new Error(j.code);
+  const R=j.routes[0]; return {legs:R.legs.map(l=>({km:l.distance/1000,min:l.duration/60})),km:R.distance/1000,min:R.duration/60,line:R.geometry};
+}
+function decodeLine(str){ let i=0,lat=0,lon=0; const out=[];
+  while(i<str.length){ for(const k of [0,1]){ let b,sh=0,res=0; do{ b=str.charCodeAt(i++)-63; res|=(b&31)<<sh; sh+=5; }while(b>=32); const d=res&1?~(res>>1):res>>1; if(k===0)lat+=d; else lon+=d; } out.push([lat/1e5,lon/1e5]); }
+  return out; }
+
+let EST=null; // the estimate being reviewed
+async function estimateDay(dayId){
+  const day=S.days.find(d=>d.id===dayId); if(!day)return;
+  dlg(`<h3>Distances for ${esc(day.label)}</h3><p class="muted">Finding places and working out the route…</p><div class="dbtns"><button type="button" class="btn" data-close>Cancel</button></div>`);
+  const found={}; // stopId -> {lat,lon} for stops that had no coordinates
+  const runs=[];
+  try{
+    for(const opt of day.alt?[1,2]:[null]){
+      const st=stopsOf(day.id,opt);
+      for(const s of st) if(!hasLL(s)&&!found[s.id]&&s.town){ const p=(await placeSearch(s.town.replace(/\s*\(.*\)$/,'')))[0]; if(p)found[s.id]={lat:p.lat,lon:p.lon,place:`${p.name}, ${p.area}`}; }
+      const pts=st.map(s=>hasLL(s)?s:found[s.id]?{...s,...found[s.id]}:null);
+      const usable=pts.filter(Boolean);
+      if(usable.length<2){ runs.push({opt,err:'Needs at least two stops with a location.'}); continue }
+      const R=await routeVia(usable);
+      let km=0; const per={}; usable.forEach((s,i)=>{ if(i)km+=R.legs[i-1].km; per[s.id]=Math.round(km); });
+      runs.push({opt,st,per,R,key:lineKey(pts.filter(Boolean)),missing:st.filter((s,i)=>!pts[i]).map(s=>s.town)});
+    }
+  }catch(e){ if($('#dlg').open) dlg(`<h3>Distances for ${esc(day.label)}</h3><p class="err">Couldn’t reach the routing service. Check your signal and try again.</p><div class="dbtns"><button type="button" class="btn" data-close>Close</button></div>`); return }
+  if(!$('#dlg').open)return;
+  EST={dayId,found,runs};
+  const T=S.tour, range=Number(T.fuelRangeKm)||0;
+  const body=runs.map(r=>{ if(r.err)return `<p class="err">${r.opt===2?esc(day.alt.label||'Option 2')+': ':''}${esc(r.err)}</p>`;
+    const cur=r.opt===2?day.alt:day;
+    const fuel=r.st.filter(s=>(s.tags||[]).some(t=>/Fuel|Start/.test(t))&&r.per[s.id]!=null).map(s=>r.per[s.id]);
+    const end=Math.round(r.R.km); const gaps=fuel.length?[...fuel,end].map((k,i,a)=>i?k-a[i-1]:k).slice(1):[];
+    const maxGap=gaps.length?Math.max(...gaps):null;
+    return `${day.alt?`<h3 style="font-size:19px;margin:10px 0 4px">${r.opt===2?esc(day.alt.label||'Option 2'):'Option 1'}</h3>`:''}
+      <table class="est"><thead><tr><th>Stop</th><th>Now</th><th>Estimate</th></tr></thead><tbody>
+      ${r.st.map(s=>`<tr><td>${esc(s.town)}${found[s.id]?`<small>Location found: ${esc(found[s.id].place)}</small>`:''}${r.per[s.id]==null?'<small style="color:var(--warn)">No location, skipped</small>':''}</td><td>${s.km!=null&&s.km!==''?esc(s.km)+' km':'—'}</td><td><b>${r.per[s.id]!=null?r.per[s.id]+' km':'—'}</b></td></tr>`).join('')}
+      <tr class="tot"><td>Day distance</td><td>${cur.km?esc(cur.km)+' km':'—'}</td><td><b>${end} km</b></td></tr>
+      <tr class="tot"><td>Riding time</td><td>${esc(cur.ride||'—')}</td><td><b>${fmtDur(r.R.min)}</b></td></tr></tbody></table>
+      ${maxGap!=null&&range?`<p class="${maxGap>range?'err':'muted'}" style="font-size:14px">Longest stretch between fuel stops: ${maxGap} km${maxGap>range?` (over the ${range} km rule)`:` (rule is ${range} km)`}.</p>`:''}`; }).join('');
+  dlg(`<h3>Distances for ${esc(day.label)}</h3>
+    <p class="muted" style="font-size:13.5px;margin:0 0 8px">Estimated by OpenStreetMap routing along the quickest roads between your stops, at legal speed limits. If you plan a scenic way round, the real figures will be higher.</p>
+    ${body}
+    <div class="dbtns">${runs.some(r=>!r.err)?'<button type="button" class="btn primary" data-save="estimate">Use these figures</button>':''}<button type="button" class="btn" data-close>Cancel</button></div>`);
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-estimate]'); if(b)estimateDay(b.dataset.estimate); });
+function estimateOps(){
+  const {dayId,found,runs}=EST, day=S.days.find(d=>d.id===dayId), now=stamp(), ops=[], stopKm={};
+  runs.filter(r=>!r.err).forEach(r=>Object.entries(r.per).forEach(([id,km])=>{ const s=S.stops.find(x=>x.id===id); if(r.opt!==2||(s&&s.option===2)||stopKm[id]==null) stopKm[id]=km; }));
+  Object.entries(stopKm).forEach(([id,km])=>ops.push({op:'set',path:tp('stops',id),data:{km,...(found[id]?{lat:found[id].lat,lon:found[id].lon}:{}),...now},merge:true}));
+  const dd={...now};
+  runs.filter(r=>!r.err).forEach(r=>{ const fig={km:String(Math.round(r.R.km)),ride:fmtDur(r.R.min)};
+    if(r.opt===2) Object.assign(dd,{alt:{...day.alt,...fig},altLine:r.R.line,altLineKey:r.key});
+    else Object.assign(dd,fig,{line:r.R.line,lineKey:r.key,estimatedAt:FB.now()}); });
+  ops.push({op:'set',path:tp('days',dayId),data:dd,merge:true});
+  return ops;
+}
+
+/* day maps */
+let leafletP=null;
+function loadLeaflet(){
+  if(window.L)return Promise.resolve();
+  return leafletP=leafletP||new Promise((ok,bad)=>{ const c=document.createElement('link'); c.rel='stylesheet'; c.href='css/leaflet.css'; document.head.appendChild(c);
+    const s=document.createElement('script'); s.src='js/leaflet.js'; s.onload=ok; s.onerror=()=>{leafletP=null;bad()}; document.head.appendChild(s); });
+}
+S.mapOpen=new Set(); const MAPS={};
+function mapBlock(day){
+  const opt=day.alt?(S.opt[day.id]||1):null, st=stopsOf(day.id,opt);
+  if(st.filter(hasLL).length<1)return S.editor?`<p class="muted maphint">No map yet: add locations to the stops in Plan.</p>`:'';
+  return `<details class="daymap" data-map="${esc(day.id)}"${S.mapOpen.has(day.id)?' open':''}><summary>Map of the day</summary><div class="map"></div><p class="mapnote"></p></details>`;
+}
+document.addEventListener('toggle',e=>{ const d=e.target; if(!d.matches||!d.matches('details.daymap'))return;
+  const id=d.dataset.map; if(d.open){ S.mapOpen.add(id); drawMap(d); } else S.mapOpen.delete(id); },true);
+function drawMaps(){ Object.keys(MAPS).forEach(k=>{ if(!document.body.contains(MAPS[k].getContainer())){ MAPS[k].remove(); delete MAPS[k]; } }); $$('details.daymap[open]').forEach(drawMap); }
+async function drawMap(det){
+  const el=$('.map',det), note=$('.mapnote',det); if(!el||el._drawn)return; el._drawn=true;
+  try{ await loadLeaflet(); }catch(e){ note.textContent='The map couldn’t load. Check your signal.'; el._drawn=false; return }
+  const day=S.days.find(d=>d.id===det.dataset.map); if(!day||!document.body.contains(el))return;
+  const opt=day.alt?(S.opt[day.id]||1):null, alt=opt===2, st=stopsOf(day.id,opt), pts=st.filter(hasLL);
+  const colour=getComputedStyle(det).getPropertyValue('--c').trim()||getComputedStyle(document.documentElement).getPropertyValue('--blue').trim()||'#2387E0';
+  const m=L.map(el,{scrollWheelZoom:false,tap:true}); MAPS[det.dataset.map+Math.random()]=m;
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(m);
+  const line=alt?day.altLine:day.line, key=alt?day.altLineKey:day.lineKey, fresh=line&&key===lineKey(st);
+  const path=fresh?decodeLine(line):pts.map(s=>[+s.lat,+s.lon]);
+  const pl=L.polyline(path,{color:colour,weight:5,opacity:.85,dashArray:fresh?null:'8 8'}).addTo(m);
+  st.forEach((s,i)=>{ if(!hasLL(s))return; const big=(s.tags||[]).some(t=>/Start|Overnight|Finish/.test(t));
+    L.marker([+s.lat,+s.lon],{icon:L.divIcon({className:'mk',html:`<span style="--c:${colour}" class="${big?'big':''}">${i+1}</span>`,iconSize:[28,28],iconAnchor:[14,14]})})
+      .bindPopup(`<b>${esc(s.town)}</b>${timeText(s)?'<br>'+esc(timeText(s)):''}${s.km!=null&&s.km!==''?`<br>${esc(s.km)} km into the day`:''}`).addTo(m); });
+  const towns=new Set(st.map(s=>s.town));
+  S.bakeries.filter(b=>towns.has(b.town)&&hasLL(b)).forEach(b=>L.circleMarker([+b.lat,+b.lon],{radius:6,color:'#fff',weight:2,fillColor:'#B4441B',fillOpacity:1}).bindPopup(`<b>${esc(b.name)}</b><br>${esc(b.hours||fmtHours(b.hoursSpec)||'')}`).addTo(m));
+  if(path.length>1) m.fitBounds(pl.getBounds(),{padding:[24,24]}); else if(path.length) m.setView(path[0],12);
+  note.textContent=fresh?'Route from OpenStreetMap routing. Tap a number for details; red dots are bakeries.':(pts.length>1?'Straight lines between stops for now; the road route appears once distances are estimated in Plan.':'');
+}
+
 function stopDialog(stop){
   const isNew=!stop; stop=stop||{tags:[]};
   const tags=new Set(stop.tags||[]);
@@ -574,7 +699,9 @@ function stopDialog(stop){
    ${field('"Did you know?" fact','fact',stop.fact,{area:true,max:300})}
    ${field('Where we\u2019re staying (overnight stops)','stay',stop.stay,{ph:'e.g. Millthorpe Motel, 26 Victoria St'})}
    ${stop.timeNote?`${field('Imported time text (clear it to use the times above)','timeNote',stop.timeNote)}`:''}
-   <div class="frow">${field('Latitude (optional)','lat',stop.lat,{type:'number',step:'any'})}${field('Longitude (optional)','lon',stop.lon,{type:'number',step:'any'})}</div>
+   <div class="fl">Location on the map
+     <div class="frow">${field('Latitude','lat',stop.lat,{type:'number',step:'any'})}${field('Longitude','lon',stop.lon,{type:'number',step:'any'})}</div>
+     <button type="button" class="btn small" data-act="placefind">Find the town</button><div id="placeres" data-auto="${isNew?1:0}"></div></div>
    <div class="dbtns"><button type="button" class="btn primary" data-save="stop" data-id="${isNew?'':esc(stop.id)}">Save</button><button type="button" class="btn" data-close>Cancel</button>${isNew?'':`<button type="button" class="btn danger" data-del="stop|${esc(stop.id)}">Delete stop</button>`}</div>`);
 }
 function crewDialog(c){
@@ -709,6 +836,7 @@ async function doSave(btn){
     if(!existing) data.order=S.days.length?Math.max(...S.days.map(d=>d.order||0))+1:0;
     return save(async()=>{ await FB.set(tp('days',id),data,true); S.planDay=id; },existing?'Day saved':'Day added');
   }
+  if(k==='estimate'){ if(!EST)return; const ops=estimateOps(); return save(()=>FB.batch(ops),'Distances updated'); }
   if(k==='stop'){
     if(!val('town')){dlgError('Give the stop a name.');return}
     const id=btn.dataset.id||FB.newId(tp('stops')); const existing=S.stops.find(s=>s.id===id);
