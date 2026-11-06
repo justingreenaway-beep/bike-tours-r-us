@@ -4,11 +4,11 @@
 // No emails go in this file: editors are set once in Firestore (admins/editors), riders are added in the app's Plan tab.
 window.TOUR_CONFIG = {
   firebase: {
-    apiKey: "PASTE_API_KEY_HERE",
-    authDomain: "PASTE.firebaseapp.com",
-    projectId: "PASTE_PROJECT_ID",
-    storageBucket: "PASTE.appspot.com",
-    messagingSenderId: "PASTE",
-    appId: "PASTE"
+   apiKey: "AIzaSyC2L-aEPgEshZ9uHCKM9VNgr1SwWzNi02s",
+    authDomain: "bike-tour-2026.firebaseapp.com",
+    projectId: "bike-tour-2026",
+    storageBucket: "bike-tour-2026.firebasestorage.app",
+    messagingSenderId: "498247627512",
+    appId: "1:498247627512:web:b6838492da7a28e7d4410d"
   }
 };
