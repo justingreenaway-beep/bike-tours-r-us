@@ -221,3 +221,6 @@ details.rooms ul{margin:6px 0 0;padding-left:18px;font-size:14.5px}
 details.sent{margin-top:10px}
 details.sent summary{color:var(--ink)}
 details.sent .pmain{font-size:14.5px}
+.selbox{display:grid;place-items:center;width:44px;height:44px;flex:0 0 auto;cursor:pointer}
+.selbox input{width:22px;height:22px;margin:0;accent-color:var(--warn)}
+.selbar{position:sticky;bottom:calc(64px + var(--safe-b));background:var(--surface);padding:8px 0;z-index:5}
