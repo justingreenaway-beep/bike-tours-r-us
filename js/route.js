@@ -214,9 +214,9 @@ function stopDialog(stop,ctx){
    <div id="townsug" class="townsug"></div><div id="townpin">${pinChip()}</div>
    <div class="frow">${field('Arrive','arrive',stop.arrive,{type:'time'})}${field('Depart','depart',stop.depart,{type:'time'})}</div>
    <div id="timehint"></div>
-   <label class="fl">What happens here<div class="chips">${COMMON_TAGS.map(t=>`<label><input type="checkbox" name="tag" value="${esc(t)}"${tags.has(t)?' checked':''}>${esc(t)}</label>`).join('')}
+   <div class="fl">What happens here<div class="chips tagpick">${COMMON_TAGS.map(t=>`<label><input type="checkbox" name="tag" value="${esc(t)}"${tags.has(t)?' checked':''}>${esc(t)}</label>`).join('')}
      <span class="moretags"${showExtra?' hidden':''}><button type="button" class="linkb" data-moretags>+ ${extra.length} more</button></span>
-     <span class="extratags"${showExtra?'':' hidden'}>${extra.map(t=>`<label><input type="checkbox" name="tag" value="${esc(t)}"${tags.has(t)?' checked':''}>${esc(t)}</label>`).join('')}</span></div></label>
+     <span class="extratags"${showExtra?'':' hidden'}>${extra.map(t=>`<label><input type="checkbox" name="tag" value="${esc(t)}"${tags.has(t)?' checked':''}>${esc(t)}</label>`).join('')}</span></div></div>
    <div id="stopkm" class="stopkm"></div>
    <details class="sfmore"${stop.road||stop.note||stop.fact||stop.stay||stop.option||stop.timeNote?' open':''}><summary>More details: roads, notes, “Did you know?”, stay, route option</summary>
      ${field('Roads to get there','road',stop.road,{ph:'e.g. Wee Jasper Rd'})}
