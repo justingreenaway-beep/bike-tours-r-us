@@ -470,3 +470,5 @@ details.navgo[open] summary{background:var(--c,var(--ink));color:#fff}
 .navroute .navlbl{width:100%;font:800 13px/1 var(--display);text-transform:uppercase;letter-spacing:.04em;color:var(--c,var(--muted))}
 .navroute .mini{text-decoration:none}
 .navroute small{width:100%;font-size:12px;color:var(--muted)}
+.placefind{margin:-4px 0 12px}
+.placefind #placeres{margin-top:6px}
