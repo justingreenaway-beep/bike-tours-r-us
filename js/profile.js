@@ -179,7 +179,7 @@ document.addEventListener('click',async e=>{
     if(k==='update'){ const m=$('#updmsg'); if(m)m.textContent='Checking…';
       try{ const reg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration(); if(reg)await reg.update();
         const r=await fetch('js/app.js',{cache:'no-store'}), txt=await r.text(), v=(txt.match(/APP_VERSION='([^']+)'/)||[])[1];
-        if(v&&v!==APP_VERSION){ if(m)m.textContent=`Updating to ${v}…`; await Promise.all(['js/app.js','js/ride.js','js/profile.js','css/app.css','index.html'].map(u=>fetch(u,{cache:'reload'}).catch(()=>{}))); setTimeout(()=>location.reload(),400); }
+        if(v&&v!==APP_VERSION){ if(m)m.textContent=`Updating to ${v}…`; await Promise.all(['js/app.js','js/ride.js','js/profile.js','js/route.js','css/app.css','index.html'].map(u=>fetch(u,{cache:'reload'}).catch(()=>{}))); setTimeout(()=>location.reload(),400); }
         else if(m)m.textContent='Up to date'; }catch(x){ if(m)m.textContent='Couldn’t check. Try again with signal.'; } return; }
   }
   const sv=t.closest('[data-prof-save]'); if(sv){ const k=sv.dataset.profSave, num=v=>v===''?null:Number(v);

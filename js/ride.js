@@ -1,7 +1,7 @@
 /* Bike Tours R Us: ride-day features, ported from the 2026 crew app and scoped per tour.
    Loaded after app.js and shares its globals (S, FB, $, $$, esc, render, dlg, toast ...).
    Firestore, all under tours/{t}:
-     riders/{uid}   { name, email, ticks{bakId:1}, ratings{bakId:1..10}, quiz{dayId:{s,n}}, votes{dayId:leg}, kc[], kcj[], at }  (each rider writes only their own)
+     riders/{uid}   { name, email, likes{photoId:1}, ticks{bakId:1}, ratings{bakId:1..10}, quiz{dayId:{s,n}}, votes{dayId:leg}, kc[], kcj[], at }  (each rider writes only their own)
      live/pos       { dayId, stopId, opt, at, by }   the "We're here" tracker
      wall/{id}      { stopId, dayId, town, thumb, uid, rider, at }   photo wall thumbnails;  wallfull/{id} { img }
      extras/{id}    { town, name, must, why, uid, by, at }   bakeries riders add on the road */
@@ -26,13 +26,13 @@ function rideWatch(id){
   rideReset();
   const quiet=()=>{};
   return [
-    FB.watchCol(`tours/${id}/riders`,docs=>{ R.riders={}; docs.forEach(d=>{ if(d.exists)R.riders[d.id]=d.data; }); markSeen(id); render(); },quiet),
+    FB.watchCol(`tours/${id}/riders`,docs=>{ R.riders={}; docs.forEach(d=>{ if(d.exists)R.riders[d.id]=d.data; }); markSeen(id); render(); if(typeof PV!=='undefined'&&PV.el&&!PV.el.hidden)pvActions(); },quiet),
     FB.watchDoc(`tours/${id}/live/pos`,d=>{ R.live=d.exists?d.data:null; render(); },quiet),
     FB.watchCol(`tours/${id}/wall`,docs=>{ R.wall=docs.filter(d=>d.exists).map(d=>({id:d.id,...d.data})); render(); },quiet),
     FB.watchCol(`tours/${id}/extras`,docs=>{ R.extras=docs.filter(d=>d.exists).map(d=>({id:'x:'+d.id,docId:d.id,extra:true,...d.data})); render(); },quiet)
   ];
 }
-const blankMe=()=>({name:'',email:'',ticks:{},ratings:{},quiz:{},votes:{},kc:[],kcj:[],check:{}});
+const blankMe=()=>({name:'',email:'',ticks:{},ratings:{},quiz:{},votes:{},kc:[],kcj:[],check:{},likes:{}});
 const myUid=()=>S.user&&S.user.uid;
 function me(){ // name from this tour's crew list; otherwise keep the name already saved (e.g. imported from 2026)
   const m=R.riders[myUid()], c=(S.tour&&S.tour.crew||[]).find(x=>x.email&&x.email.toLowerCase()===S.user.email);
@@ -459,12 +459,39 @@ function quizHtml(){
   if(!days.length) return '<p class="muted">Trivia is built from the \u201cDid you know?\u201d facts on each stop. None yet for this tour.</p>';
   return `<div class="qtabs">${days.map(({d,qs})=>{ const r=m.quiz[d.id]; return `<button type="button" class="qtab" style="--c:var(--${esc(d.colour||'blue')})" data-qday="${esc(d.id)}"><b>${esc(d.label)}</b><small>${qs.length} questions</small><span>${r?`Your score ${r.s}/${r.n}`:'Not played'}</span></button>`; }).join('')}</div>`;
 }
-function wallHtml(){
-  if(!R.wall.length) return '<p class="muted">No photos yet. Tap \u201cAdd photo\u201d on any stop in the roadbook.</p>';
-  return daysSorted().map(d=>{ const ps=R.wall.filter(p=>p.dayId===d.id).sort((a,b)=>tsMs(a.at)-tsMs(b.at)); if(!ps.length)return '';
-    return `<h3 class="wday" style="color:var(--${esc(d.colour||'blue')})">${esc(d.label)}: ${esc(d.title||'')}</h3><div class="wgrid">${ps.map(p=>`<button type="button" class="wcell" data-photo="${esc(p.id)}"><img src="${p.thumb}" alt=""><span>${esc(p.town)}<small>${esc(p.rider||'')}</small></span></button>`).join('')}</div>`; }).join('')+
-    `<div class="planbar"><button type="button" class="btn" data-ride="savephotos">Save all photos (${R.wall.length})</button></div><p class="muted" id="pdlstatus" style="font-size:13px"></p>`;
+/* Photo wall (v4.11): filter pills, collapsible days with counts, likes. Viewer below. */
+S.wallF='all'; S.wallClosed=new Set();
+const likeCounts=()=>{ const c={}; riders().forEach(v=>Object.keys(v.likes||{}).forEach(id=>c[id]=(c[id]||0)+1)); return c; };
+const dayIdx=id=>daysSorted().findIndex(d=>d.id===id);
+const tripOrder=(a,b)=>(dayIdx(a.dayId)-dayIdx(b.dayId))||(tsMs(a.at)-tsMs(b.at));
+const tripList=()=>R.wall.slice().sort(tripOrder);
+function wallList(){ // the photos the wall is showing, in the order shown
+  const f=S.wallF, lk=likeCounts(); let ps=tripList();
+  if(f==='mine')ps=ps.filter(p=>p.uid===myUid());
+  else if(f==='loved')ps=ps.filter(p=>lk[p.id]).sort((a,b)=>lk[b.id]-lk[a.id]||tripOrder(a,b));
+  else if(f.startsWith('d:'))ps=ps.filter(p=>p.dayId===f.slice(2));
+  else if(f.startsWith('r:'))ps=ps.filter(p=>(p.uid||p.rider)===f.slice(2));
+  return ps;
 }
+function wcell(p,lk){ return `<button type="button" class="wcell" data-photo="${esc(p.id)}"><img src="${p.thumb}" alt="Photo at ${esc(p.town)}${p.rider?' by '+esc(p.rider):''}" loading="lazy">${lk[p.id]?`<i class="wlike">♥ ${lk[p.id]}</i>`:''}<span>${esc(p.town)}<small>${esc(p.rider||'')}</small></span></button>`; }
+function wallHtml(){
+  if(!R.wall.length) return '<p class="muted">No photos yet. Tap “Add photo” on any stop in the roadbook.</p>';
+  const lk=likeCounts(), all=tripList(), f=S.wallF;
+  const days=daysSorted().filter(d=>all.some(p=>p.dayId===d.id));
+  const by={}; all.forEach(p=>{ const k=p.uid||p.rider; if(!k)return; (by[k]=by[k]||{name:p.rider||'Someone',n:0}).n++; });
+  const pill=(k,l)=>`<button type="button" data-wallf="${esc(k)}" aria-pressed="${f===k}">${l}</button>`;
+  const mine=all.filter(p=>p.uid===myUid()).length, loved=all.filter(p=>lk[p.id]).length;
+  let h=`<div class="wfil" role="group" aria-label="Show photos">${pill('all',`All <small>${all.length}</small>`)}${mine?pill('mine',`Mine <small>${mine}</small>`):''}${loved?pill('loved',`♥ Most loved <small>${loved}</small>`):''}${days.map(d=>pill('d:'+d.id,esc(d.label))).join('')}</div>`;
+  const ks=Object.keys(by).sort((a,b)=>by[b].n-by[a].n||by[a].name.localeCompare(by[b].name));
+  if(ks.length>1)h+=`<div class="wfil" role="group" aria-label="Photos by rider">${ks.map(k=>pill('r:'+k,`${esc(by[k].name)} <small>${by[k].n}</small>`)).join('')}</div>`;
+  const ps=wallList();
+  if(!ps.length)h+='<p class="muted">No photos here yet.</p>';
+  else if(f==='loved')h+=`<div class="wgrid">${ps.map(p=>wcell(p,lk)).join('')}</div>`;
+  else h+=daysSorted().map(d=>{ const dp=ps.filter(p=>p.dayId===d.id); if(!dp.length)return '';
+    return `<details class="wdet" data-k="wd-${esc(d.id)}" data-wd="${esc(d.id)}"${S.wallClosed.has(d.id)?'':' open'}><summary class="wday" style="color:var(--${esc(d.colour||'blue')})">${esc(d.label)}: ${esc(d.title||'')} <small>${dp.length} photo${dp.length===1?'':'s'}</small></summary><div class="wgrid">${dp.map(p=>wcell(p,lk)).join('')}</div></details>`; }).join('');
+  return h+`<div class="planbar"><button type="button" class="btn" data-ride="savephotos">Save all photos (${R.wall.length})</button></div><p class="muted" id="pdlstatus" style="font-size:13px"></p>`;
+}
+document.addEventListener('toggle',e=>{ const d=e.target; if(d.matches&&d.matches('details.wdet')){ d.open?S.wallClosed.delete(d.dataset.wd):S.wallClosed.add(d.dataset.wd); } },true);
 function rideCrew(){
   if(!canRide())return notRiding();
   return `<section class="sec" style="margin-top:14px"><h2>Updates</h2>${S.anns.length?`<div class="updates">${S.anns.slice(0,8).map(a=>`<div class="card"><small class="muted">${a.kind==='publish'?'Tour published':'Update'}${a.by?` from ${esc(a.by)}`:''}, ${ago(a.at)}</small><p style="margin:4px 0 0;white-space:pre-line">${esc(a.text)}</p></div>`).join('')}</div>`:'<p class="muted">No updates from Justin and Tony yet.</p>'}</section>
@@ -488,11 +515,6 @@ async function addPhoto(file,spec){
     toast(navigator.onLine?'Photo added to the wall':'Photo saved. It will upload when you have signal.');
   }catch(e){ toast('Couldn\u2019t add that photo. Try again.'); }
 }
-async function openPhoto(id){
-  const p=R.wall.find(x=>x.id===id); if(!p)return; const d=S.days.find(x=>x.id===p.dayId);
-  dlg(`<img class="lbimg" id="lbimg" src="${p.thumb}" alt=""><p class="muted" style="margin:8px 0">${esc(p.town)}${d?', '+esc(d.label):''}${p.rider?', by '+esc(p.rider):''}</p><div class="dbtns">${p.uid===myUid()||S.editor?`<button type="button" class="btn danger" data-photodel="${esc(id)}">Delete</button>`:''}<button type="button" class="btn" data-close>Close</button></div>`);
-  try{ const s=await FB.get(tp('wallfull',id)); if(s.exists&&$('#lbimg'))$('#lbimg').src=s.data.img; }catch(e){}
-}
 function dataUrlFile(u,name){ const b=atob(u.split(',')[1]), a=new Uint8Array(b.length); for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i); return new File([a],name,{type:'image/jpeg'}); }
 async function savePhotos(){
   const st=t=>{ const el=$('#pdlstatus'); if(el)el.textContent=t; };
@@ -506,6 +528,97 @@ async function savePhotos(){
     if(i+20<files.length&&!confirm(`Saved ${Math.min(i+20,files.length)} of ${files.length}. Save the next ${Math.min(20,files.length-i-20)}?`))break; }
   st('Done. On iPhone, choose \u201cSave Images\u201d in the share sheet.');
 }
+
+/* ---------- full-screen photo viewer (v4.11) ----------
+   Swipe left/right (or arrow keys, or the ‹ › buttons) to move, swipe down or ✕ / Esc to close, tap the photo to hide the bars.
+   Moves through a list: the wall's current filter when opened from the wall, otherwise every photo in trip order.
+   Shows the thumbnail at once and swaps in the full photo; the photos either side are fetched ahead. */
+const PV={el:null,ids:[],i:0,full:new Map(),busy:new Set(),drag:null};
+function openViewer(id,list){
+  const ids=(list||tripList()).map(p=>p.id); let i=ids.indexOf(id); if(i<0){ ids.unshift(id); i=0; }
+  PV.ids=ids; PV.i=i;
+  if(!PV.el){ PV.el=document.createElement('div'); PV.el.className='pv'; PV.el.setAttribute('role','dialog'); PV.el.setAttribute('aria-modal','true'); PV.el.setAttribute('aria-label','Photo viewer'); document.body.appendChild(PV.el); }
+  PV.el.hidden=false; PV.el.classList.remove('bare'); document.documentElement.classList.add('pvopen');
+  PV.el.innerHTML=`<div class="pvtop"><div class="pvcap" id="pvcap" aria-live="polite"></div><button type="button" class="pvx" data-pv="close" aria-label="Close">✕</button></div>
+    <div class="pvstage" id="pvstage"><div class="pvtrack" id="pvtrack"></div>
+      <button type="button" class="pvnav prev" data-pv="prev" aria-label="Previous photo">‹</button><button type="button" class="pvnav next" data-pv="next" aria-label="Next photo">›</button></div>
+    <div class="pvact" id="pvact"></div><div class="pvfilm" id="pvfilm"></div>`;
+  pvFilm(); pvShow();
+}
+function closeViewer(){ if(!PV.el||PV.el.hidden)return; PV.el.hidden=true; PV.el.innerHTML=''; document.documentElement.classList.remove('pvopen'); }
+const pvPhoto=id=>R.wall.find(p=>p.id===id);
+const pvSrc=p=>PV.full.get(p.id)||p.thumb;
+async function pvLoad(id){
+  if(!id||PV.full.has(id)||PV.busy.has(id))return; PV.busy.add(id);
+  try{ const s=await FB.get(tp('wallfull',id)); if(s.exists&&s.data.img){ PV.full.set(id,s.data.img); if(PV.full.size>40)PV.full.delete(PV.full.keys().next().value);
+    if(PV.el)$$(`img[data-pid="${CSS.escape(id)}"]`,PV.el).forEach(im=>im.src=s.data.img); } }catch(e){}
+  PV.busy.delete(id);
+}
+function pvSlide(id){ const p=id&&pvPhoto(id); return `<div class="pvslide">${p?`<img src="${pvSrc(p)}" data-pid="${esc(p.id)}" alt="Photo at ${esc(p.town)}${p.rider?' by '+esc(p.rider):''}" draggable="false">`:''}</div>`; }
+function pvShow(){
+  PV.ids=PV.ids.filter(id=>pvPhoto(id)); if(!PV.ids.length)return closeViewer();
+  PV.i=Math.max(0,Math.min(PV.i,PV.ids.length-1));
+  const id=PV.ids[PV.i], p=pvPhoto(id), d=S.days.find(x=>x.id===p.dayId), tr=$('#pvtrack'); if(!tr)return;
+  tr.classList.remove('anim'); tr.style.transform=''; tr.innerHTML=pvSlide(PV.ids[PV.i-1])+pvSlide(id)+pvSlide(PV.ids[PV.i+1]);
+  const when=p.at?new Date(tsMs(p.at)):null;
+  $('#pvcap').innerHTML=`<b>${d?esc(d.label)+' · ':''}${esc(p.town||'')}</b><small>${PV.i+1} of ${PV.ids.length}${p.rider?' · by '+esc(p.rider):''}${when?' · '+esc(shortDate(when))+', '+esc(t12(pad(when.getHours())+':'+pad(when.getMinutes()))):''}</small>`;
+  $('.pvnav.prev',PV.el).disabled=PV.i===0; $('.pvnav.next',PV.el).disabled=PV.i===PV.ids.length-1;
+  pvActions(); $$('#pvfilm button',PV.el).forEach((b,k)=>{ b.classList.toggle('on',k===PV.i); b.setAttribute('aria-current',k===PV.i?'true':'false'); });
+  const on=$('#pvfilm .on',PV.el); if(on)on.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});
+  [0,1,-1,2].forEach(k=>pvLoad(PV.ids[PV.i+k]));
+}
+function pvFilm(){ $('#pvfilm').innerHTML=PV.ids.map((id,k)=>{ const p=pvPhoto(id); return p?`<button type="button" data-pvgo="${k}" aria-label="Photo ${k+1}: ${esc(p.town)}"><img src="${p.thumb}" alt="" loading="lazy"></button>`:''; }).join(''); }
+function pvActions(){
+  const p=pvPhoto(PV.ids[PV.i]); if(!p)return; const n=likeCounts()[p.id]||0, mine=!!(me().likes||{})[p.id];
+  $('#pvact').innerHTML=`${canRide()?`<button type="button" data-pv="like" class="${mine?'liked':''}" aria-pressed="${mine}">${mine?'♥':'♡'} ${n?n+' ':''}${n===1?'like':n?'likes':'Like'}</button>`:n?`<span class="pvn">♥ ${n}</span>`:''}
+    <button type="button" data-pv="share">Save or share</button>${S.stops.some(s=>s.id===p.stopId)?'<button type="button" data-pv="stop">Show the stop</button>':''}
+    ${p.uid===myUid()||S.editor?'<button type="button" data-pv="del" class="del">Delete</button>':''}`;
+}
+function pvGo(dir){ // animate one step, then redraw around the new photo
+  const j=PV.i+dir, tr=$('#pvtrack'); if(tr&&!dir){ tr.classList.add('anim'); tr.style.transform=''; return; }
+  if(!tr||j<0||j>=PV.ids.length){ if(tr){ tr.classList.add('anim'); tr.style.transform=''; } return; }
+  tr.classList.add('anim'); tr.style.transform=`translateX(${dir>0?-66.6667:0}%)`;
+  let done=false; const fin=()=>{ if(done)return; done=true; PV.i=j; pvShow(); };
+  tr.addEventListener('transitionend',fin,{once:true}); setTimeout(fin,320);
+}
+async function pvShare(p){
+  await pvLoad(p.id); const img=PV.full.get(p.id)||p.thumb, f=dataUrlFile(img,`${slug(S.tour.name||S.tourId)}-${slug(p.town||'photo')}.jpg`);
+  if(navigator.canShare&&navigator.canShare({files:[f]})){ try{ await navigator.share({files:[f],title:p.town}); }catch(e){} return; }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(f); a.download=f.name; document.body.appendChild(a); a.click(); a.remove();
+}
+document.addEventListener('click',async e=>{
+  if(!PV.el||PV.el.hidden||!PV.el.contains(e.target))return;
+  const g=e.target.closest('[data-pvgo]'); if(g){ PV.i=+g.dataset.pvgo; pvShow(); return; }
+  const b=e.target.closest('[data-pv]'); if(!b)return; const a=b.dataset.pv, p=pvPhoto(PV.ids[PV.i]);
+  if(a==='close')return closeViewer();
+  if(a==='prev'||a==='next')return pvGo(a==='next'?1:-1);
+  if(!p)return;
+  if(a==='like'){ const m=me(); m.likes={...(m.likes||{})}; m.likes[p.id]?delete m.likes[p.id]:m.likes[p.id]=1; saveMe(m); pvActions(); return; }
+  if(a==='share')return pvShare(p);
+  if(a==='stop'){ closeViewer(); S.tab='roadbook'; sessionStorage.setItem('tru-tab','roadbook'); S.dayOpen.add(p.dayId); render();
+    setTimeout(()=>{ const el=document.getElementById('stop-'+p.stopId); if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1800); } },120); return; }
+  if(a==='del'){ if(!confirm('Delete this photo for everyone?'))return;
+    try{ await FB.batch([{op:'del',path:tp('wallfull',p.id)},{op:'del',path:tp('wall',p.id)}]); R.wall=R.wall.filter(x=>x.id!==p.id); PV.ids=PV.ids.filter(x=>x!==p.id); toast('Photo deleted'); if(PV.ids.length){ pvFilm(); pvShow(); } else closeViewer(); render(); }
+    catch(x){ toast('Couldn’t delete that photo.'); } }
+});
+document.addEventListener('keydown',e=>{ if(!PV.el||PV.el.hidden)return;
+  if(e.key==='ArrowRight'){ e.preventDefault(); pvGo(1); } else if(e.key==='ArrowLeft'){ e.preventDefault(); pvGo(-1); } else if(e.key==='Escape'){ e.preventDefault(); closeViewer(); } });
+// swipe: sideways moves, down closes, a tap hides or shows the bars
+document.addEventListener('pointerdown',e=>{ const st=e.target.closest('#pvstage'); if(!st||e.target.closest('.pvnav')||e.button>0)return;
+  PV.drag={x:e.clientX,y:e.clientY,t:Date.now(),ax:null,id:e.pointerId}; try{st.setPointerCapture(e.pointerId)}catch(x){} });
+document.addEventListener('pointermove',e=>{ const D=PV.drag; if(!D||e.pointerId!==D.id)return; const dx=e.clientX-D.x, dy=e.clientY-D.y;
+  if(!D.ax&&Math.hypot(dx,dy)>8)D.ax=Math.abs(dx)>Math.abs(dy)?'x':'y';
+  const tr=$('#pvtrack'), st=$('#pvstage'); if(!tr)return;
+  if(D.ax==='x'){ const edge=(dx>0&&PV.i===0)||(dx<0&&PV.i===PV.ids.length-1); tr.style.transform=`translateX(calc(-33.3333% + ${edge?dx/3:dx}px))`; }
+  if(D.ax==='y'&&dy>0){ st.style.transform=`translateY(${dy}px)`; PV.el.style.background=`rgba(0,0,0,${Math.max(.3,1-dy/400)})`; } });
+function pvEnd(e){ const D=PV.drag; if(!D||(e&&e.pointerId!==D.id))return; PV.drag=null; const st=$('#pvstage'); if(!st)return;
+  const dx=e.clientX-D.x, dy=e.clientY-D.y, fast=Date.now()-D.t<300, w=st.offsetWidth;
+  st.style.transform=''; PV.el.style.background='';
+  if(D.ax==='x'){ if(dx<-w*.18||(fast&&dx<-40))pvGo(1); else if(dx>w*.18||(fast&&dx>40))pvGo(-1); else pvGo(0); return; }
+  if(D.ax==='y'){ if(dy>110||(fast&&dy>60))closeViewer(); return; }
+  if(!D.ax&&e.type==='pointerup')PV.el.classList.toggle('bare');
+}
+document.addEventListener('pointerup',pvEnd); document.addEventListener('pointercancel',pvEnd);
 
 /* ---------- Wrapped (picture card) ---------- */
 const WR={W:1080,H:1350,bg:'#1B2530',ink:'#F4F5F2',mut:'#9AA6B0',vis:'#F2C200',red:'#F06A5C',d:['#4FA6F0','#F59A3A','#3CC57F','#AC86EE','#F06A5C']};
@@ -547,7 +660,7 @@ async function wrDraw(kind){
     card(72,834,456,190,'Pie champion',A.rows[0]&&A.rows[0].t?A.rows[0].name:null,A.rows[0]&&A.rows[0].t?`${A.rows[0].t} bakeries`:'');
     card(552,834,456,190,'Koala Court: most wanted',wanted&&wanted[0],wanted?`${wanted[1].tot} points`:'',WR.red);
   }
-  const ph=R.wall.filter(p=>kind!=='me'||p.uid===myUid()).slice(-4);
+  const lk=likeCounts(), ph=kind==='me'?R.wall.filter(p=>p.uid===myUid()).sort(tripOrder).slice(-4):R.wall.slice().sort((a,b)=>(lk[b.id]||0)-(lk[a.id]||0)||tsMs(b.at)-tsMs(a.at)).slice(0,4); // crew card: the most-loved photos
   for(let i=0;i<ph.length;i++){ const im=await new Promise(r=>{ const k=new Image(); k.onload=()=>r(k); k.onerror=()=>r(null); k.src=ph[i].thumb; }); if(!im)continue;
     const X=72+i*240, Y=1060, s=216, sc=Math.max(s/im.width,s/im.height); x.save(); x.beginPath(); x.rect(X,Y,s,s); x.clip(); x.drawImage(im,X+(s-im.width*sc)/2,Y+(s-im.height*sc)/2,im.width*sc,im.height*sc); x.restore(); }
   x.fillStyle=WR.mut; x.font=Bf(500,22); x.fillText('Bike Tours R Us',72,WR.H-40);
@@ -572,7 +685,8 @@ document.addEventListener('click',async e=>{
     FB.set(tp('live','pos'),{dayId,stopId,opt:d&&d.alt?(S.opt[d.id]||1):null,at:FB.now(),by:myName()}).then(()=>toast(`Crew position set: ${s?s.town:''}`)).catch(()=>toast('Couldn\u2019t set the position.')); return; }
   const vt=t.closest('[data-vote]'); if(vt){ const id=vt.dataset.vote, d=S.days.find(x=>x.id===id), m=me(); if(m.votes[id]===d.best.title)delete m.votes[id]; else m.votes[id]=d.best.title; saveMe(m); return; }
   const dop=t.closest('[data-dayopen]'); if(dop){ const id=dop.dataset.dayopen; S.dayOpen.has(id)?S.dayOpen.delete(id):S.dayOpen.add(id); render(); return; }
-  const ph=t.closest('[data-photo]'); if(ph){ openPhoto(ph.dataset.photo); return; }
+  const ph=t.closest('[data-photo]'); if(ph){ openViewer(ph.dataset.photo,ph.closest('.wgrid')?wallList():null); return; }
+  const wf=t.closest('[data-wallf]'); if(wf){ S.wallF=S.wallF===wf.dataset.wallf&&wf.dataset.wallf!=='all'?'all':wf.dataset.wallf; render(); return; }
   const pd=t.closest('[data-photodel]'); if(pd){ if(!confirm('Delete this photo?'))return; const id=pd.dataset.photodel; try{ await FB.batch([{op:'del',path:tp('wallfull',id)},{op:'del',path:tp('wall',id)}]); closeDlg(); toast('Photo deleted'); }catch(x){ toast('Couldn\u2019t delete it.'); } return; }
   const ab=t.closest('[data-addbak]'); if(ab){ const town=ab.dataset.addbak; dlg(`<h3>Add a bakery</h3><p class="muted" style="margin:0 0 8px">Found somewhere good in ${esc(town)}? Add it so the crew can tick and score it.</p>${field('Name','xname','',{ph:'e.g. The Pie Shop'})}${field('What to order','xmust','',{ph:'e.g. Steak and mushroom pie'})}${field('Why (optional)','xwhy','',{area:true,max:300})}<div class="dbtns"><button type="button" class="btn primary" data-ride="addbak" data-town="${esc(town)}">Add</button><button type="button" class="btn" data-close>Cancel</button></div>`); return; }
   const xd=t.closest('[data-xdel]'); if(xd){ if(!confirm('Remove this bakery you added?'))return; FB.del(tp('extras',xd.dataset.xdel)).catch(()=>toast('Couldn\u2019t remove it.')); return; }
