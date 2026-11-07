@@ -26,13 +26,13 @@ function rideWatch(id){
   rideReset();
   const quiet=()=>{};
   return [
-    FB.watchCol(`tours/${id}/riders`,docs=>{ R.riders={}; docs.forEach(d=>{ if(d.exists)R.riders[d.id]=d.data; }); render(); },quiet),
+    FB.watchCol(`tours/${id}/riders`,docs=>{ R.riders={}; docs.forEach(d=>{ if(d.exists)R.riders[d.id]=d.data; }); markSeen(id); render(); },quiet),
     FB.watchDoc(`tours/${id}/live/pos`,d=>{ R.live=d.exists?d.data:null; render(); },quiet),
     FB.watchCol(`tours/${id}/wall`,docs=>{ R.wall=docs.filter(d=>d.exists).map(d=>({id:d.id,...d.data})); render(); },quiet),
     FB.watchCol(`tours/${id}/extras`,docs=>{ R.extras=docs.filter(d=>d.exists).map(d=>({id:'x:'+d.id,docId:d.id,extra:true,...d.data})); render(); },quiet)
   ];
 }
-const blankMe=()=>({name:'',email:'',ticks:{},ratings:{},quiz:{},votes:{},kc:[],kcj:[]});
+const blankMe=()=>({name:'',email:'',ticks:{},ratings:{},quiz:{},votes:{},kc:[],kcj:[],check:{}});
 const myUid=()=>S.user&&S.user.uid;
 function me(){ // name from this tour's crew list; otherwise keep the name already saved (e.g. imported from 2026)
   const m=R.riders[myUid()], c=(S.tour&&S.tour.crew||[]).find(x=>x.email&&x.email.toLowerCase()===S.user.email);
@@ -183,25 +183,115 @@ function rideDayDone(day){
 }
 
 /* ---------- Today ---------- */
-function rideToday(){
-  const T=S.tour, days=daysSorted(), t=todayIso();
-  const dated=days.map(d=>({d,date:dateFor(d)})).filter(x=>x.date);
-  if(!T.startDate||!dated.length) return `<div class="tdhead"><span class="tdday">${esc(T.name)}</span><h2>Dates to be set</h2><p class="muted">${S.editor?'Set the start date in the Plan tab.':'Check back once Justin and Tony set the dates.'}</p></div>`;
-  const now=dated.filter(x=>iso(x.date)===t), group=dated.filter(x=>x.d.kind!=='solo');
-  const mineSolo=x=>x.d.kind!=='solo'||!x.d.who||new RegExp('\\b'+myName().replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i').test(x.d.who)||S.editor;
-  const todays=now.filter(mineSolo);
-  if(todays.length) return todays.map(({d})=>todayDay(d)).join('');
-  const firstG=group[0], lastG=group[group.length-1];
-  if(firstG&&iso(firstG.date)>t){
-    const n=Math.round((new Date(iso(firstG.date))-new Date(t))/864e5);
-    return `<div class="tdhead" style="--c:var(--${esc(firstG.d.colour||'blue')})"><span class="tdday">${n===1?'Tour starts tomorrow':`${n} days to go`}</span><h2>${esc(firstG.d.label)}: ${esc(firstG.d.title)}</h2><p class="muted">${esc(longDate(firstG.date))}${T.meet?`. ${esc(T.meet)}`:''}</p></div>
-      <div class="tdwx" style="--c:var(--${esc(firstG.d.colour||'blue')})">${dayWx(firstG.d)}</div>
-      <div class="tdcard"><h3 class="tdh">Before you go</h3><p style="margin:0">Check the tour brief at the bottom of the roadbook for fuel, beds and the tool kit.</p><p style="margin:10px 0 0"><button type="button" class="btn" data-tab-go="roadbook">See the whole tour</button></p></div>`;
-  }
-  return `<div class="tdhead"><span class="tdday">${esc(T.name)}</span><h2>That\u2019s a wrap</h2><p class="muted">${lastG?esc(longDate(lastG.date)):''}</p></div>
-    <div class="tdcard"><h3 class="tdh">${esc(T.name)} Wrapped</h3><div class="planbar"><button class="btn primary" type="button" data-wrapped="me">My Wrapped</button><button class="btn" type="button" data-wrapped="crew">Crew Wrapped</button></div></div>
-    <p><button type="button" class="btn" data-tab-go="roadbook">Look back at the roadbook</button></p>`;
+/* Home (Today tab): a personal "You" card, then a main card that changes with the tour's timeline:
+   more than 7 days out (countdown, route, who's coming), the final week (meet, outlook, pre-ride checklist),
+   ride days (live tracker), and afterwards (Wrapped, awards, photos). */
+const CHECK_DEFAULT=['Bike serviced','Tyres and pressures checked','Chain lubed','Comms paired and charged','Puncture kit and tools packed','Read the tour brief','Fuel up the night before'];
+const checkItems=()=>{ const c=S.tour&&S.tour.checklist; return Array.isArray(c)&&c.length?c:CHECK_DEFAULT; };
+const checkKey=t=>slug(t).slice(0,40)||'item';
+function checkDone(v){ const c=(v&&v.check)||{}; return checkItems().filter(t=>c[checkKey(t)]).length; }
+const firstName=()=>String(me().name||'').split(/\s+/)[0]||'there';
+function tourStage(){ // {stage:'nodates'|'before'|'week'|'ride'|'after', days, firstG, lastG, todays}
+  const t=todayIso(), dated=daysSorted().map(d=>({d,date:dateFor(d)})).filter(x=>x.date);
+  if(!S.tour.startDate||!dated.length)return {stage:'nodates'};
+  const group=dated.filter(x=>x.d.kind!=='solo'), firstG=group[0]||dated[0], lastG=group[group.length-1]||dated[dated.length-1];
+  const mineSolo=x=>x.d.kind!=='solo'||!x.d.who||new RegExp('\\b'+String(me().name).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i').test(x.d.who)||S.editor;
+  const todays=dated.filter(x=>iso(x.date)===t).filter(mineSolo).map(x=>x.d);
+  if(todays.length)return {stage:'ride',todays,firstG,lastG};
+  if(iso(firstG.date)>t){ const days=Math.round((new Date(iso(firstG.date))-new Date(t))/864e5); return {stage:days<=7?'week':'before',days,firstG,lastG}; }
+  if(iso(lastG.date)>=t)return {stage:'ride',todays:[],firstG,lastG}; // a rest day in the middle
+  return {stage:'after',firstG,lastG};
 }
+function myRoom(dayIds){ const nm=me().name;
+  for(const id of dayIds){ for(const n of nightsOf(id)){ const r=(n.rooms||[]).find(x=>(x.who||[]).includes(nm)); if(r){ const d=S.days.find(x=>x.id===id);
+    return {title:`${r.type||'Room'}${r.who.length>1?' with '+r.who.filter(x=>x!==nm).join(', '):', just you'}`,where:`${d?d.label+', ':''}${n.place||''}`}; } } }
+  return null; }
+function unreadAnn(){ const a=S.anns[0]; if(!a)return null; let seen=''; try{seen=localStorage.getItem(annSeenKey())||''}catch(e){} return seen===a.id?null:a; }
+function youCard(st){
+  const m=me(), ids=tourBakIds(), mine=ids.filter(id=>m.ticks[id]).length, items=[];
+  const it=(b,s)=>items.push(`<div><b>${b}</b>${s}</div>`);
+  if(st.stage==='ride'&&st.todays.length){
+    const d=st.todays[0], room=myRoom([d.id]); it(room?esc(room.title):'No room listed',room?'Tonight, '+esc(room.where.split(', ').pop()):'Check the roadbook for tonight');
+    const today=dayBakIds(d).filter(id=>m.ticks[id]).length; it(`${mine} ${mine===1?'bakery':'bakeries'}`,`${today} ticked today`);
+    const night=courtNights().find(n=>n.dayId===d.id);
+    if(night){ const used=(m.kc||[]).filter(c=>c.night===d.id).reduce((a,c)=>a+c.pts,0); it(`${Math.max(0,5-used)} of 5 points`,'left for Koala Court tonight'); }
+    const against=kcAll().filter(c=>c.to===m.name).length; it(`${against} charge${against===1?'':'s'}`,'against you so far');
+  } else if(st.stage==='after'){
+    const rows=boardRows(), pos=rows.findIndex(r=>r.id===myUid());
+    it(`${mine} ${mine===1?'bakery':'bakeries'}`,pos>=0&&mine?`${ordinal(pos+1)} on the board`:'on the board');
+    const {t}=courtTotals(), ct=Object.entries(t).sort((a,b)=>b[1].tot-a[1].tot), cp=ct.findIndex(([n])=>n===m.name);
+    it(`${cp>=0?ct[cp][1].tot:0} points`,cp>=0?`Koala Court, ${ordinal(cp+1)} most wanted`:'Koala Court: a clean record');
+    const q=Object.values(m.quiz||{}).reduce((a,x)=>a+(x&&x.s||0),0), qn=Object.values(m.quiz||{}).reduce((a,x)=>a+(x&&x.n||0),0); it(qn?`${q} of ${qn}`:'No trivia','trivia');
+    const ph=R.wall.filter(p=>p.uid===myUid()).length; it(`${ph} photo${ph===1?'':'s'}`,'on the wall');
+  } else {
+    const room=myRoom(groupDays().map(d=>d.id)); it(room?esc(room.title):'No room yet',room?esc(room.where):'Beds still being booked');
+    if(st.stage==='week'){ const n=checkItems().length, k=checkDone(m); it(`${k} of ${n} ready`,'your pre-ride checklist'); }
+    else it(canRide()?'On the crew':'Not on the crew list',esc(S.tour.name||''));
+  }
+  const a=unreadAnn();
+  return `<div class="you"><div class="lbl">${st.stage==='after'?'Your tour':'You'}</div><div class="ygrid">${items.join('')}</div>
+    ${a?`<div class="unread"><span class="dot"></span><span><b>${esc(a.by||'Update')}:</b> ${esc(a.text)} <button type="button" class="linkb" data-anndismiss="${esc(a.id)}">Got it</button></span></div>`:''}</div>`;
+}
+const ordinal=n=>n+(n%100>=11&&n%100<=13?'th':['th','st','nd','rd'][n%10]||'th');
+function routeList(){ return `<div class="days">${daysSorted().map(d=>`<div style="--c:var(--${esc(d.colour||'blue')})"><i></i><span>${esc(d.label)} \u00b7 ${esc(d.title||'')}</span><b>${d.km?esc(d.km)+' km':'\u2014'}</b></div>`).join('')}</div>`; }
+function whosComing(){
+  const seen=new Set(Object.values(R.riders).map(v=>String(v.email||'').toLowerCase()).filter(Boolean)), names=new Set(Object.values(R.riders).map(v=>v.name));
+  const crew=(S.tour.crew||[]).slice().sort((a,b)=>String(a.name).localeCompare(b.name));
+  if(!crew.length)return '';
+  return `<div class="tdcard"><h3 class="tdh">Who\u2019s coming</h3><div class="whochips">${crew.map(c=>{ const on=(c.email&&seen.has(c.email.toLowerCase()))||names.has(c.name);
+    return `<span class="${on?'':'no'}" title="${on?'Has opened the app':'Hasn\u2019t opened the app yet'}">${esc(c.name)}${on?'':'?'}</span>`; }).join('')}</div><p class="muted" style="font-size:12.5px;margin:6px 0 0">Faded names haven\u2019t opened this tour in the app yet.</p></div>`;
+}
+function miniOutlook(){ // one tile per riding day, from the first stop's daily forecast
+  if(!WX||WX.tour!==S.tourId){ if(wxWanted()&&!wxBusy&&!wxErr)setTimeout(()=>wxFetch(false),0); return '<p class="wxmuted">The forecast appears about 16 days out.</p>'; }
+  const tiles=groupDays().map(d=>{ const date=dateFor(d), s=stopsOf(d.id).find(hasLL), W=s&&wxOf(s), D=W&&date&&W.D[iso(date)];
+    const wd=date?date.toLocaleDateString('en-AU',{weekday:'short'}):d.label;
+    if(!D)return `<div>${esc(wd)}<b>\u2014</b>Not yet</div>`; const [c,mx,mn,pp,gx]=D, [l,ic]=wxc(c);
+    return `<div>${esc(wd)}<b>${ic} ${Math.round(mn)}\u2013${Math.round(mx)}\u00b0</b>${gx>=45?'Gusty':(pp>=20||c>=51)?(pp||0)+'% rain':'Dry'}</div>`; });
+  return `<div class="wxmini">${tiles.join('')}</div>`;
+}
+function checklistCard(){
+  if(!canRide())return ''; const m=me(), c=m.check||{};
+  return `<div class="tdcard"><h3 class="tdh">Before you go</h3><ul class="check">${checkItems().map(t=>{ const k=checkKey(t), on=!!c[k];
+    return `<li><button type="button" class="box${on?' on':''}" data-check="${esc(k)}" aria-pressed="${on}" aria-label="${esc(t)}">${on?'\u2713':''}</button><span>${esc(t)}</span></li>`; }).join('')}</ul></div>`;
+}
+function rideToday(){
+  markSeen(S.tourId);
+  const T=S.tour, st=tourStage();
+  if(st.stage==='nodates') return `<p class="hi">G\u2019day ${esc(firstName())}</p>${youCard({stage:'before'})}<div class="tdhead"><span class="tdday">${esc(T.name)}</span><h2>Dates to be set</h2><p class="muted">${S.editor?'Set the start date in the Plan tab.':'Check back once Justin and Tony set the dates.'}</p></div>${whosComing()}`;
+  const fcol=`var(--${esc(st.firstG.d.colour||'blue')})`;
+  if(st.stage==='before'){
+    const gd=groupDays(), km=gd.reduce((a,d)=>a+(parseFloat(String(d.km||'').replace(/[^\d.]/g,''))||0),0);
+    return `<p class="hi">G\u2019day ${esc(firstName())}</p><p class="hisub">${esc(T.name)} is taking shape.</p>${youCard(st)}
+      <div class="tdmain" style="--c:${fcol}"><span class="tag">Next tour</span><h2>${st.days} days to go</h2><p class="muted" style="margin:0">${esc(longDate(st.firstG.date))}${T.meet?' \u00b7 '+esc(T.meet):''}</p>
+        <div class="stats"><div>${gd.length}<small>riding days</small></div><div>${km?Math.round(km).toLocaleString():'\u2014'}<small>km</small></div><div>${tourBakIds().length}<small>bakeries</small></div></div></div>
+      <div class="tdcard"><h3 class="tdh">The route so far</h3>${routeList()}<p style="margin:8px 0 0"><button type="button" class="linkb" data-tab-go="roadbook">Open the roadbook</button></p></div>
+      ${whosComing()}`;
+  }
+  if(st.stage==='week'){
+    return `<p class="hi">G\u2019day ${esc(firstName())}</p><p class="hisub">${st.days===1?'Tour starts tomorrow.':`${st.days} sleeps. Time to get the bike ready.`}</p>${youCard(st)}
+      <div class="tdmain" style="--c:${fcol}"><span class="tag">${esc(st.firstG.d.label)}, ${esc(longDate(st.firstG.date))}</span><h2>${st.days===1?'Tomorrow':`${st.days} days to go`}</h2><p class="muted" style="margin:0">${esc(T.meet||st.firstG.d.title||'')}</p></div>
+      <div class="tdcard"><h3 class="tdh">Ride-day outlook</h3>${miniOutlook()}</div>
+      ${checklistCard()}
+      <p class="tdfoot"><button type="button" class="linkb" data-tab-go="roadbook">Read the tour brief in the roadbook</button></p>`;
+  }
+  if(st.stage==='ride'){
+    if(!st.todays.length) return `<p class="hi">Rest day, ${esc(firstName())}</p>${youCard(st)}<div class="tdmain" style="--c:${fcol}"><span class="tag">${esc(T.name)}</span><h2>No riding today</h2><p class="muted" style="margin:0">Back on the bikes soon. The full plan is in the roadbook.</p></div>`;
+    const d=st.todays[0];
+    return `<p class="hi">${esc(d.label)}, ${esc(firstName())}</p>${youCard(st)}${st.todays.map(todayDay).join('')}`;
+  }
+  const rows=boardRows(), A=awards(), b=A.B, {t}=courtTotals(), wanted=Object.entries(t).filter(([,v])=>v.tot>0).sort((x,y)=>y[1].tot-x[1].tot)[0];
+  const ph=R.wall.slice().sort((x,y)=>tsMs(y.at)-tsMs(x.at)).slice(0,4);
+  return `<p class="hi">What a ride, ${esc(firstName())}</p><p class="hisub">${esc(T.name)} is in the books.</p>${youCard(st)}
+    <div class="tdmain" style="--c:var(--purple)"><span class="tag">That\u2019s a wrap</span><h2>Your Wrapped is ready</h2><p class="muted" style="margin:0">A picture card of your tour to save or share.</p>
+      <div class="planbar"><button class="btn primary" type="button" data-wrapped="me">My Wrapped</button><button class="btn" type="button" data-wrapped="crew">Crew Wrapped</button></div></div>
+    <div class="tdcard"><h3 class="tdh">The awards</h3><div class="awmini">
+      <div>Best bakery<b>${A.bo?esc(b(A.bo).name):'Not judged'}</b></div><div>Best pie<b>${A.bp?esc(b(A.bp).name):'Not judged'}</b></div>
+      <div>Pie champion<b>${rows[0]&&rows[0].t?esc(rows[0].name):'Nobody'}</b></div><div>Most wanted<b>${wanted?esc(wanted[0]):'Nobody'}</b></div></div>
+      <p style="margin:8px 0 0"><button type="button" class="linkb" data-tab-go="bakeries">See the full board</button></p></div>
+    ${R.wall.length?`<div class="tdcard"><h3 class="tdh">Photo wall</h3><span class="muted" style="font-size:13px">${R.wall.length} photos from the crew</span><div class="phmini">${ph.map(p=>`<button type="button" class="thumb" data-photo="${esc(p.id)}"><img src="${p.thumb}" alt=""></button>`).join('')}</div><p style="margin:8px 0 0"><button type="button" class="linkb" data-tab-go="crew">Open the photo wall</button></p></div>`:''}`;
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-check]'); if(!b)return; const m=me(); m.check=Object.assign({},m.check); const k=b.dataset.check; if(m.check[k])delete m.check[k]; else m.check[k]=true; saveMe(m); });
+
 function todayDay(d){
   const col=`var(--${esc(d.colour||'blue')})`, opt=optFor(d), times=dayTimes(d,opt), L=liveOn(d);
   let i=L?times.findIndex(x=>x.s.id===L.stopId):-1; const started=i>=0; if(i<0)i=0;
@@ -571,3 +661,29 @@ async function importCrew2026(){
 }
 document.addEventListener('click',e=>{ if(e.target.closest('[data-ride="import26crew"]'))importCrew2026(); });
 function crew2026Hint(){ return S.tourId==='2026'&&S.editor&&!Object.keys(R.riders).length?`<div class="notice">The 2026 results are still in the old crew app. <div class="planbar"><button type="button" class="btn small primary" data-ride="import26crew">Bring in 2026 crew results</button></div></div>`:''; }
+
+/* "Who's coming": a rider's document is created (or gets their email) the first time they open a tour they're on */
+let seenFor=null;
+function markSeen(id){
+  if(seenFor===id||S.tourId!==id||!S.user||!S.tour)return;
+  const onCrew=(S.tour.memberEmails||[]).includes(S.user.email), mine=R.riders[myUid()];
+  if(!onCrew)return; seenFor=id; // check again later if they're added to the crew after opening
+  if(!mine||!mine.email||mine.name!==me().name) saveMe(me());
+}
+
+/* Plan > Brief: the pre-ride checklist riders tick on the Today screen in the final week, and who's ready */
+function planChecklist(){
+  const items=checkItems(), custom=Array.isArray(S.tour.checklist)&&S.tour.checklist.length;
+  const people=(S.tour.crew||[]).map(c=>{ const v=Object.values(R.riders).find(r=>(c.email&&String(r.email||'').toLowerCase()===c.email.toLowerCase())||r.name===c.name); return {name:c.name,done:v?checkDone(v):null}; })
+    .sort((a,b)=>(b.done??-1)-(a.done??-1)||String(a.name).localeCompare(b.name));
+  return `<h2>Pre-ride checklist</h2><div class="card"><p class="muted" style="margin:0 0 6px;font-size:14px">Riders tick these off on the Today screen in the week before the tour.${custom?'':' These are the standard items; edit them to suit this tour.'}</p>
+    <ul class="check">${items.map(t=>`<li><span class="box"></span><span>${esc(t)}</span></li>`).join('')}</ul>
+    <div class="planbar"><button type="button" class="btn small" data-ride="editcheck">Edit the list</button></div></div>
+    <h2>Who’s ready</h2><div class="card">${people.length?people.map(p=>`<div class="prow"><div class="pmain"><b>${esc(p.name)}</b><small>${p.done==null?'Hasn’t opened the app for this tour yet':`${p.done} of ${items.length} ticked`}</small></div>${p.done!=null&&p.done===items.length?'<span class="pill ok">Ready</span>':''}</div>`).join(''):'<p class="muted">Add riders to the crew list first.</p>'}</div>`;
+}
+document.addEventListener('click',async e=>{
+  if(e.target.closest('[data-ride="editcheck"]')) return dlg(`<h3>Pre-ride checklist</h3>${field('One item per line','checklist',checkItems().join('\n'),{area:true,max:1500})}<p class="muted" style="font-size:13px;margin:0 0 6px">Riders keep their ticks if an item’s wording stays the same.</p><div class="dbtns"><button type="button" class="btn primary" data-ride="savecheck">Save</button><button type="button" class="btn" data-close>Cancel</button></div>`);
+  if(e.target.closest('[data-ride="savecheck"]')){ const raw=($('#dlg [name="checklist"]')||{}).value||''; const items=lines(raw).slice(0,30);
+    if(!items.length){ dlgError('Add at least one item.'); return; }
+    return save(()=>FB.update(`tours/${S.tourId}`,{checklist:items,...stamp()}),'Checklist saved'); }
+});

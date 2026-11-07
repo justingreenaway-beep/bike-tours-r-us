@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='4.1';
+const APP_VERSION='4.2';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -265,7 +265,7 @@ function viewRoadbook(){
 document.addEventListener('click',e=>{ const o=e.target.closest('[data-opt]'); if(o){const [id,v]=o.dataset.opt.split('|');S.opt[id]=+v;render();} });
 
 /* Today */
-function viewToday(){ return annBanner()+(RIDE()?rideToday():todayBody()); }
+function viewToday(){ return RIDE()?rideToday():annBanner()+todayBody(); }
 function todayBody(){
   const days=daysSorted(), today=iso(new Date());
   const dated=days.map(d=>({d,date:dateFor(d)})).filter(x=>x.date);
@@ -520,7 +520,7 @@ function planBrief(){
   const B=S.tour.brief||[];
   return `<h2>Tour brief</h2><div class="card"><p class="muted" style="margin:0 0 6px;font-size:14px">The cards at the bottom of the roadbook: meeting point, fuel rule, cornerman, kit and so on.</p>
     ${B.map((c,i)=>`<div class="prow"><div class="pmain"><b>${esc(c.h||'Untitled')}</b><small>${esc([...(c.p||[]),...(c.li||[])].join(' ').slice(0,90))}</small></div><div class="pact"><button type="button" class="ib" data-mvarr="brief|${i}|-1" aria-label="Move up"${i===0?' disabled':''}>↑</button><button type="button" class="ib" data-mvarr="brief|${i}|1" aria-label="Move down"${i===B.length-1?' disabled':''}>↓</button><button type="button" class="ib" data-editbrief="${i}" aria-label="Edit card">✎</button></div></div>`).join('')||'<p class="muted">No brief yet.</p>'}
-    <div class="planbar"><button type="button" class="btn primary small" data-act="addbrief">+ Add card</button>${!B.length&&S.tours.some(t=>t.id!==S.tourId&&(t.brief||[]).length)?'<button type="button" class="btn small" data-act="copybrief">Copy from another tour</button>':''}</div></div>`;
+    <div class="planbar"><button type="button" class="btn primary small" data-act="addbrief">+ Add card</button>${!B.length&&S.tours.some(t=>t.id!==S.tourId&&(t.brief||[]).length)?'<button type="button" class="btn small" data-act="copybrief">Copy from another tour</button>':''}</div></div>`+(RIDE()?planChecklist():'');
 }
 function briefDialog(i){
   const isNew=i==null, c=isNew?{}:(S.tour.brief||[])[i]||{};
