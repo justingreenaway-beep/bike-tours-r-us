@@ -531,3 +531,5 @@ details.navgo[open] summary{background:var(--c,var(--ink));color:#fff}
 .navdirect{text-decoration:none}
 details.navmore summary::before{content:none}
 ul.plist{margin:0;padding-left:18px;font-size:14px}
+
+@media (max-width:360px){.brand{font-size:16.5px}.topin{gap:8px}}
