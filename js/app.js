@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='4.6';
+const APP_VERSION='4.7';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -309,7 +309,7 @@ function viewPlan(){
    <h2>Tour</h2><div class="card"><div class="prow" style="border:0;padding-top:0"><div class="pmain"><b>${esc(T.name||T.id)}</b><small>${T.startDate?`Day 1: ${esc(longDate(dateFor({offset:0})))}`:'No start date yet'}${T.subtitle?` \u2022 ${esc(T.subtitle)}`:''}</small></div><div class="pact"><button type="button" class="btn small" data-act="edittour"${L?' disabled':''}>Edit</button></div></div>
      <div class="statusrow" role="group" aria-label="Who can see it">${[['draft','Draft'],['published','Published'],['locked','Locked']].map(([k,l])=>`<button type="button" class="btn small" data-status="${k}" aria-pressed="${T.status===k}">${l}</button>`).join('')}</div>
      <p class="muted" style="font-size:13.5px;margin:4px 0 0">${T.status==='draft'?'Draft: only you and the other editor can see it.':T.status==='published'?'Published: everyone on the crew list can see it.':'Locked: visible to the crew, route frozen.'}</p>${edited(T)}
-     <div class="planbar"><button type="button" class="btn small" data-act="newtour">New tour</button>${has2026?'':'<button type="button" class="btn small" data-act="import2026">Bring in the 2026 tour</button>'}<button type="button" class="btn small" data-act="announce">Send the crew an update</button>${S.tourId==='2026'&&RIDE()?'<button type="button" class="btn small" data-ride="import26crew">Bring in 2026 crew results</button>':''}</div>
+     <div class="planbar"><button type="button" class="btn small" data-act="newtour">New tour</button>${has2026?'':'<button type="button" class="btn small" data-act="import2026">Bring in the 2026 tour</button>'}<button type="button" class="btn small" data-act="announce">Send the crew an update</button><button type="button" class="btn small danger" data-act="deltour">Delete tour</button>${S.tourId==='2026'&&RIDE()?'<button type="button" class="btn small" data-ride="import26crew">Bring in 2026 crew results</button>':''}</div>
      ${S.anns.length?`<details class="sent"><summary>Updates sent (${S.anns.length})</summary>${S.anns.map(a=>`<div class="prow"><div class="pmain"><small>${a.kind==='publish'?'Published':'Update'} by ${esc(a.by||'?')}, ${ago(a.at)}</small>${esc(a.text)}</div><div class="pact"><button type="button" class="ib" data-del="ann|${esc(a.id)}" aria-label="Delete update">✕</button></div></div>`).join('')}</details>`:''}</div>`;
   const secs=[['route','Route'],['bakeries','Bakeries'],['nights','Nights'],['crew','Crew'],['brief','Brief']];
   if(!secs.some(s=>s[0]===S.planSec))S.planSec='route';
@@ -751,6 +751,8 @@ document.addEventListener('click',async e=>{
   if(act==='recheck'){ toast('Checking\u2026'); return enter(S.user); }
   if(act==='signout'){ closeDlg(); S.unsub.forEach(f=>{try{f()}catch(x){}}); await FB.signOut(); return }
   if(act==='newtour')return newTourDialog();
+  if(act==='deltour')return deleteTourDialog();
+  if(act==='deltourgo')return deleteTour();
   if(act==='import2026')return import2026();
   if(act==='edittour')return editTourDialog();
   if(act==='addday')return dayDialog();
@@ -959,3 +961,37 @@ else{
 }
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start); else start();
+
+/* ---------- delete a tour (editors) ----------
+   Firestore doesn't delete sub-collections with their parent, so each one is listed and deleted in batches first. */
+const TOUR_PARTS=['days','stops','bakeries','nights','announcements','riders','live','wall','wallfull','extras'];
+async function deleteTourDialog(){
+  const T=S.tour; if(!T||!S.editor)return;
+  if(T.status==='locked') return dlg(`<h3>Delete ${esc(T.name||T.id)}</h3><p>This tour is locked. Unlock it first (tap Draft or Published above) if you really want to delete it.</p><div class="dbtns"><button type="button" class="btn" data-close>OK</button></div>`);
+  dlg(`<h3>Delete ${esc(T.name||T.id)}</h3><p class="muted">Counting what’s in it…</p>`);
+  const counts={}; try{ await Promise.all(TOUR_PARTS.map(async c=>{ counts[c]=(await FB.list(tp(c))).length; })); }catch(e){}
+  if(!$('#dlg').open)return;
+  const n=k=>counts[k]||0, list=[[n('days'),'day'],[n('stops'),'stop'],[n('bakeries'),'bakery','bakeries'],[n('nights'),'bed'],[n('riders'),'rider’s results','riders’ results'],[n('wall'),'photo'],[n('announcements'),'update'],[n('extras'),'crew bakery find']]
+    .filter(([c])=>c).map(([c,one,many])=>`${c} ${c===1?one:(many||one+'s')}`);
+  dlg(`<h3>Delete ${esc(T.name||T.id)}</h3>
+    <p>This permanently deletes the tour and everything in it${list.length?`: <b>${list.join(', ')}</b>`:''}. Riders on its crew list lose it too. <b>It can’t be undone.</b></p>
+    ${T.status==='published'?'<p class="notice" style="margin:0 0 10px">This tour is published, so the crew can see it right now.</p>':''}
+    ${field(`Type the tour’s name to confirm: ${esc(T.name||T.id)}`,'confirmname','',{ph:T.name||T.id})}
+    <div class="dbtns"><button type="button" class="btn danger" data-act="deltourgo">Delete for good</button><button type="button" class="btn" data-close>Cancel</button></div>`);
+}
+async function deleteTour(){
+  const T=S.tour; if(!T||!S.editor)return;
+  if(val('confirmname').trim().toLowerCase()!==String(T.name||T.id).trim().toLowerCase()){ dlgError('That doesn’t match the tour’s name.'); return; }
+  const id=T.id, btn=$('[data-act="deltourgo"]'); if(btn)btn.disabled=true;
+  dlg(`<h3>Deleting ${esc(T.name||id)}</h3><p class="muted" id="delmsg">Starting…</p>`);
+  S.unsub.forEach(f=>{try{f()}catch(e){}}); S.unsub=[]; // stop listening before the data disappears
+  try{
+    for(const c of TOUR_PARTS){ const docs=await FB.list(`tours/${id}/${c}`); const m=$('#delmsg'); if(m)m.textContent=`Deleting ${c} (${docs.length})…`;
+      const step=c==='wallfull'?20:400; for(let i=0;i<docs.length;i+=step) await FB.batch(docs.slice(i,i+step).map(d=>({op:'del',path:`tours/${id}/${c}/${d.id}`}))); }
+    await FB.del(`tours/${id}`);
+    try{ if(localStorage.getItem('tru-tour')===id)localStorage.removeItem('tru-tour'); localStorage.removeItem('tru-wx-'+id); localStorage.removeItem('tru-ann-'+id); }catch(e){}
+    S.tours=S.tours.filter(t=>t.id!==id); await loadTours();
+    const next=pickDefaultTour(); if(next)openTour(next.id); else { S.tourId=null; S.tour=null; renderTourSelect(); render(); }
+    closeDlg(); toast(`${T.name||id} deleted`);
+  }catch(e){ dlg(`<h3>Couldn’t finish</h3><p class="err">${e&&e.code==='permission-denied'?'Firebase didn’t allow it. Only editors can delete tours.':'Something went wrong part way. Check your signal and try again; it carries on from where it stopped.'}</p><div class="dbtns"><button type="button" class="btn" data-close>Close</button></div>`); openTour(id); }
+}
