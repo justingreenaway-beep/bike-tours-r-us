@@ -607,3 +607,49 @@ details.sfmore summary{color:var(--blue);font-size:14px;margin-bottom:8px}
 .rlist.flush>.rrow:first-child{border-top:1px solid var(--rule)}
 .card>.rlist.flush:first-child>.rrow:first-child{border-top:0}
 .rrow>.dot{margin:0 2px}
+/* v4.11 photo wall: filters, day groups, likes */
+.wfil{display:flex;gap:6px;overflow-x:auto;margin:0 -18px 8px;padding:2px 18px 4px;scrollbar-width:none}
+.wfil::-webkit-scrollbar{display:none}
+.wfil button{all:unset;cursor:pointer;flex:0 0 auto;font:600 13.5px var(--body);padding:7px 12px;border-radius:999px;border:1.5px solid var(--rule);background:var(--surface);color:var(--ink)}
+.wfil button small{font-weight:500;color:var(--muted);margin-left:2px}
+.wfil button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.wfil button[aria-pressed="true"] small{color:inherit;opacity:.75}
+.wfil button:focus-visible{outline:2px solid var(--vis)}
+details.wdet{margin:0}
+details.wdet>summary{list-style:none;cursor:pointer;display:flex;align-items:baseline;gap:8px}
+details.wdet>summary::-webkit-details-marker{display:none}
+details.wdet>summary::before{content:"▸";font-size:14px;transition:transform .15s}
+details.wdet[open]>summary::before{transform:rotate(90deg)}
+details.wdet>summary small{font:600 13px var(--body);color:var(--muted);text-transform:none;margin-left:auto;white-space:nowrap;padding-left:6px}
+.wlike{position:absolute;top:5px;right:5px;font:700 11.5px/1 var(--body);font-style:normal;color:#fff;background:rgba(240,106,92,.92);padding:3px 6px;border-radius:999px}
+li.stop.flash>.card{box-shadow:0 0 0 3px var(--vis);transition:box-shadow .3s}
+/* v4.11 full-screen photo viewer */
+html.pvopen,html.pvopen body{overflow:hidden}
+.pv{position:fixed;inset:0;z-index:1000;background:#000;color:#fff;display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);user-select:none;-webkit-user-select:none}
+.pv[hidden]{display:none}
+.pvtop,.pvact,.pvfilm,.pvnav{transition:opacity .2s}
+.pv.bare .pvtop,.pv.bare .pvact,.pv.bare .pvfilm,.pv.bare .pvnav{opacity:0;pointer-events:none}
+.pvtop{display:flex;align-items:center;gap:10px;padding:10px 12px 8px 16px}
+.pvcap{flex:1;min-width:0}
+.pvcap b{display:block;font:700 19px/1.15 var(--display);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pvcap small{display:block;font-size:13px;color:#C3CCD3}
+.pvx{all:unset;cursor:pointer;flex:0 0 auto;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.14);font-size:18px}
+.pvstage{flex:1;min-height:0;position:relative;overflow:hidden;touch-action:none}
+.pvtrack{display:flex;width:300%;height:100%;transform:translateX(-33.3333%)}
+.pvtrack.anim{transition:transform .24s cubic-bezier(.2,.7,.3,1)}
+.pvslide{flex:0 0 33.3333%;height:100%;display:flex;align-items:center;justify-content:center}
+.pvslide img{max-width:100%;max-height:100%;object-fit:contain;pointer-events:none;-webkit-user-drag:none}
+.pvnav{all:unset;cursor:pointer;position:absolute;top:50%;margin-top:-22px;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.45);font-size:30px;line-height:1}
+.pvnav.prev{left:8px}.pvnav.next{right:8px}
+.pvnav:disabled{opacity:0;pointer-events:none}
+.pv.bare .pvnav:disabled{opacity:0}
+.pvact{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:10px 12px 6px}
+.pvact button,.pvact .pvn{all:unset;cursor:pointer;padding:9px 14px;border-radius:999px;background:rgba(255,255,255,.14);font:600 14px var(--body)}
+.pvact .liked{background:#F06A5C}
+.pvact .del{color:#FF9C90}
+.pvact button:focus-visible,.pvx:focus-visible,.pvnav:focus-visible,.pvfilm button:focus-visible{outline:2px solid var(--vis)}
+.pvfilm{display:flex;gap:4px;overflow-x:auto;padding:6px 12px 10px;scrollbar-width:none}
+.pvfilm::-webkit-scrollbar{display:none}
+.pvfilm button{all:unset;cursor:pointer;flex:0 0 auto;width:50px;height:50px;border-radius:6px;overflow:hidden;opacity:.5;background:#222}
+.pvfilm button img{width:100%;height:100%;object-fit:cover;display:block}
+.pvfilm button.on{opacity:1;outline:2px solid var(--vis);outline-offset:-2px}
