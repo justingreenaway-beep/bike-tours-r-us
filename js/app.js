@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='4.3';
+const APP_VERSION='4.4';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -702,7 +702,10 @@ function stopDialog(stop){
   const isNew=!stop; stop=stop||{tags:[]};
   const tags=new Set(stop.tags||[]);
   dlg(`<h3>${isNew?'Add a stop':'Edit stop'}</h3>
-   ${field('Town or place','town',stop.town,{ph:'e.g. Yass'})}${field('Roads to get there','road',stop.road,{ph:'e.g. Wee Jasper Rd'})}
+   ${field('Town or place','town',stop.town,{ph:'e.g. Yass'})}
+   <div class="placefind"><button type="button" class="btn small" data-act="placefind">Find the town</button><div id="placeres" data-auto="${isNew?1:0}"></div>
+     <div class="fl" style="margin-top:8px">Location on the map<div class="frow">${field('Latitude','lat',stop.lat,{type:'number',step:'any'})}${field('Longitude','lon',stop.lon,{type:'number',step:'any'})}</div></div></div>
+   ${field('Roads to get there','road',stop.road,{ph:'e.g. Wee Jasper Rd'})}
    <div class="frow">${field('Arrive','arrive',stop.arrive,{type:'time'})}${field('Depart','depart',stop.depart,{type:'time'})}</div>
    <div class="frow">${field('Km into the day','km',stop.km,{type:'number',step:'1'})}${field('Fuel note','fuelKm',stop.fuelKm,{ph:'e.g. 118 km'})}</div>
    <label class="fl">Tags<div class="chips">${TAGS.map(t=>`<label><input type="checkbox" name="tag" value="${esc(t)}"${tags.has(t)?' checked':''}>${esc(t)}</label>`).join('')}</div></label>
@@ -711,9 +714,6 @@ function stopDialog(stop){
    ${field('"Did you know?" fact','fact',stop.fact,{area:true,max:300})}
    ${field('Where we\u2019re staying (overnight stops)','stay',stop.stay,{ph:'e.g. Millthorpe Motel, 26 Victoria St'})}
    ${stop.timeNote?`${field('Imported time text (clear it to use the times above)','timeNote',stop.timeNote)}`:''}
-   <div class="fl">Location on the map
-     <div class="frow">${field('Latitude','lat',stop.lat,{type:'number',step:'any'})}${field('Longitude','lon',stop.lon,{type:'number',step:'any'})}</div>
-     <button type="button" class="btn small" data-act="placefind">Find the town</button><div id="placeres" data-auto="${isNew?1:0}"></div></div>
    <div class="dbtns"><button type="button" class="btn primary" data-save="stop" data-id="${isNew?'':esc(stop.id)}">Save</button><button type="button" class="btn" data-close>Cancel</button>${isNew?'':`<button type="button" class="btn danger" data-del="stop|${esc(stop.id)}">Delete stop</button>`}</div>`);
 }
 function crewDialog(c){
