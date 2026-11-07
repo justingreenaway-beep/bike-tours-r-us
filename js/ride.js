@@ -34,7 +34,9 @@ function rideWatch(id){
 }
 const blankMe=()=>({name:'',email:'',ticks:{},ratings:{},quiz:{},votes:{},kc:[],kcj:[]});
 const myUid=()=>S.user&&S.user.uid;
-function me(){ const m=R.riders[myUid()]; return Object.assign(blankMe(),m||{},{name:myName(),email:S.user.email}); }
+function me(){ // name from this tour's crew list; otherwise keep the name already saved (e.g. imported from 2026)
+  const m=R.riders[myUid()], c=(S.tour&&S.tour.crew||[]).find(x=>x.email&&x.email.toLowerCase()===S.user.email);
+  return Object.assign(blankMe(),m||{},{name:c?c.name:(m&&m.name)||myName(),email:S.user.email}); }
 function saveMe(m){ // whole-document write so removed ticks really go
   R.riders[myUid()]=m; render();
   clearTimeout(R.saveT);
@@ -274,7 +276,12 @@ function courtNights(){ // group days that end with an overnight stop or a booke
     const st=stopsOf(d.id), ov=st.filter(s=>(s.tags||[]).includes('Overnight')).pop()||st[st.length-1];
     return {n:i+1,dayId:d.id,place:ov?ov.town:'',colour:d.colour}; });
 }
-function bench(){ const out={}; (S.tour.roles||[]).forEach(r=>{ if(!r.name)return; if(/koala.*judge/i.test(r.role))out[r.name]='Judge'; else if(/koala.*(deputy|marshal)/i.test(r.role))out[r.name]='Deputy'; }); return out; }
+function officersList(){ const out=[]; (S.tour.roles||[]).forEach(r=>{ if(!r.name)return; if(/koala.*judge/i.test(r.role))out.push([r.name,'Judge']); else if(/koala.*(deputy|marshal)/i.test(r.role))out.push([r.name,'Deputy']); }); return out; }
+// rider name -> bench title; "Mel" also matches a role filled as "Melissa" (and the other way round)
+function bench(){ const out={}, pool=[...new Set([...crewNames(),...riders().map(v=>v.name)])];
+  officersList().forEach(([n,title])=>{ out[n]=title; const a=n.toLowerCase();
+    pool.forEach(p=>{ const b=String(p).toLowerCase(); if(b.length>=3&&a.length>=3&&(a.startsWith(b)||b.startsWith(a)))out[p]=title; }); });
+  return out; }
 function kcAll(){ const out=[]; riders().forEach(v=>(v.kc||[]).forEach(c=>out.push({...c,by:v.name,byId:v.id}))); return out; }
 function kcBench(){ const B=bench(), out=[]; riders().forEach(v=>{ if(B[v.name])(v.kcj||[]).forEach(c=>out.push({...c,by:v.name,byId:v.id})); }); return out; }
 function courtTotals(){ const t={}, nights=courtNights(), add=(c,charge)=>{ const r=t[c.to]=t[c.to]||{tot:0,n:{},charges:0}; r.tot+=c.pts; r.n[c.night]=(r.n[c.night]||0)+c.pts; if(charge)r.charges++; };
@@ -286,7 +293,7 @@ function curNight(){ const ns=courtNights(); if(!ns.length)return null;
 function rideCourt(){
   if(!canRide())return notRiding();
   const ns=courtNights(), B=bench(), m=me();
-  const officers=Object.entries(B);
+  const officers=officersList();
   let h=`<section class="court"><div class="courthead"><p class="kicker">Koala Court</p><h2>Koala Court</h2><p class="lede">Judicial Reform Package. Last year\u2019s system was apparently too loose, too corrupt and insufficiently documented. This year\u2019s is documented.</p></div>
     <div class="officers">${officers.length?officers.map(([n,r])=>`<div><small>${r}</small><b>${esc(n)}</b></div>`).join(''):`<div><small>Bench</small><b>Not appointed</b></div>`}<div><small>Legal status</small><b>Extremely robust if your legal system is a pub</b></div></div>
     ${officers.length?'':`<p class="notice">No Judge or Deputy yet. ${S.editor?'Add the Koala Court judge and deputy in Plan, Crew, Roles.':'Justin or Tony will appoint them.'}</p>`}
@@ -375,7 +382,7 @@ function rideCrew(){
     <section class="sec"><h2>Photo wall</h2>${wallHtml()}</section>
     <section class="sec"><h2>Wrapped</h2><p class="muted" style="margin:0 0 8px">A picture card of your tour to save or share.</p><div class="planbar"><button type="button" class="btn primary" data-wrapped="me">My Wrapped</button><button type="button" class="btn" data-wrapped="crew">Crew Wrapped</button></div></section>`;
 }
-function rideView(tab){ if(tab==='bakeries')return rideBakeries(); if(tab==='court')return rideCourt(); if(tab==='crew')return rideCrew(); return ''; }
+function rideView(tab){ const h=typeof crew2026Hint==='function'?crew2026Hint():''; if(tab==='bakeries')return h+rideBakeries(); if(tab==='court')return h+rideCourt(); if(tab==='crew')return h+rideCrew(); return ''; }
 
 /* ---------- photos ---------- */
 function loadImg(file){ return new Promise((res,rej)=>{ const u=URL.createObjectURL(file), im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=u; }); }
@@ -515,3 +522,52 @@ document.addEventListener('change',e=>{
   const k=e.target.closest('[data-kcf]'); if(k){ R.kcForm[k.dataset.kcf]=k.value; if(k.dataset.kcf==='off')render(); }
 });
 document.addEventListener('input',e=>{ const k=e.target.closest('[data-kcf]'); if(k)R.kcForm[k.dataset.kcf]=k.value; });
+
+/* ---------- one-off: bring the 2026 crew app's results into tours/2026 ----------
+   The 2026 app (same Firebase project) kept them at the top level: crew/{uid} (rider, ticks/ratings keyed by bakery NAME,
+   quiz/votes keyed by day number, kc/kcj with night 1-3), wall + wallfull (key "day|town"), live/bk-* (rider-added bakeries),
+   live/dinners, live/news. Safe to run again: everything is written to the same ids. */
+function hm24(txt){ const m=String(txt||'').toLowerCase().match(/(\d{1,2})(?:[:.](\d\d))?\s*(am|pm)?/); if(!m)return null;
+  let h=+m[1]; const mi=+(m[2]||0); if(m[3]==='pm'&&h<12)h+=12; if(m[3]==='am'&&h===12)h=0; if(!m[3]&&h<11)h+=12; return h<24&&mi<60?`${pad(h)}:${pad(mi)}`:null; }
+async function importCrew2026(){
+  if(S.tourId!=='2026'||!S.editor)return;
+  if(!confirm('Bring in the 2026 crew app results: bakery ticks and scores, Koala Court charges and rulings, trivia, votes, crew bakery finds, dinners, updates and photos? Running it again just refreshes them.'))return;
+  const step=t=>dlg(`<h3>Bringing in 2026</h3><p class="muted" id="impmsg">${esc(t)}</p>`), say=t=>{ const el=$('#impmsg'); if(el)el.textContent=t; else step(t); };
+  step('Reading the old crew app…');
+  try{
+    const [crew,live,wall]=await Promise.all([FB.list('crew'),FB.list('live'),FB.list('wall')]);
+    const dn=n=>'d'+n, now=stamp(), bakId={};
+    S.bakeries.forEach(b=>bakId[String(b.name).toLowerCase()]=b.id);
+    const finds=live.filter(d=>d.exists&&/^bk-/.test(d.id));
+    finds.forEach(d=>{ const k=String(d.data.name||'').toLowerCase(); if(k&&!bakId[k])bakId[k]='x:'+d.id; });
+    const byName=o=>{ const out={}; Object.entries(o||{}).forEach(([n,v])=>{ const id=bakId[String(n).toLowerCase()]; if(id&&v!=null)out[id]=v; }); return out; };
+    const byDay=o=>Object.fromEntries(Object.entries(o||{}).map(([k,v])=>[dn(k),v]));
+    const ops=[];
+    crew.filter(d=>d.exists).forEach(d=>{ const v=d.data||{};
+      ops.push({op:'set',path:tp('riders',d.id),data:{name:v.rider||'',email:'',ticks:byName(v.ticks),ratings:byName(v.ratings),quiz:byDay(v.quiz),votes:byDay(v.votes),
+        kc:(v.kc||[]).map(c=>({...c,night:dn(c.night)})),kcj:(v.kcj||[]).map(c=>({...c,night:dn(c.night)})),importedFrom:'2026 crew app',at:FB.now()}}); });
+    finds.forEach(d=>{ const v=d.data||{}; ops.push({op:'set',path:tp('extras',d.id),data:{town:v.town||'',name:v.name||'',must:v.must||'',why:v.note||'',hours:v.hours||'',uid:v.uid||'',by:v.by||'',at:v.at||Date.now()}}); });
+    const din=live.find(d=>d.id==='dinners'&&d.exists), news=live.find(d=>d.id==='news'&&d.exists);
+    if(din) [1,2,3].forEach(n=>{ const x=din.data[n]||din.data[String(n)]; if(!x||nightsOf(dn(n)).length)return;
+      const ov=stopsOf(dn(n)).filter(s=>(s.tags||[]).includes('Overnight')).pop(), stay=(ov&&ov.stay)||'', [place,...addr]=stay.replace(/\.\s*Dinner booked\.?$/i,'').split(',');
+      const time=hm24(x.time);
+      ops.push({op:'set',path:tp('nights','n2026-'+n),data:{dayId:dn(n),place:(place||'').trim(),address:addr.join(',').trim(),phone:'',checkIn:null,booking:'Imported from the 2026 crew app',note:'',rooms:[],
+        dinner:{place:x.venue||'',time,address:x.addr||'',booked:true,note:[x.notes,time?'':x.time].filter(Boolean).join('. ')},...now}}); });
+    if(news&&Array.isArray(news.data.items)) news.data.items.forEach((a,i)=>{ if(a&&a.text)ops.push({op:'set',path:tp('announcements','n2026-'+i),data:{text:a.text,kind:'update',by:a.by||'',at:a.at||Date.now()}}); });
+    say(`Saving ${crew.length} riders’ results…`);
+    await FB.batch(ops);
+    const stopFor=(day,town)=>{ const st=S.stops.filter(s=>s.dayId===dn(day)); return st.find(s=>s.town===town)||st.find(s=>String(town||'').startsWith(s.town))||null; };
+    const thumbs=wall.filter(d=>d.exists).map(d=>{ const v=d.data, s=stopFor(v.day,v.town);
+      return {id:d.id,data:{stopId:s?s.id:'',dayId:dn(v.day),town:v.town||'',thumb:v.thumb,uid:v.uid||'',rider:v.rider||'',at:v.at||Date.now()}}; });
+    for(let i=0;i<thumbs.length;i+=40){ say(`Photo wall: ${Math.min(i+40,thumbs.length)} of ${thumbs.length} thumbnails…`); await FB.batch(thumbs.slice(i,i+40).map(p=>({op:'set',path:tp('wall',p.id),data:p.data}))); }
+    let done=0, missing=0;
+    for(let i=0;i<thumbs.length;i+=6){ const grp=thumbs.slice(i,i+6);
+      const full=await Promise.all(grp.map(p=>FB.get('wallfull/'+p.id).catch(()=>null)));
+      const w=[]; full.forEach((f,k)=>{ if(f&&f.exists&&f.data.img)w.push({op:'set',path:tp('wallfull',grp[k].id),data:{img:f.data.img}}); else missing++; });
+      if(w.length)await FB.batch(w); done+=grp.length; say(`Full-size photos: ${done} of ${thumbs.length}…`); }
+    const kc=crew.reduce((a,d)=>a+((d.data||{}).kc||[]).length+((d.data||{}).kcj||[]).length,0);
+    dlg(`<h3>2026 is in</h3><p>${crew.length} riders, ${kc} Koala Court entries, ${finds.length} crew bakery find${finds.length===1?'':'s'} and ${thumbs.length} photo${thumbs.length===1?'':'s'}${missing?` (${missing} only as thumbnails)`:''}.</p><div class="dbtns"><button type="button" class="btn primary" data-close>Done</button></div>`);
+  }catch(e){ dlg(`<h3>Couldn’t finish</h3><p class="err">${e&&e.code==='permission-denied'?'Firebase didn’t allow reading the old crew app. Check you’re signed in with your 2026 email.':'Something went wrong part way ('+esc((e&&(e.code||e.message))||'unknown')+'). Run it again with good signal; it picks up where it left off.'}</p><div class="dbtns"><button type="button" class="btn" data-close>Close</button></div>`); }
+}
+document.addEventListener('click',e=>{ if(e.target.closest('[data-ride="import26crew"]'))importCrew2026(); });
+function crew2026Hint(){ return S.tourId==='2026'&&S.editor&&!Object.keys(R.riders).length?`<div class="notice">The 2026 results are still in the old crew app. <div class="planbar"><button type="button" class="btn small primary" data-ride="import26crew">Bring in 2026 crew results</button></div></div>`:''; }
