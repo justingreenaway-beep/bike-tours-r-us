@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='4.9';
+const APP_VERSION='4.10';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -213,7 +213,7 @@ function bakeryList(town,when){
   return [...bakeriesIn(town),...(RIDE()?rideExtrasIn(town):[])].map((b,i)=>{ const os=openState(b,when);
     return `<li><span class="rk">${i+1}</span><div><div class="bn"><a href="${mapsUrl(b)}" target="_blank" rel="noopener">${esc(b.name)}</a>${b.tag?`<span class="near">${esc(b.tag)}</span>`:''}</div>${b.must?`<div class="must">Must try: ${esc(b.must)}</div>`:''}<div class="meta">${b.rating?`${Number(b.rating).toFixed(1)}\u2605${b.reviews?` (${Number(b.reviews).toLocaleString()})`:''}. `:''}${esc(b.hours||fmtHours(b.hoursSpec))}${/^OpenStreetMap/.test(b.hoursSource||"")?" <span class=\"osmcredit\">(hours \u00a9 OpenStreetMap contributors)</span>":""}</div>${os?`<div class="ostate ${os.cls}">${esc(os.txt)}</div>`:''}${b.why?`<div class="why">${esc(b.why)}</div>`:''}${RIDE()?rideBakBits(b):''}</div>${RIDE()?rideTick(b):''}</li>`; }).join('');
 }
-const nightsOf=dayId=>S.nights.filter(n=>n.dayId===dayId);
+const nightsOf=dayId=>S.nights.filter(n=>n.dayId===dayId).sort((a,b)=>(a.order??99)-(b.order??99)||String(a.place||'').localeCompare(String(b.place||'')));
 function nightCard(n){
   const me=myName(), mine=(n.rooms||[]).find(r=>(r.who||[]).includes(me)), D=n.dinner||{};
   const roomTxt=r=>`${esc(r.type||'Room')}${(r.who||[]).length?': '+esc(r.who.join(', ')):''}`;
@@ -326,10 +326,13 @@ function planCrew(){
   const T=S.tour, roles=T.roles||[];
   const crew=(T.crew||[]).slice().sort((a,b)=>String(a.name).localeCompare(b.name));
   let h=`<h2>Crew list</h2><div class="card"><p class="muted" style="margin:0 0 6px;font-size:14px">Everyone with an email here can see this tour once it\u2019s published. They sign up in the app with that email.</p>
-    ${crew.map(c=>`<div class="prow"><div class="pmain"><b>${esc(c.name||'No name')}</b><small>${c.email?esc(c.email):'<span style="color:var(--warn)">No email yet, so they can\u2019t see the tour</span>'}</small></div><div class="pact"><button type="button" class="ib" data-editcrew="${esc(c.name)}|${esc(c.email||'')}" aria-label="Edit">\u270e</button></div></div>`).join('')||'<p class="muted">Nobody yet.</p>'}
+    <div class="rlist flush">${crew.map(c=>rrowHtml({kind:'crew',rid:c.name,title:esc(c.name||'No name'),sub:c.email?esc(c.email):'',
+      warns:c.email?[]:['No email yet, so they can\u2019t see the tour'],open:`data-editcrew="${esc(c.name)}|${esc(c.email||'')}"`,menu:`crew|${c.name}|${c.email||''}`})).join('')||'<p class="muted">Nobody yet.</p>'}</div>
+    <p class="muted" style="font-size:13px;margin:6px 0 0">Always in name order.</p>
     <div class="planbar"><button type="button" class="btn primary small" data-act="addcrew">+ Add rider</button>${S.tours.filter(t=>t.id!==S.tourId).length?'<button type="button" class="btn small" data-act="copycrew">Copy crew from another tour</button>':''}</div></div>`;
   h+=`<h2>Roles</h2><div class="card"><p class="muted" style="margin:0 0 6px;font-size:14px">Shown to riders under “The crew” in the roadbook. Day leaders and sweeps are set on each day in Route.</p>
-    ${roles.map((r,i)=>`<div class="prow"><div class="pmain"><b>${esc(r.role)}</b><small>${esc(r.name||'Nobody yet')}${r.name&&!crewNames().includes(r.name)?' <span style="color:var(--warn)">(not on the crew list)</span>':''}</small></div><div class="pact"><button type="button" class="ib" data-mvarr="roles|${i}|-1" aria-label="Move up"${i===0?' disabled':''}>↑</button><button type="button" class="ib" data-mvarr="roles|${i}|1" aria-label="Move down"${i===roles.length-1?' disabled':''}>↓</button><button type="button" class="ib" data-editrole="${i}" aria-label="Edit role">✎</button></div></div>`).join('')||'<p class="muted">No roles yet.</p>'}
+    <div class="rlist flush" data-rlist="roles">${roles.map((r,i)=>rrowHtml({kind:'roles',rid:i,grip:true,title:esc(r.role),sub:esc(r.name||'Nobody yet'),
+      warns:r.name&&!crewNames().includes(r.name)?[`${r.name} isn’t on the crew list`]:[],open:`data-editrole="${i}"`,menu:`roles|${i}`})).join('')||'<p class="muted">No roles yet.</p>'}</div>
     <div class="planbar"><button type="button" class="btn primary small" data-act="addrole">+ Add role</button>${roles.length?'':'<button type="button" class="btn small" data-act="starterroles">Add the usual roles</button>'}</div></div>`;
   return h;
 }
@@ -373,7 +376,11 @@ function planBakeries(){
   if(!S.bakTown||!towns.includes(S.bakTown)) S.bakTown=towns.find(t=>bakeriesIn(t).length)||towns[0]||null;
   let h=`<h2>Bakeries</h2><div class="card"><label class="fl" style="margin:0">Town<select data-baktown>${towns.map(t=>`<option value="${esc(t)}"${t===S.bakTown?' selected':''}>${esc(t)} (${bakeriesIn(t).length})</option>`).join('')}</select></label>${towns.length?'':'<p class="muted">Add stops in Route first, or add a bakery and type its town.</p>'}</div>`;
   const list=S.bakTown?bakeriesIn(S.bakTown):[];
-  h+=`<div class="card">${list.map((b,i)=>`<div class="prow"><span class="rk">${i+1}</span><div class="pmain"><b>${esc(b.name)}</b><small>${esc(b.hours||fmtHours(b.hoursSpec)||'No hours yet')}${Array.isArray(b.hoursSpec)&&b.hoursSpec.length?'':' • <span style="color:var(--warn)">no opening times set</span>'}${b.updatedBy?` • edited by ${esc(b.updatedBy)} ${ago(b.updatedAt)}`:''}</small></div>${pact('bak',b.id,`<button type="button" class="ib" data-mvbak="${esc(b.id)}|-1" aria-label="Move up"${i===0||L?' disabled':''}>↑</button><button type="button" class="ib" data-mvbak="${esc(b.id)}|1" aria-label="Move down"${i===list.length-1||L?' disabled':''}>↓</button><button type="button" class="ib" data-editbak="${esc(b.id)}" aria-label="Edit bakery"${L?' disabled':''}>✎</button>`)}</div>`).join('')||`<p class="muted">No bakeries${S.bakTown?' in '+esc(S.bakTown):''} yet.</p>`}
+  h+=`<div class="card rlist" data-rlist="bak" style="--c:var(--blue)">${list.map((b,i)=>rrowHtml({kind:'bak',rid:b.id,grip:!selOn('bak')&&!L,num:i+1,big:i===0,
+      title:esc(b.name)+(b.must?' <span class="pill">Must</span>':''),
+      sub:esc(b.hours||fmtHours(b.hoursSpec)||'No hours yet')+(b.updatedBy?` · edited by ${esc(b.updatedBy)} ${ago(b.updatedAt)}`:''),
+      warns:Array.isArray(b.hoursSpec)&&b.hoursSpec.length?[]:['No opening times set'],open:L?'':`data-editbak="${esc(b.id)}"`,
+      act:selOn('bak')?pact('bak',b.id,''):null,menu:`bak|${b.id}`})).join('')||`<p class="muted">No bakeries${S.bakTown?' in '+esc(S.bakTown):''} yet.</p>`}
     ${selBar('bak',list.map(b=>b.id),`<button type="button" class="btn primary small" data-act="addbak"${L?' disabled':''}>+ Add bakery</button>`,L,
       S.bakeries.length>list.length?`<button type="button" class="btn small" data-selall="everybak">${S.bakeries.every(b=>S.sel.has(b.id))?'Clear every town':`Every town (${S.bakeries.length})`}</button>`:'')}
     ${selOn('bak')&&S.sel.size?`<p class="muted" style="font-size:13px;margin:6px 0 0">${S.sel.size} selected${[...S.sel].some(id=>!list.some(b=>b.id===id))?' across towns':''}.</p>`:''}
@@ -485,9 +492,12 @@ function planNights(){
   const days=daysSorted(); if(!days.length) return h+'<div class="card"><p class="muted">Add days in Route first.</p></div>';
   h+=days.map(d=>{ const ns=nightsOf(d.id);
     return `<div class="card" style="--c:var(--${esc(d.colour||'blue')})"><div class="prow" style="border:0;padding-top:0"><span class="dot"></span><div class="pmain"><b>${esc(d.label)}: ${esc(d.title||'Untitled')}</b><small>${dateFor(d)?'Night of '+esc(shortDate(dateFor(d))):'No date yet'}</small></div><div class="pact"><button type="button" class="btn small" data-addnight="${esc(d.id)}"${L?' disabled':''}>+ Bed</button></div></div>
-      ${ns.map(n=>{ const inRoom=new Set((n.rooms||[]).flatMap(r=>r.who||[])), out=names.filter(x=>!inRoom.has(x)), D=n.dinner||{};
+      <div class="rlist flush" data-rlist="night">${ns.map(n=>{ const inRoom=new Set((n.rooms||[]).flatMap(r=>r.who||[])), out=names.filter(x=>!inRoom.has(x)), D=n.dinner||{};
         const warn=[ (n.rooms||[]).length&&out.length?`Not in a room: ${out.join(', ')}`:'', D.place&&!D.booked?'Dinner not booked':'', !D.place?'No dinner yet':''].filter(Boolean);
-        return `<div class="prow"><div class="pmain"><b>${esc(n.place||'Unnamed')}</b><small>${(n.rooms||[]).length} rooms${D.place?` • dinner at ${esc(D.place)}${D.time?' '+esc(t12(D.time)):''}`:''}${n.updatedBy?` • edited by ${esc(n.updatedBy)} ${ago(n.updatedAt)}`:''}</small>${warn.length?`<small style="color:var(--warn)">${esc(warn.join(' • '))}</small>`:''}</div><div class="pact"><button type="button" class="ib" data-editnight="${esc(n.id)}" aria-label="Edit night"${L?' disabled':''}>✎</button></div></div>`; }).join('')||'<p class="muted" style="margin:6px 0 0;font-size:14px">No bed booked.</p>'}</div>`;
+        const nr=(n.rooms||[]).length;
+        return rrowHtml({kind:'night',rid:n.id,grip:ns.length>1&&!L,title:esc(n.place||'Unnamed'),
+          sub:`${nr} room${nr===1?'':'s'}${D.place?` · dinner at ${esc(D.place)}${D.time?' '+esc(t12(D.time)):''}`:''}${n.updatedBy?` · edited by ${esc(n.updatedBy)} ${ago(n.updatedAt)}`:''}`,
+          warns:warn,open:L?'':`data-editnight="${esc(n.id)}"`,menu:`night|${n.id}`}); }).join('')||'<p class="muted" style="margin:6px 0 0;font-size:14px">No bed booked.</p>'}</div></div>`;
   }).join('');
   return h;
 }
@@ -517,7 +527,9 @@ function nightDialog(n,dayId){
 function planBrief(){
   const B=S.tour.brief||[];
   return `<h2>Tour brief</h2><div class="card"><p class="muted" style="margin:0 0 6px;font-size:14px">The cards at the bottom of the roadbook: meeting point, fuel rule, cornerman, kit and so on.</p>
-    ${B.map((c,i)=>`<div class="prow"><div class="pmain"><b>${esc(c.h||'Untitled')}</b><small>${esc([...(c.p||[]),...(c.li||[])].join(' ').slice(0,90))}</small></div><div class="pact"><button type="button" class="ib" data-mvarr="brief|${i}|-1" aria-label="Move up"${i===0?' disabled':''}>↑</button><button type="button" class="ib" data-mvarr="brief|${i}|1" aria-label="Move down"${i===B.length-1?' disabled':''}>↓</button><button type="button" class="ib" data-editbrief="${i}" aria-label="Edit card">✎</button></div></div>`).join('')||'<p class="muted">No brief yet.</p>'}
+    <div class="rlist flush" data-rlist="brief">${B.map((c,i)=>{ const txt=[...(c.p||[]),...(c.li||[])].join(' ');
+      return rrowHtml({kind:'brief',rid:i,grip:true,title:esc(c.h||'Untitled'),sub:esc(txt.length>90?txt.slice(0,90)+'…':txt),
+        warns:txt?[]:['No text yet'],open:`data-editbrief="${i}"`,menu:`brief|${i}`}); }).join('')||'<p class="muted">No brief yet.</p>'}</div>
     <div class="planbar"><button type="button" class="btn primary small" data-act="addbrief">+ Add card</button>${!B.length&&S.tours.some(t=>t.id!==S.tourId&&(t.brief||[]).length)?'<button type="button" class="btn small" data-act="copybrief">Copy from another tour</button>':''}</div></div>`+(RIDE()?planChecklist():'');
 }
 function briefDialog(i){
@@ -740,12 +752,6 @@ document.addEventListener('click',async e=>{
   const eb=e.target.closest('[data-editbak]'); if(eb)return bakeryDialog(S.bakeries.find(b=>b.id===eb.dataset.editbak));
   const er=e.target.closest('[data-editrole]'); if(er)return roleDialog(+er.dataset.editrole);
   const ebr=e.target.closest('[data-editbrief]'); if(ebr)return briefDialog(+ebr.dataset.editbrief);
-  const mb=e.target.closest('[data-mvbak]'); if(mb){ const [id,dir]=mb.dataset.mvbak.split('|'); const b=S.bakeries.find(x=>x.id===id); if(!b)return;
-    const list=bakeriesIn(b.town), i=list.findIndex(x=>x.id===id), j=i+Number(dir); if(j<0||j>=list.length)return;
-    [list[i],list[j]]=[list[j],list[i]];
-    try{ await FB.batch(list.map((x,k)=>({op:'set',path:tp('bakeries',x.id),data:{rank:k+1,...(x.id===id?stamp():{})},merge:true}))); }catch(x){toast('Couldn’t move that.')} return }
-  const ma=e.target.closest('[data-mvarr]'); if(ma){ const [key,i,dir]=ma.dataset.mvarr.split('|'); const arr=(S.tour[key]||[]).slice(), a=+i, b=a+Number(dir); if(b<0||b>=arr.length)return;
-    [arr[a],arr[b]]=[arr[b],arr[a]]; try{await FB.update(`tours/${S.tourId}`,{[key]:arr,...stamp()});}catch(x){toast('Couldn’t move that.')} return }
   const pd=e.target.closest('[data-pickday]'); if(pd){S.planDay=pd.dataset.pickday;render();return}
   const ed=e.target.closest('[data-editday]'); if(ed)return dayDialog(S.days.find(d=>d.id===ed.dataset.editday));
   const es=e.target.closest('[data-editstop]'); if(es)return stopDialog(S.stops.find(s=>s.id===es.dataset.editstop));
@@ -754,10 +760,6 @@ document.addEventListener('click',async e=>{
     if(s==='published'&&S.tour.status==='draft') return announceDialog(true);
     if(s==='published'&&!(S.tour.crew||[]).some(c=>c.email)) toast('Published. Add riders\u2019 emails to the crew list so they can see it.');
     try{await FB.update(`tours/${S.tourId}`,{status:s,...stamp()});}catch(x){toast('Couldn\u2019t change that.')} return }
-  const mv=e.target.closest('[data-move]'); if(mv){ const [kind,id,dir]=mv.dataset.move.split('|');
-    const list=kind==='day'?daysSorted():stopsOf(S.stops.find(s=>s.id===id).dayId); const i=list.findIndex(x=>x.id===id), j=i+Number(dir); if(j<0||j>=list.length)return;
-    const col=kind==='day'?'days':'stops'; const A=list[i],B=list[j];
-    try{ await FB.batch([{op:'set',path:tp(col,A.id),data:{order:B.order,...stamp()},merge:true},{op:'set',path:tp(col,B.id),data:{order:A.order,...stamp()},merge:true}]); }catch(x){toast('Couldn\u2019t move that.')} return }
   const sv=e.target.closest('[data-save]'); if(sv)return doSave(sv);
   const dl=e.target.closest('[data-del]'); if(dl)return doDelete(dl.dataset.del);
 });

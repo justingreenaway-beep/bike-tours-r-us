@@ -53,9 +53,9 @@ function stopWarnings(day){ // stopId -> [warnings]
 const TAG_PILL={'Start':'','Fuel':'fuel','Overnight':'','Finish':'','Bakery stop':'','Lunch':'','Coffee':'','Breakfast':''};
 function planRoute(days,L){
   let h=`<h2>Days</h2><div class="card rlist" data-rlist="day">${days.map((d,i)=>{ const dt=dateFor(d), n=stopsOf(d.id).length;
-    return `<div class="rrow${d.id===S.planDay?' sel':''}" data-rid="${esc(d.id)}" style="--c:var(--${esc(d.colour||'blue')})">${selOn('day')?'':`<span class="grip" data-grip="day" aria-label="Drag to reorder">≡</span>`}<span class="dot"></span>
+    return `<div class="rrow${d.id===S.planDay?' sel':''}" data-rid="${esc(d.id)}" style="--c:var(--${esc(d.colour||'blue')})">${selOn('day')||L?'':`<span class="grip" data-grip="day" aria-label="Drag to reorder">≡</span>`}<span class="dot"></span>
       <div class="rmain" data-pickday="${esc(d.id)}"><b>${esc(d.label)}: ${esc(d.title||'Untitled')}</b><small>${dt?esc(shortDate(dt))+' · ':''}${n} stop${n===1?'':'s'}${d.km?' · '+esc(d.km)+' km':''}${d.who?' · '+esc(d.who):''}</small></div>
-      ${pact('day',d.id,`<button type="button" class="ib" data-editday="${esc(d.id)}" aria-label="Edit day"${L?' disabled':''}>✎</button>`)}</div>`; }).join('')||'<p class="muted">No days yet.</p>'}
+      ${pact('day',d.id,`<button type="button" class="ib" data-rowmenu="day|${esc(d.id)}" aria-label="More for ${esc(d.label)}">⋯</button>`)}</div>`; }).join('')||'<p class="muted">No days yet.</p>'}
     ${selBar('day',days.map(d=>d.id),`<button type="button" class="btn primary small" data-act="addday"${L?' disabled':''}>+ Add day</button>`,L)}</div>`;
   const day=days.find(d=>d.id===S.planDay); if(!day)return h;
   const st=stopsOf(day.id), W=stopWarnings(day), col=esc(day.colour||'blue'), dt=dateFor(day);
@@ -66,7 +66,7 @@ function planRoute(days,L){
     <div class="card rlist" data-rlist="stop" style="--c:var(--${col})">
     ${st.map((s,i)=>{ const big=(s.tags||[]).some(t=>/Start|Overnight|Finish/.test(t)), tm=timeText(s);
       return `${i&&!L&&!selOn('stop')?`<button type="button" class="rins" data-insert="${esc(st[i-1].id)}">+ Add stop here</button>`:''}
-      <div class="rrow" data-rid="${esc(s.id)}">${selOn('stop')?'':`<span class="grip" data-grip="stop" aria-label="Drag to reorder">≡</span>`}<span class="rnum${big?' big':''}">${i+1}</span>
+      <div class="rrow" data-rid="${esc(s.id)}">${selOn('stop')||L?'':`<span class="grip" data-grip="stop" aria-label="Drag to reorder">≡</span>`}<span class="rnum${big?' big':''}">${i+1}</span>
         <div class="rmain" data-editstop="${esc(s.id)}"><b>${esc(s.town||'Unnamed stop')}${(s.tags||[]).filter(t=>TAG_PILL[t]!=null).map(t=>` <span class="pill ${TAG_PILL[t]}">${esc(t==='Bakery stop'?'Bakery':t)}</span>`).join('')}${s.option?` <span class="pill">Option ${s.option}</span>`:''}</b>
           <small>${s.km!=null&&s.km!==''?esc(s.km)+' km':'— km'}${tm?' · '+esc(tm):''}</small>${(W[s.id]||[]).map(w=>`<span class="rwarn">${esc(w)}</span>`).join('')}</div>
         ${pact('stop',s.id,`<button type="button" class="ib" data-stopmenu="${esc(s.id)}" aria-label="More for ${esc(s.town)}"${L?' disabled':''}>⋯</button>`)}</div>`; }).join('')||'<p class="muted">No stops yet. Use Quick build to add a day’s towns in one go.</p>'}
@@ -79,7 +79,7 @@ document.addEventListener('toggle',e=>{ const d=e.target; if(d.matches&&d.matche
 /* ---------- 4: drag to reorder (touch and mouse), insert, the per-stop menu ---------- */
 let DRAG=null;
 document.addEventListener('pointerdown',e=>{
-  const g=e.target.closest('[data-grip]'); if(!g||locked())return; e.preventDefault();
+  const g=e.target.closest('[data-grip]'); if(!g||(FROZEN_LISTS.includes(g.dataset.grip)&&locked()))return; e.preventDefault();
   const row=g.closest('.rrow'), list=row.closest('.rlist'), rows=$$('.rrow',list);
   DRAG={kind:g.dataset.grip,row,list,rows,startY:e.clientY,from:rows.indexOf(row),to:rows.indexOf(row),pid:e.pointerId};
   S.dragging=true; row.classList.add('dragging'); try{g.setPointerCapture(e.pointerId)}catch(x){}
@@ -97,9 +97,7 @@ async function endDrag(e){
   D.row.style.transform=''; D.row.classList.remove('dragging'); D.rows.forEach(r=>r.classList.remove('dropbefore','dropafter'));
   if(D.to===D.from){ render(); return; }
   const ids=D.rows.map(r=>r.dataset.rid), [moved]=ids.splice(D.from,1); ids.splice(D.to,0,moved);
-  const col=D.kind==='day'?'days':'stops', now=stamp();
-  try{ await FB.batch(ids.map((id,i)=>({op:'set',path:tp(col,id),data:{order:i,...(id===moved?now:{})},merge:true})));
-    if(D.kind==='stop')scheduleAutoEstimate(S.planDay,300); }catch(x){ toast('Couldn’t move that.'); }
+  try{ await REORDER[D.kind](ids,moved); }catch(x){ toast('Couldn’t move that.'); }
   render();
 }
 document.addEventListener('pointerup',endDrag); document.addEventListener('pointercancel',endDrag);
@@ -115,6 +113,59 @@ function stopMenu(id){
     <button type="button" class="del" data-del="stop|${esc(id)}">Delete</button></div>
     <div class="dbtns"><button type="button" class="btn" data-close>Close</button></div>`);
 }
+/* ---------- shared list rows (v4.10): every Plan list uses the Route pattern ----------
+   ≡ drag handle, tap the row to edit, a ⋯ menu for everything else, warnings as orange lines. */
+const FROZEN_LISTS=['day','stop','bak','night']; // locked tours freeze these; crew, roles and brief stay editable
+const arrOrder=(key,ids)=>{ const arr=S.tour[key]||[]; return FB.update(`tours/${S.tourId}`,{[key]:ids.map(i=>arr[+i]),...stamp()}); };
+const orderBatch=(col,field,base)=>(ids,moved)=>FB.batch(ids.map((id,i)=>({op:'set',path:tp(col,id),data:{[field]:i+base,...(id===moved?stamp():{})},merge:true})));
+const REORDER={
+  day:orderBatch('days','order',0),
+  stop:async(ids,moved)=>{ await orderBatch('stops','order',0)(ids,moved); scheduleAutoEstimate(S.planDay,300); },
+  bak:orderBatch('bakeries','rank',1),   // rank 1 = the town's best
+  night:orderBatch('nights','order',0),
+  brief:ids=>arrOrder('brief',ids),
+  roles:ids=>arrOrder('roles',ids)
+};
+// o: {kind, rid, grip, num, big, title (html), sub (html), warns [text], open (attribute that opens the editor), menu (kind|key), dis, act (html in place of the menu)}
+function rrowHtml(o){
+  return `<div class="rrow${o.cls?' '+o.cls:''}" data-rid="${esc(o.rid)}"${o.style?` style="${o.style}"`:''}>${o.grip?`<span class="grip" data-grip="${o.kind}" aria-label="Drag to reorder">≡</span>`:''}${o.dot?'<span class="dot"></span>':''}${o.num!=null?`<span class="rnum${o.big?' big':''}">${o.num}</span>`:''}
+    <div class="rmain"${o.open?' '+o.open:''}><b>${o.title}</b>${o.sub?`<small>${o.sub}</small>`:''}${(o.warns||[]).map(w=>`<span class="rwarn">${esc(w)}</span>`).join('')}</div>
+    ${o.act!=null?o.act:`<div class="pact"><button type="button" class="ib" data-rowmenu="${esc(o.menu)}" aria-label="More"${o.dis?' disabled':''}>⋯</button></div>`}</div>`;
+}
+function rowMenu(spec){
+  const [kind,key,extra]=spec.split('|'); const T=S.tour, L=locked();
+  const B=(attr,label,cls)=>`<button type="button"${cls?` class="${cls}"`:''} ${attr}>${label}</button>`;
+  const arrMoves=(k,i,n)=>(i>0?B(`data-rm="top|${k}|${i}"`,'⤒ Move to the top'):'')+(i<n-1?B(`data-rm="bottom|${k}|${i}"`,'⤓ Move to the bottom'):'');
+  let title='', items='';
+  if(kind==='day'){ const d=S.days.find(x=>x.id===key); if(!d)return; title=`${d.label}: ${d.title||'Untitled'}`;
+    items=B(`data-editday="${esc(key)}"`,'✎ Edit day')+B(`data-pickday="${esc(key)}" data-close`,'☰ Show its stops')+B(`data-del="day|${esc(key)}"`,'Delete day','del'); }
+  if(kind==='bak'){ const b=S.bakeries.find(x=>x.id===key); if(!b)return; const list=bakeriesIn(b.town), i=list.findIndex(x=>x.id===key); title=b.name;
+    items=B(`data-editbak="${esc(key)}"`,'✎ Edit')+(i>0?B(`data-rm="top|bak|${esc(key)}"`,'⤒ Make it the top pick'):'')+(i<list.length-1?B(`data-rm="bottom|bak|${esc(key)}"`,'⤓ Move to the bottom'):'')+B(`data-del="bakery|${esc(key)}"`,'Delete','del'); }
+  if(kind==='night'){ const n=S.nights.find(x=>x.id===key); if(!n)return; const list=nightsOf(n.dayId), i=list.findIndex(x=>x.id===key); title=n.place||'Bed';
+    items=B(`data-editnight="${esc(key)}"`,'✎ Edit')+(i>0?B(`data-rm="top|night|${esc(key)}"`,'⤒ Move to the top'):'')+B(`data-del="night|${esc(key)}"`,'Delete bed and dinner','del'); }
+  if(kind==='brief'){ const arr=T.brief||[], i=+key, c=arr[i]; if(!c)return; title=c.h||'Brief card';
+    items=B(`data-editbrief="${i}"`,'✎ Edit')+B(`data-rm="dup|brief|${i}"`,'⎘ Duplicate')+arrMoves('brief',i,arr.length)+B(`data-del="brief|${i}"`,'Delete','del'); }
+  if(kind==='roles'){ const arr=T.roles||[], i=+key, r=arr[i]; if(!r)return; title=r.role||'Role';
+    items=B(`data-editrole="${i}"`,'✎ Edit')+arrMoves('roles',i,arr.length)+B(`data-del="role|${i}"`,'Delete','del'); }
+  if(kind==='crew'){ title=key;
+    items=B(`data-editcrew="${esc(key)}|${esc(extra||'')}"`,'✎ Edit')+B(`data-del="crew|${esc(key)}|${esc(extra||'')}"`,'Remove from the crew list','del'); }
+  if(L&&FROZEN_LISTS.includes(kind))items=items.replace(/<button type="button"( class="del")? data-(?!pickday)/g,m=>m.replace('<button','<button disabled'));
+  dlg(`<h3>${esc(title)}</h3><div class="smenu">${items}</div><div class="dbtns"><button type="button" class="btn" data-close>Close</button></div>`);
+}
+document.addEventListener('click',async e=>{
+  const m=e.target.closest('[data-rowmenu]'); if(m){ rowMenu(m.dataset.rowmenu); return; }
+  const r=e.target.closest('[data-rm]'); if(!r)return; const [act,kind,key]=r.dataset.rm.split('|');
+  try{
+    if(kind==='brief'||kind==='roles'){ const arr=(S.tour[kind]||[]).slice(), i=+key, [it]=arr.splice(i,1);
+      if(act==='dup')arr.splice(i,0,it,{...it,h:(it.h||'')+' (copy)'}); else if(act==='top')arr.unshift(it); else arr.push(it);
+      await FB.update(`tours/${S.tourId}`,{[kind]:arr,...stamp()}); }
+    else { const it=kind==='bak'?S.bakeries.find(x=>x.id===key):S.nights.find(x=>x.id===key); if(!it)return;
+      const ids=(kind==='bak'?bakeriesIn(it.town):nightsOf(it.dayId)).map(x=>x.id).filter(x=>x!==key); act==='top'?ids.unshift(key):ids.push(key);
+      await REORDER[kind](ids,key); }
+    closeDlg(); toast(act==='dup'?'Duplicated':'Moved');
+  }catch(x){ toast('Couldn’t change that.'); }
+});
+
 async function renumber(dayId,ids){ await FB.batch(ids.map((id,i)=>({op:'set',path:tp('stops',id),data:{order:i},merge:true}))); }
 document.addEventListener('click',async e=>{
   const t=e.target;
