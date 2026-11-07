@@ -239,7 +239,7 @@ function whosComing(){
   const crew=(S.tour.crew||[]).slice().sort((a,b)=>String(a.name).localeCompare(b.name));
   if(!crew.length)return '';
   return `<div class="tdcard"><h3 class="tdh">Who\u2019s coming</h3><div class="whochips">${crew.map(c=>{ const on=(c.email&&seen.has(c.email.toLowerCase()))||names.has(c.name);
-    return `<span class="${on?'':'no'}" title="${on?'Has opened the app':'Hasn\u2019t opened the app yet'}">${esc(c.name)}${on?'':'?'}</span>`; }).join('')}</div><p class="muted" style="font-size:12.5px;margin:6px 0 0">Faded names haven\u2019t opened this tour in the app yet.</p></div>`;
+    return `<button type="button" data-person="${esc(c.name)}" class="${on?'':'no'}" title="${on?'Has opened the app':'Hasn\u2019t opened the app yet'}">${esc(c.name)}${on?'':'?'}</button>`; }).join('')}</div><p class="muted" style="font-size:12.5px;margin:6px 0 0">Faded names haven\u2019t opened this tour in the app yet.</p></div>`;
 }
 function miniOutlook(){ // one tile per riding day, from the first stop's daily forecast
   if(!WX||WX.tour!==S.tourId){ if(wxWanted()&&!wxBusy&&!wxErr)setTimeout(()=>wxFetch(false),0); return '<p class="wxmuted">The forecast appears about 16 days out.</p>'; }
@@ -295,7 +295,7 @@ document.addEventListener('click',e=>{ const b=e.target.closest('[data-check]');
 function todayDay(d){
   const col=`var(--${esc(d.colour||'blue')})`, opt=optFor(d), times=dayTimes(d,opt), L=liveOn(d);
   let i=L?times.findIndex(x=>x.s.id===L.stopId):-1; const started=i>=0; if(i<0)i=0;
-  const cur=times[i], nx=times[i+1], range=Number(S.tour.fuelRangeKm)||0;
+  const cur=times[i], nx=times[i+1], rule=Number(S.tour.fuelRangeKm)||0, myR=typeof myProfile==='function'?Number(myProfile().fuelRange)||0:0, mine=myR&&(!rule||myR<rule), range=mine?myR:rule;
   if(!cur) return `<div class="tdhead" style="--c:${col}"><span class="tdday">${esc(d.label)}</span><h2>${esc(d.title)}</h2></div><p class="muted">No stops yet.</p>`;
   let lf=0; for(let j=i;j>=0;j--){ if((times[j].s.tags||[]).includes('Fuel')||j===0){lf=j;break} }
   const since=cur.km!=null&&times[lf].km!=null?cur.km-times[lf].km:null;
@@ -311,7 +311,7 @@ function todayDay(d){
     ${nx?`<div class="tdcard tdnext" style="--c:${col}"><small>Next stop</small><h3>${esc(nx.s.town)}</h3><p class="tdmeta">${etaOf(nx)!=null?`${nx.est?'About':'ETA'} ${esc(t12(min2hm(etaOf(nx))))}`:''}${nx.km!=null&&cur.km!=null?`, ${nx.km-cur.km} km`:''}</p>${stopWx(nx.s,d,etaOf(nx))}
         ${canRide()&&d.kind!=='solo'?`<button type="button" class="tdgo" data-here="${esc(d.id)}|${esc(nx.s.id)}">We\u2019re here: ${esc(nx.s.town)}</button>`:''}</div>
       <div class="tdfuel"><div><small>Since fuel</small><b>${since!=null?since+' km':'\u2014'}</b></div><div><small>Next fuel</small><b>${nf>0?esc(times[nf].s.town)+(toF!=null?', '+toF+' km':''):'End of day'}</b></div></div>
-      ${low?`<p class="warn tdwarn">More than the ${range} km range to the next fuel stop. Top up here if you can.</p>`:''}`
+      ${low?`<p class="warn tdwarn">More than ${mine?`your bike\u2019s ${range} km range`:`the ${range} km range`} to the next fuel stop. Top up here if you can.</p>`:''}`
     :`<div class="tdcard tdnext" style="--c:${col}"><small>End of the day</small><h3>Made it to ${esc(cur.s.town)}</h3>${night.length?'':''}${courtNights().some(n=>n.dayId===d.id)?`<button type="button" class="btn primary tdgo" data-tab-go="court">Koala Court tonight</button>`:''}</div>`}
     ${night.map(nightCard).join('')}
     ${bf}
@@ -347,7 +347,7 @@ function rideBakeries(){
     <div class="pdays">${groupDays().map(d=>{ const di=dayBakIds(d), you=di.filter(id=>m.ticks[id]).length, top=rows.filter(r=>r.per[d.id]>0).sort((a,c)=>c.per[d.id]-a.per[d.id])[0];
       return `<div class="pday" style="--c:var(--${esc(d.colour||'blue')})"><h3>${esc(d.label)}</h3><div class="bar"><i style="width:${di.length?Math.round(you/di.length*100):0}%"></i></div><small>You: ${you} of ${di.length}</small><small>Leader: ${top?esc(top.name)+' ('+top.per[d.id]+')':'nobody yet'}</small></div>`; }).join('')}</div>
     <p class="muted" style="font-size:14px">Tick bakeries and score them in each town\u2019s bakery audit in the roadbook.</p></section>
-    <section class="sec"><h2>Leaderboard</h2><div class="lbwrap">${rows.length?`<table class="lb"><thead><tr><th></th><th>Rider</th><th>Bakeries</th><th>Rated</th><th>Trivia</th></tr></thead><tbody>${rows.map((r,i)=>`<tr class="${r.mine?'mine':''}"><td class="pos">${i===0&&r.t>0?'<span class="crown">Pie champ</span>':i+1}</td><td>${esc(r.name)}</td><td><b>${r.t}</b></td><td>${r.r}</td><td>${r.q}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">No one on the board yet. Tick a bakery to get started.</p>'}</div></section>
+    <section class="sec"><h2>Leaderboard</h2><div class="lbwrap">${rows.length?`<table class="lb"><thead><tr><th></th><th>Rider</th><th>Bakeries</th><th>Rated</th><th>Trivia</th></tr></thead><tbody>${rows.map((r,i)=>`<tr class="${r.mine?'mine':''}"><td class="pos">${i===0&&r.t>0?'<span class="crown">Pie champ</span>':i+1}</td><td>${personBtn(r.name)}</td><td><b>${r.t}</b></td><td>${r.r}</td><td>${r.q}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">No one on the board yet. Tick a bakery to get started.</p>'}</div></section>
     <section class="sec"><h2>Awards</h2><div class="awards">
       ${aw(`Best pie of ${esc(S.tour.name||'the tour')}`,A.bp&&b(A.bp).name,A.bp?`${esc(b(A.bp).must)}, ${esc(b(A.bp).town)}. Crew ${A.bp[1].a.toFixed(1)}/10`:'')}
       ${aw('Best bakery overall',A.bo&&b(A.bo).name,A.bo?`${esc(b(A.bo).town)}. Crew ${A.bo[1].a.toFixed(1)}/10 from ${A.bo[1].c}`:'')}
@@ -411,7 +411,7 @@ function rideCourt(){
         <div class="bbtns"><button class="mini" type="button" data-bench="1">Sanction +1</button><button class="mini" type="button" data-bench="2">Sanction +2</button><button class="mini good" type="button" data-bench="-1">Reduction \u22121</button><button class="mini good" type="button" data-bench="-2">Reduction \u22122</button></div></div>`:''}</div></div>`;
   const ch=kcAll().filter(c=>c.night===night.dayId).sort((a,b)=>a.at-b.at), bj=kcBench().filter(c=>c.night===night.dayId).sort((a,b)=>a.at-b.at);
   h+=`<div class="docket"><div class="dhead2"><h3>Tonight\u2019s docket</h3><button class="btn primary" type="button" data-ride="kcreview">Start dinner review</button></div><ol>
-    ${ch.length||bj.length?ch.map(c=>`<li><b class="pts">+${c.pts}</b><div><div><b>${esc(c.to)}</b> charged by ${esc(c.by)}</div><div class="off">${esc(c.off)}${c.note?`: \u201c${esc(c.note)}\u201d`:''}</div></div>${c.byId===myUid()?`<button class="mini" type="button" data-kcdel="${esc(c.id)}">Withdraw</button>`:''}</li>`).join('')+
+    ${ch.length||bj.length?ch.map(c=>`<li><b class="pts">+${c.pts}</b><div><div><b>${personBtn(c.to)}</b> charged by ${personBtn(c.by)}</div><div class="off">${esc(c.off)}${c.note?`: \u201c${esc(c.note)}\u201d`:''}</div></div>${c.byId===myUid()?`<button class="mini" type="button" data-kcdel="${esc(c.id)}">Withdraw</button>`:''}</li>`).join('')+
       bj.map(c=>`<li class="${c.pts<0?'red':'san'}"><b class="pts">${c.pts>0?'+':''}${c.pts}</b><div><div><b>${esc(c.to)}</b> ${c.pts<0?'good-behaviour reduction':'sanction'} from the ${esc(B[c.by]||'bench')}</div><div class="off">${esc(c.note||'')}</div></div>${c.byId===myUid()?`<button class="mini" type="button" data-kcjdel="${esc(c.id)}">Undo</button>`:''}</li>`).join('')
     :'<li class="muted" style="display:block">No charges yet tonight. Suspicious.</li>'}</ol></div>`;
   const {t}=courtTotals(), rows=Object.entries(t).filter(([,v])=>v.tot!==0||v.charges).sort((a,b)=>b[1].tot-a[1].tot);
@@ -697,6 +697,8 @@ const gmapsTo=t=>'https://www.google.com/maps/dir/?api=1&travelmode=driving&dest
 const wazeTo=t=>t.q?'https://waze.com/ul?navigate=yes&q='+encodeURIComponent(t.q):`https://waze.com/ul?navigate=yes&ll=${t.lat.toFixed(5)}%2C${t.lon.toFixed(5)}`;
 const appleTo=t=>'https://maps.apple.com/?dirflg=d&daddr='+encodeURIComponent(tq(t));
 function navMenu(t,label){
+  const pref=typeof myProfile==='function'?myProfile().navApp:'', links={google:gmapsTo(t),waze:wazeTo(t),apple:appleTo(t)}, names={google:'Google Maps',waze:'Waze',apple:'Apple Maps'};
+  if(pref&&links[pref]) return `<span class="navpair"><a class="mini navdirect" href="${links[pref]}" target="_blank" rel="noopener">\u27A4 ${label||'Navigate'}</a><details class="navgo navmore" data-k="navm-${esc(slug(tq(t)+(label||'')))}"><summary>Other apps</summary><div class="navopts">${Object.keys(links).filter(k=>k!==pref).map(k=>`<a href="${links[k]}" target="_blank" rel="noopener">${names[k]}</a>`).join('')}</div></details></span>`;
   return `<details class="navgo" data-k="nav-${esc(slug(tq(t)+(label||'')))}"><summary>${label||'Navigate'}</summary><div class="navopts">
     <a href="${gmapsTo(t)}" target="_blank" rel="noopener">Google Maps</a><a href="${wazeTo(t)}" target="_blank" rel="noopener">Waze</a><a href="${appleTo(t)}" target="_blank" rel="noopener">Apple Maps</a></div></details>`;
 }

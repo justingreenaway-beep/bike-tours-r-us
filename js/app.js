@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='4.5';
+const APP_VERSION='4.6';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -152,6 +152,7 @@ function editorWhy(){
 }
 /* ---------- account menu ---------- */
 $('#mebtn').addEventListener('click',()=>{
+  if(typeof openProfile==='function'&&S.user)return openProfile();
   const why=editorWhy();
   dlg(`<h3>Your account</h3><p class="muted" style="margin:0 0 8px">Signed in as <b>${esc(S.user.email)}</b></p>
     <p class="notice" style="margin:0 0 12px">${S.editor?'You\u2019re a tour editor, so you can see the Plan tab.':'Not an editor: '+why}</p>
@@ -168,9 +169,12 @@ function doRender(){
   const ae=document.activeElement;
   if(ae&&ae.closest&&ae.closest('#view')&&ae.matches('input:not([type=checkbox]):not([type=file]):not([type=radio]),textarea,select')){ renderHeld=true; return; }
   const tabs=[['today','Today'],['roadbook','Roadbook']].concat(RIDE()&&S.tour?RIDE_TABS:[]).concat(S.editor?[['plan','Plan']]:[]);
-  if(!tabs.some(t=>t[0]===S.tab))S.tab='today';
+  const PROF=S.tab==='profile'&&typeof profileView==='function';
+  if(!PROF&&!tabs.some(t=>t[0]===S.tab))S.tab='today';
+  if(typeof updateMeBtn==='function')updateMeBtn();
   $('#tabbar').innerHTML=tabs.map(([k,l])=>`<button type="button" data-tab="${k}" aria-current="${S.tab===k?'page':'false'}">${icon[k]}${l}</button>`).join('');
   const v=$('#view');
+  if(PROF){ v.innerHTML=profileView(); return; }
   if(!S.tour){ v.innerHTML=S.tab==='plan'?planNoTour():noTour(); return; }
   const keep=$$('details[data-k]',v).filter(d=>d.open).map(d=>d.dataset.k); // keep open sections open across redraws
   if(S.tab==='today')v.innerHTML=viewToday();
@@ -259,7 +263,7 @@ function viewRoadbook(){
     h+=`<section class="day${dn.cls}" style="--c:var(--${esc(day.colour||'blue')})" id="day-${esc(day.id)}">${dn.bar}${dayHead(day)}<ol class="stops">${st.map((s,i)=>stopCard(s,i+1,day)).join('')||'<li class="muted" style="padding-left:46px">No stops yet.</li>'}</ol>${RIDE()?dayNavBlock(day):''}${mapBlock(day)}${nightsOf(day.id).map(nightCard).join('')}</section>`;
   });
   if(T.brief&&T.brief.length) h+=`<section class="sec"><h2>Tour brief</h2><div class="brief">${T.brief.map(c=>`<div class="card"><h3>${esc(c.h)}</h3>${(c.p||[]).map(p=>`<p>${esc(p)}</p>`).join('')}${c.li&&c.li.length?`<ul>${c.li.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}</div>`).join('')}</div></section>`;
-  if(T.roles&&T.roles.length) h+=`<section class="sec"><h2>The crew</h2><div class="roles">${T.roles.map(r=>`<div><span>${esc(r.role)}</span><span>${esc(r.name)}</span></div>`).join('')}</div>${T.crew&&T.crew.length?`<p class="muted">Riders: ${esc(T.crew.map(c=>c.name).filter(Boolean).join(', '))}.</p>`:''}</section>`;
+  if(T.roles&&T.roles.length) h+=`<section class="sec"><h2>The crew</h2><div class="roles">${T.roles.map(r=>`<div><span>${esc(r.role)}</span><span>${typeof personBtn==='function'&&r.name?personBtn(r.name):esc(r.name)}</span></div>`).join('')}</div>${T.crew&&T.crew.length?`<p class="muted">Riders: ${T.crew.map(c=>c.name).filter(Boolean).map(n=>typeof personBtn==='function'?personBtn(n):esc(n)).join(', ')}.</p>`:''}</section>`;
   return h;
 }
 document.addEventListener('click',e=>{ const o=e.target.closest('[data-opt]'); if(o){const [id,v]=o.dataset.opt.split('|');S.opt[id]=+v;render();} });
@@ -484,6 +488,7 @@ function readHours(){
 function planNights(){
   const L=locked(), names=crewNames();
   let h=`<h2>Nights</h2><p class="muted" style="font-size:14px;margin:-4px 0 10px">Beds, rooms and dinners. Riders see each night at the end of that day in the roadbook and on Today.</p>`;
+  if(typeof nightsPrefs==='function')h+=nightsPrefs();
   const days=daysSorted(); if(!days.length) return h+'<div class="card"><p class="muted">Add days in Route first.</p></div>';
   h+=days.map(d=>{ const ns=nightsOf(d.id);
     return `<div class="card" style="--c:var(--${esc(d.colour||'blue')})"><div class="prow" style="border:0;padding-top:0"><span class="dot"></span><div class="pmain"><b>${esc(d.label)}: ${esc(d.title||'Untitled')}</b><small>${dateFor(d)?'Night of '+esc(shortDate(dateFor(d))):'No date yet'}</small></div><div class="pact"><button type="button" class="btn small" data-addnight="${esc(d.id)}"${L?' disabled':''}>+ Bed</button></div></div>
