@@ -595,3 +595,10 @@ details.sfmore summary{color:var(--blue);font-size:14px;margin-bottom:8px}
 .seg2r span{display:block;text-align:center;padding:7px;border-radius:999px;font:600 13px var(--body);color:var(--muted);cursor:pointer}
 .seg2r input:checked+span{background:var(--ink);color:var(--bg)}
 .whopick[hidden]{display:none}
+/* Stop form "What happens here": tap-to-select pills, no tick boxes (v4.9) */
+.tagpick .moretags,.tagpick .extratags{display:contents}
+.tagpick label{position:relative;background:var(--surface);user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+.tagpick input{position:absolute;opacity:0;width:1px;height:1px;padding:0;border:0;margin:0;pointer-events:none}
+.tagpick label:has(input:checked){background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tagpick label:has(input:focus-visible){outline:2px solid var(--ink);outline-offset:2px}
+.tagpick .linkb{padding:6px 4px}
