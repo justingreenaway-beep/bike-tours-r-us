@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='4.2';
+const APP_VERSION='4.3';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -213,13 +213,13 @@ function nightCard(n){
   const me=myName(), mine=(n.rooms||[]).find(r=>(r.who||[]).includes(me)), D=n.dinner||{};
   const roomTxt=r=>`${esc(r.type||'Room')}${(r.who||[]).length?': '+esc(r.who.join(', ')):''}`;
   return `<div class="night card"><span class="nlbl">Tonight\u2019s bed</span><h3>${esc(n.place||'To be booked')}</h3>
-    ${n.address?`<a class="addr" href="${appleMaps((n.place||'')+', '+n.address)}" target="_blank" rel="noopener">${esc(n.address)}</a>`:''}
+    ${n.address?`<a class="addr" href="${appleMaps((n.place||'')+', '+n.address)}" target="_blank" rel="noopener">${esc(n.address)}</a>`:''}${RIDE()&&(n.place||n.address)?navMenu({q:[n.place,n.address].filter(Boolean).join(', ')},'Navigate to the bed'):''}
     <p class="nmeta">${[n.checkIn?`Check in from ${esc(t12(n.checkIn))}`:'',n.phone?`<a href="${telUrl(n.phone)}">${esc(n.phone)}</a>`:''].filter(Boolean).join(' \u2022 ')}</p>
     ${mine?`<p class="myroom">Your room: <b>${esc(mine.type||'Room')}${mine.who.length>1?' with '+esc(mine.who.filter(x=>x!==me).join(', ')):', just you'}</b></p>`:''}
     ${(n.rooms||[]).length?`<details class="rooms"><summary>All rooms (${n.rooms.length})</summary><ul>${n.rooms.map(r=>`<li>${roomTxt(r)}</li>`).join('')}</ul></details>`:''}
     ${n.note?`<p class="note">${esc(n.note)}</p>`:''}
     ${D.place?`<div class="dinner"><span class="nlbl">Dinner</span><b>${esc(D.place)}</b>${D.time?`, ${esc(t12(D.time))}`:''}${D.booked?' <span class="pill ok">Booked</span>':' <span class="pill">Not booked yet</span>'}
-      ${D.address?`<br><a class="addr" href="${appleMaps(D.place+', '+D.address)}" target="_blank" rel="noopener">${esc(D.address)}</a>`:''}${D.note?`<p class="note">${esc(D.note)}</p>`:''}</div>`:''}
+      ${D.address?`<br><a class="addr" href="${appleMaps(D.place+', '+D.address)}" target="_blank" rel="noopener">${esc(D.address)}</a>`:''}${RIDE()?navMenu({q:[D.place,D.address].filter(Boolean).join(', ')},'Navigate to dinner'):''}${D.note?`<p class="note">${esc(D.note)}</p>`:''}</div>`:''}
   </div>`;
 }
 const annSeenKey=()=>'tru-ann-'+S.tourId;
@@ -256,7 +256,7 @@ function viewRoadbook(){
     const opt=day.alt?(S.opt[day.id]||1):null;
     const st=stopsOf(day.id,opt);
     const dn=RIDE()?rideDayDone(day):{cls:'',bar:''};
-    h+=`<section class="day${dn.cls}" style="--c:var(--${esc(day.colour||'blue')})" id="day-${esc(day.id)}">${dn.bar}${dayHead(day)}<ol class="stops">${st.map((s,i)=>stopCard(s,i+1,day)).join('')||'<li class="muted" style="padding-left:46px">No stops yet.</li>'}</ol>${mapBlock(day)}${nightsOf(day.id).map(nightCard).join('')}</section>`;
+    h+=`<section class="day${dn.cls}" style="--c:var(--${esc(day.colour||'blue')})" id="day-${esc(day.id)}">${dn.bar}${dayHead(day)}<ol class="stops">${st.map((s,i)=>stopCard(s,i+1,day)).join('')||'<li class="muted" style="padding-left:46px">No stops yet.</li>'}</ol>${RIDE()?dayNavBlock(day):''}${mapBlock(day)}${nightsOf(day.id).map(nightCard).join('')}</section>`;
   });
   if(T.brief&&T.brief.length) h+=`<section class="sec"><h2>Tour brief</h2><div class="brief">${T.brief.map(c=>`<div class="card"><h3>${esc(c.h)}</h3>${(c.p||[]).map(p=>`<p>${esc(p)}</p>`).join('')}${c.li&&c.li.length?`<ul>${c.li.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}</div>`).join('')}</div></section>`;
   if(T.roles&&T.roles.length) h+=`<section class="sec"><h2>The crew</h2><div class="roles">${T.roles.map(r=>`<div><span>${esc(r.role)}</span><span>${esc(r.name)}</span></div>`).join('')}</div>${T.crew&&T.crew.length?`<p class="muted">Riders: ${esc(T.crew.map(c=>c.name).filter(Boolean).join(', '))}.</p>`:''}</section>`;

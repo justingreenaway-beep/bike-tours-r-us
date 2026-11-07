@@ -163,7 +163,7 @@ function rideStopBits(s,day){
   const bf=s.breakfast&&(s.breakfast.items||[]).length?`<details class="brekkie" data-k="bf-${esc(s.id)}"><summary>Coffee and breakfast</summary>${s.breakfast.note?`<p class="bknote">${esc(s.breakfast.note)}</p>`:''}<ul class="bklist">${s.breakfast.items.map(i=>`<li><a href="${mapsUrl({name:i.name,town:s.town,placeId:i.placeId})}" target="_blank" rel="noopener">${esc(i.name)}</a> <span class="bkmeta">${i.hours?esc(i.hours):''}</span>${i.why?`<div class="bkwhy">${esc(i.why)}</div>`:''}${i.must?`<div class="must">Order: ${esc(i.must)}</div>`:''}</li>`).join('')}</ul></details>`:'';
   return `${here?'<div class="here-flag">We\u2019re here</div>':''}${stopWx(s,day,etaOf(x))}${bf}
     ${ph.length?`<div class="pstrip">${ph.map(p=>`<button type="button" class="thumb" data-photo="${esc(p.id)}"><img src="${p.thumb}" alt="Photo at ${esc(p.town)} by ${esc(p.rider||'')}"></button>`).join('')}</div>`:''}
-    ${canRide()?`<div class="stop-actions">${day.kind!=='solo'?`<button type="button" class="mini here" data-here="${esc(day.id)}|${esc(s.id)}" aria-pressed="${!!here}">We\u2019re here</button>`:''}<label class="mini addph">Add photo<input type="file" accept="image/*" data-ph="${esc(day.id)}|${esc(s.id)}" hidden></label></div>`:''}`;
+    <div class="stop-actions">${navMenu(stopTarget(s))}${canRide()?`${day.kind!=='solo'?`<button type="button" class="mini here" data-here="${esc(day.id)}|${esc(s.id)}" aria-pressed="${!!here}">We\u2019re here</button>`:''}<label class="mini addph">Add photo<input type="file" accept="image/*" data-ph="${esc(day.id)}|${esc(s.id)}" hidden></label>`:''}</div>`;
 }
 function rideVote(day){
   if(!canRide()||!day.best||!day.best.title||day.kind==='solo')return '';
@@ -317,7 +317,7 @@ function todayDay(d){
     ${bf}
     <div class="tdwx" style="--c:${col}">${dayWx(d)}</div>
     ${ahead.length?`<div class="tdcard"><h3 class="tdh">Bakeries open ahead</h3><ul class="tdlist2">${ahead.join('')}</ul></div>`:''}
-    <div style="--c:${col}">${mapBlock(d)}</div>
+    <div style="--c:${col}">${restOfDayNav(d)}${mapBlock(d)}</div>
     <p class="tdfoot"><button type="button" class="linkb" data-tab-go="roadbook">Open ${esc(d.label)} in the roadbook</button>${started&&canRide()?` <button type="button" class="linkb" data-here="">Reset position</button>`:''}</p>`;
 }
 
@@ -687,3 +687,38 @@ document.addEventListener('click',async e=>{
     if(!items.length){ dlgError('Add at least one item.'); return; }
     return save(()=>FB.update(`tours/${S.tourId}`,{checklist:items,...stamp()}),'Checklist saved'); }
 });
+
+/* ---------- navigation hand-off: free links that open Google Maps, Waze or Apple Maps (no API key, nothing stored) ----------
+   A target is {lat,lon} or {q:"place, address"}. Google takes up to 9 waypoints per link, so long days are split into parts. */
+const llOf=s=>hasLL(s)?`${(+s.lat).toFixed(5)},${(+s.lon).toFixed(5)}`:null;
+const stopTarget=s=>hasLL(s)?{lat:+s.lat,lon:+s.lon}:{q:`${s.town}, Australia`};
+const tq=t=>t.q?t.q:`${t.lat.toFixed(5)},${t.lon.toFixed(5)}`;
+const gmapsTo=t=>'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+encodeURIComponent(tq(t));
+const wazeTo=t=>t.q?'https://waze.com/ul?navigate=yes&q='+encodeURIComponent(t.q):`https://waze.com/ul?navigate=yes&ll=${t.lat.toFixed(5)}%2C${t.lon.toFixed(5)}`;
+const appleTo=t=>'https://maps.apple.com/?dirflg=d&daddr='+encodeURIComponent(tq(t));
+function navMenu(t,label){
+  return `<details class="navgo" data-k="nav-${esc(slug(tq(t)+(label||'')))}"><summary>${label||'Navigate'}</summary><div class="navopts">
+    <a href="${gmapsTo(t)}" target="_blank" rel="noopener">Google Maps</a><a href="${wazeTo(t)}" target="_blank" rel="noopener">Waze</a><a href="${appleTo(t)}" target="_blank" rel="noopener">Apple Maps</a></div></details>`;
+}
+function gmapsRoute(points){ // points: [{lat,lon}|{q}], first = start, last = finish
+  const o=points[0], d=points[points.length-1], w=points.slice(1,-1);
+  return 'https://www.google.com/maps/dir/?api=1&travelmode=driving&origin='+encodeURIComponent(tq(o))+'&destination='+encodeURIComponent(tq(d))+(w.length?'&waypoints='+encodeURIComponent(w.map(tq).join('|')):'');
+}
+function routeParts(stops){ // split into links of at most 11 points (start + 9 waypoints + finish); each part starts where the last ended
+  const pts=stops.filter(s=>s.town).map(s=>({s,t:stopTarget(s)})), out=[];
+  if(pts.length<2)return out;
+  for(let i=0;i<pts.length-1;i+=10){ const part=pts.slice(i,i+11); if(part.length>1)out.push(part); }
+  return out;
+}
+function routeButtons(stops,what){
+  const parts=routeParts(stops); if(!parts.length)return '';
+  const one=parts.length===1, idx=s=>stops.indexOf(s)+1;
+  return `<div class="navroute"><span class="navlbl">${esc(what)} in Google Maps</span>${parts.map((p,i)=>`<a class="mini" href="${gmapsRoute(p.map(x=>x.t))}" target="_blank" rel="noopener">${one?`${esc(p[0].s.town)} to ${esc(p[p.length-1].s.town)}`:`Part ${i+1}: stops ${idx(p[0].s)}–${idx(p[p.length-1].s)}`}</a>`).join('')}
+    <small>${one?'':'Google allows 9 stops between start and finish, so this day is in parts. '}Google picks its own roads between stops; follow the roadbook where it differs.</small></div>`;
+}
+function dayNavBlock(day){ return routeButtons(stopsOf(day.id,optFor(day)),`${day.label} route`); }
+function restOfDayNav(day){
+  const st=stopsOf(day.id,optFor(day)), L=liveOn(day), i=L?st.findIndex(s=>s.id===L.stopId):0;
+  const rest=st.slice(Math.max(0,i)); if(rest.length<2)return '';
+  return routeButtons(rest,i>0?'Rest of today':'Today’s route');
+}
