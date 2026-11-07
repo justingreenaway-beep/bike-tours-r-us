@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='3.0';
+const APP_VERSION='4.0';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -143,6 +143,7 @@ function openTour(id){
   S.unsub.push(FB.watchCol(`tours/${id}/stops`,docs=>{S.stops=docs.map(d=>({id:d.id,...d.data}));render();},err));
   S.unsub.push(FB.watchCol(`tours/${id}/bakeries`,docs=>{S.bakeries=docs.map(d=>({id:d.id,...d.data}));render();},err));
   S.unsub.push(FB.watchCol(`tours/${id}/nights`,docs=>{S.nights=docs.map(d=>({id:d.id,...d.data}));render();},err));
+  if(RIDE()){ S.unsub.push(...rideWatch(id)); setTimeout(()=>wxFetch(false),500); }
   S.unsub.push(FB.watchCol(`tours/${id}/announcements`,docs=>{S.anns=docs.map(d=>({id:d.id,...d.data})).sort((a,b)=>tsMs(b.at)-tsMs(a.at));render();},err));
 }
 
@@ -160,15 +161,23 @@ $('#mebtn').addEventListener('click',()=>{
 /* ---------- rendering ---------- */
 let renderQ=false;
 function render(){ if(renderQ)return; renderQ=true; requestAnimationFrame(()=>{renderQ=false; doRender();}); }
+const RIDE=()=>typeof rideView==='function';
+let renderHeld=false; // don't redraw under someone typing; catch up when they leave the field
+document.addEventListener('focusout',()=>{ if(renderHeld){ renderHeld=false; setTimeout(render,0); } });
 function doRender(){
-  const tabs=[['today','Today'],['roadbook','Roadbook']].concat(S.editor?[['plan','Plan']]:[]);
+  const ae=document.activeElement;
+  if(ae&&ae.closest&&ae.closest('#view')&&ae.matches('input:not([type=checkbox]):not([type=file]):not([type=radio]),textarea,select')){ renderHeld=true; return; }
+  const tabs=[['today','Today'],['roadbook','Roadbook']].concat(RIDE()&&S.tour?RIDE_TABS:[]).concat(S.editor?[['plan','Plan']]:[]);
   if(!tabs.some(t=>t[0]===S.tab))S.tab='today';
   $('#tabbar').innerHTML=tabs.map(([k,l])=>`<button type="button" data-tab="${k}" aria-current="${S.tab===k?'page':'false'}">${icon[k]}${l}</button>`).join('');
   const v=$('#view');
   if(!S.tour){ v.innerHTML=S.tab==='plan'?planNoTour():noTour(); return; }
+  const keep=$$('details[data-k]',v).filter(d=>d.open).map(d=>d.dataset.k); // keep open sections open across redraws
   if(S.tab==='today')v.innerHTML=viewToday();
   else if(S.tab==='roadbook')v.innerHTML=viewRoadbook();
-  else v.innerHTML=viewPlan();
+  else if(S.tab==='plan')v.innerHTML=viewPlan();
+  else v.innerHTML=RIDE()?rideView(S.tab):'';
+  keep.forEach(k=>{ const d=v.querySelector(`details[data-k="${CSS.escape(k)}"]`); if(d)d.open=true; });
   drawMaps();
 }
 document.addEventListener('click',e=>{ const t=e.target.closest('.tabbar [data-tab]'); if(t){S.tab=t.dataset.tab;sessionStorage.setItem('tru-tab',S.tab);window.scrollTo(0,0);render();} });
@@ -191,13 +200,13 @@ function dayHead(day){
     <div class="stats">${A.km?`<div>${esc(A.km)} km<small>distance</small></div>`:''}${A.ride?`<div>${esc(A.ride)}<small>riding</small></div>`:''}${A.total?`<div>${esc(A.total)}<small>with stops</small></div>`:''}${!A.km&&!A.ride?`<div>${stops.length}<small>stops</small></div>`:''}</div>
     ${day.leader||day.sweep?`<p class="leads">${day.leader?`Leader <b>${esc(day.leader)}</b>`:''}${day.leader&&day.sweep?' • ':''}${day.sweep?`Sweep <b>${esc(day.sweep)}</b>`:''}</p>`:''}
     ${A.feel?`<p class="feel">${esc(A.feel)}</p>`:''}${A.roads?`<p class="roads">${esc(A.roads)}</p>`:''}
-    ${day.best&&day.best.title?`<div class="best"><span class="lbl">Best leg of the day</span><h3>${esc(day.best.title)}</h3><p>${esc(day.best.why||'')}</p></div>`:''}
+    ${day.best&&day.best.title?`<div class="best"><span class="lbl">Best leg of the day</span><h3>${esc(day.best.title)}</h3><p>${esc(day.best.why||'')}</p>${RIDE()?rideVote(day):''}</div>`:''}${RIDE()?dayWx(day):''}
     ${day.fuelNote?`<p class="fuelnote">${esc(day.fuelNote)}</p>`:''}</div>`;
 }
 const bakeriesIn=town=>S.bakeries.filter(b=>b.town===town).sort((a,b)=>(a.rank||99)-(b.rank||99)||String(a.name).localeCompare(b.name));
 function bakeryList(town,when){
-  return bakeriesIn(town).map((b,i)=>{ const os=openState(b,when);
-    return `<li><span class="rk">${i+1}</span><div><div class="bn"><a href="${mapsUrl(b)}" target="_blank" rel="noopener">${esc(b.name)}</a>${b.tag?`<span class="near">${esc(b.tag)}</span>`:''}</div>${b.must?`<div class="must">Must try: ${esc(b.must)}</div>`:''}<div class="meta">${b.rating?`${Number(b.rating).toFixed(1)}\u2605${b.reviews?` (${Number(b.reviews).toLocaleString()})`:''}. `:''}${esc(b.hours||fmtHours(b.hoursSpec))}${/^OpenStreetMap/.test(b.hoursSource||"")?" <span class=\"osmcredit\">(hours \u00a9 OpenStreetMap contributors)</span>":""}</div>${os?`<div class="ostate ${os.cls}">${esc(os.txt)}</div>`:''}${b.why?`<div class="why">${esc(b.why)}</div>`:''}</div></li>`; }).join('');
+  return [...bakeriesIn(town),...(RIDE()?rideExtrasIn(town):[])].map((b,i)=>{ const os=openState(b,when);
+    return `<li><span class="rk">${i+1}</span><div><div class="bn"><a href="${mapsUrl(b)}" target="_blank" rel="noopener">${esc(b.name)}</a>${b.tag?`<span class="near">${esc(b.tag)}</span>`:''}</div>${b.must?`<div class="must">Must try: ${esc(b.must)}</div>`:''}<div class="meta">${b.rating?`${Number(b.rating).toFixed(1)}\u2605${b.reviews?` (${Number(b.reviews).toLocaleString()})`:''}. `:''}${esc(b.hours||fmtHours(b.hoursSpec))}${/^OpenStreetMap/.test(b.hoursSource||"")?" <span class=\"osmcredit\">(hours \u00a9 OpenStreetMap contributors)</span>":""}</div>${os?`<div class="ostate ${os.cls}">${esc(os.txt)}</div>`:''}${b.why?`<div class="why">${esc(b.why)}</div>`:''}${RIDE()?rideBakBits(b):''}</div>${RIDE()?rideTick(b):''}</li>`; }).join('');
 }
 const nightsOf=dayId=>S.nights.filter(n=>n.dayId===dayId);
 function nightCard(n){
@@ -225,12 +234,14 @@ function stopCard(s,k,day){
   const big=(s.tags||[]).some(t=>/Start|Overnight|Finish/.test(t));
   const tags=(s.tags||[]).map(t=>`<span class="tag${t==='Fuel'?' fuel':''}">${t==='Fuel'&&s.fuelKm?'Fuel '+esc(s.fuelKm):esc(t)}</span>`).join('')+(s.option?`<span class="tag opt">Option ${s.option}</span>`:'');
   const bl=s.ref?'':bakeryList(s.town,{date:day&&dateFor(day),t:s.arrive||s.depart});
-  return `<li class="stop${big?' big':''}"><span class="node">${k}</span><div class="card">
+  const R_=RIDE()&&day;
+  return `<li class="stop${big?' big':''}${R_?rideStopClass(s,day):''}" id="stop-${esc(s.id)}"><span class="node">${k}</span><div class="card">
     <div class="town">${esc(s.town)}</div>${timeText(s)?`<div class="time">${esc(timeText(s))}</div>`:''}
     ${s.road?`<div class="road">${esc(s.road)}</div>`:''}${tags?`<div class="tags">${tags}</div>`:''}
     ${s.note?`<p class="note">${esc(s.note)}</p>`:''}${s.stay?`<div class="stay">${esc(s.stay)}</div>`:''}${s.ref?`<p class="ref">${esc(s.ref)}</p>`:''}
-    ${s.fact?`<details class="fact"><summary>Did you know?</summary><p>${esc(s.fact)}</p></details>`:''}
-    ${bl||s.audit?`<details class="audit"><summary>Bakery audit${bl?` (${(bl.match(/<li>/g)||[]).length})`:''}</summary>${s.audit?`<p class="verdict">${esc(s.audit)}</p>`:''}${bl?`<ol class="bk">${bl}</ol>`:''}</details>`:''}
+    ${s.fact?`<details class="fact" data-k="f-${esc(s.id)}"><summary>Did you know?</summary><p>${esc(s.fact)}</p></details>`:''}
+    ${bl||s.audit||(R_&&!s.ref)?`<details class="audit" data-k="a-${esc(s.id)}"><summary>Bakery audit${bl?` (${(bl.match(/<li>/g)||[]).length})`:''}</summary>${s.audit?`<p class="verdict">${esc(s.audit)}</p>`:''}${R_?rideAuditBits(s):''}${bl?`<ol class="bk">${bl}</ol>`:''}</details>`:''}
+    ${R_?rideStopBits(s,day):''}
   </div></li>`;
 }
 function viewRoadbook(){
@@ -244,7 +255,8 @@ function viewRoadbook(){
   days.forEach(day=>{
     const opt=day.alt?(S.opt[day.id]||1):null;
     const st=stopsOf(day.id,opt);
-    h+=`<section class="day" style="--c:var(--${esc(day.colour||'blue')})" id="day-${esc(day.id)}">${dayHead(day)}<ol class="stops">${st.map((s,i)=>stopCard(s,i+1,day)).join('')||'<li class="muted" style="padding-left:46px">No stops yet.</li>'}</ol>${mapBlock(day)}${nightsOf(day.id).map(nightCard).join('')}</section>`;
+    const dn=RIDE()?rideDayDone(day):{cls:'',bar:''};
+    h+=`<section class="day${dn.cls}" style="--c:var(--${esc(day.colour||'blue')})" id="day-${esc(day.id)}">${dn.bar}${dayHead(day)}<ol class="stops">${st.map((s,i)=>stopCard(s,i+1,day)).join('')||'<li class="muted" style="padding-left:46px">No stops yet.</li>'}</ol>${mapBlock(day)}${nightsOf(day.id).map(nightCard).join('')}</section>`;
   });
   if(T.brief&&T.brief.length) h+=`<section class="sec"><h2>Tour brief</h2><div class="brief">${T.brief.map(c=>`<div class="card"><h3>${esc(c.h)}</h3>${(c.p||[]).map(p=>`<p>${esc(p)}</p>`).join('')}${c.li&&c.li.length?`<ul>${c.li.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}</div>`).join('')}</div></section>`;
   if(T.roles&&T.roles.length) h+=`<section class="sec"><h2>The crew</h2><div class="roles">${T.roles.map(r=>`<div><span>${esc(r.role)}</span><span>${esc(r.name)}</span></div>`).join('')}</div>${T.crew&&T.crew.length?`<p class="muted">Riders: ${esc(T.crew.map(c=>c.name).filter(Boolean).join(', '))}.</p>`:''}</section>`;
@@ -253,7 +265,7 @@ function viewRoadbook(){
 document.addEventListener('click',e=>{ const o=e.target.closest('[data-opt]'); if(o){const [id,v]=o.dataset.opt.split('|');S.opt[id]=+v;render();} });
 
 /* Today */
-function viewToday(){ return annBanner()+todayBody(); }
+function viewToday(){ return annBanner()+(RIDE()?rideToday():todayBody()); }
 function todayBody(){
   const days=daysSorted(), today=iso(new Date());
   const dated=days.map(d=>({d,date:dateFor(d)})).filter(x=>x.date);
@@ -920,9 +932,12 @@ async function import2026(){
   }catch(e){ toast(e&&e.code==='permission-denied'?'Your account isn\u2019t set up as an editor yet.':'Couldn\u2019t bring 2026 in. Try again with good signal.'); }
 }
 
-/* ---------- start ---------- */
+/* ---------- start (after ride.js has loaded) ---------- */
+function start(){
 if(!cfgOk){ $('#bootmsg').textContent='This copy isn\u2019t connected to Firebase yet. Paste the Firebase config into js/config.js (see README).'; }
 else{
   FB.init(CFG.firebase);
   FB.onAuth(u=>{ if(u) enter(u); else { S.unsub.forEach(f=>{try{f()}catch(e){}}); S.unsub=[]; S.user=null; showAuth(); } });
 }
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start); else start();
