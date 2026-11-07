@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='4.4';
+const APP_VERSION='4.5';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -118,7 +118,7 @@ async function loadTours(){
   try{
     list=S.editor?await FB.list('tours'):await FB.list('tours',{where:['memberEmails','array-contains',S.user.email]});
   }catch(e){ list=[]; }
-  S.tours=list.filter(d=>d.exists).map(d=>({id:d.id,...d.data})).filter(t=>S.editor||t.status!=='draft').sort((a,b)=>(b.year||0)-(a.year||0));
+  S.tours=list.filter(d=>d.exists).map(d=>({id:d.id,...d.data})).filter(t=>S.editor||t.status!=='draft').sort((a,b)=>(b.year||0)-(a.year||0)||String(a.startDate||'9999').localeCompare(String(b.startDate||'9999'))||String(a.name||'').localeCompare(String(b.name||'')));
   renderTourSelect();
 }
 function pickDefaultTour(){ // the upcoming or current tour, otherwise the most recent
@@ -556,7 +556,7 @@ async function save(fn,okMsg){ try{ await fn(); closeDlg(); if(okMsg)toast(okMsg
 
 function editTourDialog(){
   const T=S.tour;
-  dlg(`<h3>Tour details</h3>${field('Tour name','name',T.name,{ph:'e.g. Bike Tour 27'})}${field('Short description','subtitle',T.subtitle,{ph:'Where it goes'})}
+  dlg(`<h3>Tour details</h3><div class="frow">${field('Tour name','name',T.name,{ph:'e.g. Bike Tour 27'})}${field('Year','year',T.year,{type:'number'})}</div>${field('Short description','subtitle',T.subtitle,{ph:'Where it goes'})}
    <div class="frow">${field('Day 1 date','startDate',T.startDate,{type:'date'})}${field('Fuel range rule (km)','fuelRangeKm',T.fuelRangeKm,{type:'number'})}</div>
    ${field('Meeting point','meet',T.meet,{ph:'e.g. Lanyon Shops, 8:30 am coffee'})}
    <div class="dbtns"><button type="button" class="btn primary" data-save="tour">Save</button><button type="button" class="btn" data-close>Cancel</button></div>`);
@@ -723,11 +723,20 @@ function crewDialog(c){
    <div class="dbtns"><button type="button" class="btn primary" data-save="crew" data-orig="${isNew?'':esc((c.name||'')+'|'+(c.email||''))}">Save</button><button type="button" class="btn" data-close>Cancel</button>${isNew?'':`<button type="button" class="btn danger" data-del="crew|${esc((c.name||'')+'|'+(c.email||''))}">Remove</button>`}</div>`);
 }
 function newTourDialog(){
-  const yr=new Date().getFullYear()+1;
-  dlg(`<h3>New tour</h3><div class="frow">${field('Year','year',yr,{type:'number'})}${field('Name','name',`Bike Tour ${String(yr).slice(2)}`)}</div>
+  const yr=new Date().getFullYear()+1, same=S.tours.filter(t=>Number(t.year)===yr);
+  dlg(`<h3>New tour</h3><div class="frow">${field('Year','year',yr,{type:'number'})}${field('Name','name',same.length?'':`Bike Tour ${String(yr).slice(2)}`,{ph:'e.g. High Country run'})}</div>
+   <p class="muted" id="sameyear" style="font-size:13.5px;margin:-4px 0 10px">${sameYearNote(yr)}</p>
    <label class="fl">Start from<select name="copyFrom"><option value="">A blank tour</option>${S.tours.map(t=>`<option value="${esc(t.id)}">A copy of ${esc(t.name||t.id)}</option>`).join('')}</select></label>
    <p class="muted" style="font-size:13.5px;margin:0 0 6px">A copy brings across the days, stops, bakeries, brief and crew list, ready to edit. Dates are left blank and it starts as a draft.</p>
    <div class="dbtns"><button type="button" class="btn primary" data-save="newtour">Create</button><button type="button" class="btn" data-close>Cancel</button></div>`);
+}
+function sameYearNote(yr){ const same=S.tours.filter(t=>Number(t.year)===Number(yr));
+  return same.length?`Already in ${esc(yr)}: ${same.map(t=>esc(t.name||t.id)).join(', ')}. Give this one a different name.`:'You can add more than one tour in a year; give each its own name.'; }
+document.addEventListener('input',e=>{ if(e.target.matches('#dlg [name="year"]')&&$('#sameyear'))$('#sameyear').innerHTML=sameYearNote(e.target.value); });
+function newTourId(year,name){ // e.g. "2027-high-country"; older tours keep their plain-year ids ("2026", "2027")
+  const base=`${year}-${slug(name).slice(0,40)||'tour'}`; let id=base, n=2;
+  while(S.tours.some(t=>t.id===id))id=`${base}-${n++}`;
+  return id;
 }
 
 /* actions */
@@ -839,7 +848,9 @@ async function doSave(btn){
     if(k==='publish'&&!(S.tour.crew||[]).some(c=>c.email)) setTimeout(()=>toast('Published. Add riders’ emails to the crew list so they can see it.'),3000);
     return save(()=>FB.batch(ops),k==='publish'?(tell?'Published and the crew told':'Published'):'Update sent');
   }
-  if(k==='tour') return save(()=>FB.update(`tours/${S.tourId}`,{name:val('name')||S.tour.name,subtitle:val('subtitle'),startDate:val('startDate'),fuelRangeKm:Number(val('fuelRangeKm'))||null,meet:val('meet'),...stamp()}),'Tour saved');
+  if(k==='tour'){ const y=Number(val('year'))||S.tour.year||null, nm=val('name')||S.tour.name;
+    if(S.tours.some(t=>t.id!==S.tourId&&Number(t.year)===Number(y)&&String(t.name||'').trim().toLowerCase()===String(nm).toLowerCase())){dlgError(`There\u2019s already a tour called ${nm} in ${y}.`);return}
+    return save(()=>FB.update(`tours/${S.tourId}`,{name:nm,year:y,subtitle:val('subtitle'),startDate:val('startDate'),fuelRangeKm:Number(val('fuelRangeKm'))||null,meet:val('meet'),...stamp()}),'Tour saved'); }
   if(k==='day'){
     const id=btn.dataset.id||FB.newId(tp('days'));
     const existing=S.days.find(d=>d.id===id);
@@ -877,11 +888,13 @@ async function doSave(btn){
     return save(()=>setCrew(crew),'Crew copied');
   }
   if(k==='newtour'){
-    const year=Number(val('year')); const id=String(year);
-    if(!year||year<2000){dlgError('Enter the tour year.');return}
-    if(S.tours.some(t=>t.id===id)){dlgError(`There\u2019s already a ${id} tour.`);return}
+    const year=Number(val('year')), name=val('name');
+    if(!year||year<2000||year>2100){dlgError('Enter the tour year.');return}
+    if(!name){dlgError('Give the tour a name.');return}
+    if(S.tours.some(t=>Number(t.year)===year&&String(t.name||'').trim().toLowerCase()===name.toLowerCase())){dlgError(`There\u2019s already a tour called ${name} in ${year}. Give this one a different name.`);return}
+    const id=newTourId(year,name);
     const from=val('copyFrom');
-    return save(async()=>{ await createTour(id,{name:val('name')||`Bike Tour ${String(year).slice(2)}`,year},from||null); },'Tour created');
+    return save(async()=>{ await createTour(id,{name,year},from||null); },'Tour created');
   }
 }
 async function doDelete(spec){
