@@ -1,7 +1,7 @@
 // Bike Tours R Us service worker.
 // App files: network first (so updates arrive straight away), saved copy when offline.
 // Fonts and icons: saved copy first. Firebase traffic goes straight to the network (Firebase keeps its own offline copy).
-const VERSION = 'tru-v4';
+const VERSION = 'tru-v5';
 const SHELL = ['./', './index.html', './css/app.css', './js/config.js', './js/app.js', './js/ride.js', './js/firebase-bundle.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/apple-touch-icon.png', './icons/favicon-32.png',
   './fonts/Barlow-Regular.ttf', './fonts/Barlow-Medium.ttf', './fonts/Barlow-SemiBold.ttf',
