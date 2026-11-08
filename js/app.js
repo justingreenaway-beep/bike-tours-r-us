@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='4.17';
+const APP_VERSION='4.18';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -148,6 +148,7 @@ function openTour(id){
   S.unsub.push(FB.watchCol(`tours/${id}/stops`,docs=>{S.stops=docs.map(d=>({id:d.id,...d.data}));render();},err));
   S.unsub.push(FB.watchCol(`tours/${id}/bakeries`,docs=>{S.bakeries=docs.map(d=>({id:d.id,...d.data}));render();},err));
   S.unsub.push(FB.watchCol(`tours/${id}/nights`,docs=>{S.nights=docs.map(d=>({id:d.id,...d.data}));render();},err));
+  S.reports=[]; if(canEditTour(S.tour))S.unsub.push(FB.watchCol(`tours/${id}/reports`,docs=>{S.reports=docs.filter(d=>d.exists!==false).map(d=>({id:d.id,...d.data}));render();},()=>{}));
   S.unsub.push(FB.watchCol(`tours/${id}/dinners`,docs=>{S.dinners=docs.filter(d=>d.exists!==false).map(d=>({id:d.id,...d.data}));render();},err));
   if(RIDE()){ S.unsub.push(...rideWatch(id)); setTimeout(()=>wxFetch(false),500); }
   S.unsub.push(FB.watchCol(`tours/${id}/announcements`,docs=>{S.anns=docs.map(d=>({id:d.id,...d.data})).sort((a,b)=>tsMs(b.at)-tsMs(a.at));render();},err));
@@ -316,7 +317,8 @@ function viewPlan(){
   const has2026=S.tours.some(t=>t.id==='2026');
   const empty=!days.length&&!S.bakeries.length, others=S.tours.filter(t=>t.id!==S.tourId);
   ensureVerifyCheck();
-  let h=`<div class="plan">${verifyNotice()}${S.tourId==='2026'&&empty?'<div class="notice"><b>The 2026 route didn’t come through.</b> The days, stops and bakeries are missing. <div class="planbar"><button type="button" class="btn small primary" data-act="import2026">Reload 2026 details</button></div></div>':''}
+  const nrep=(S.reports||[]).filter(r=>r.status==='open').length;
+  let h=`<div class="plan">${verifyNotice()}${nrep?`<div class="notice">${nrep} report${nrep===1?'':'s'} from riders to review. <button type="button" class="linkb" data-psec="crew">Review</button></div>`:''}${S.tourId==='2026'&&empty?'<div class="notice"><b>The 2026 route didn’t come through.</b> The days, stops and bakeries are missing. <div class="planbar"><button type="button" class="btn small primary" data-act="import2026">Reload 2026 details</button></div></div>':''}
    ${S.tourId!=='2026'&&empty&&others.length?'<div class="notice">This tour has no days or bakeries yet. Start from an earlier tour’s route? <div class="planbar"><button type="button" class="btn small primary" data-act="copyroute">Copy route and bakeries</button></div></div>':''}${L?'<p class="notice">This tour is locked, so its route can\u2019t be changed. Unlock it below to edit.</p>':''}
    <h2>Tour</h2><div class="card"><div class="prow" style="border:0;padding-top:0"><div class="pmain"><b>${esc(T.name||T.id)}</b><small>${T.startDate?`${T.kind==='day'?'Day ride: ':'Day 1: '}${esc(longDate(dateFor({offset:0})))}`:'No start date yet'}${T.subtitle?` \u2022 ${esc(T.subtitle)}`:''}</small>${ownerLine(T)}</div><div class="pact"><button type="button" class="btn small" data-act="edittour"${L?' disabled':''}>Edit</button></div></div>
      <div class="statusrow" role="group" aria-label="Who can see it">${[['draft','Draft'],['published','Published'],['locked','Locked']].map(([k,l])=>`<button type="button" class="btn small" data-status="${k}" aria-pressed="${T.status===k}">${l}</button>`).join('')}</div>
@@ -335,10 +337,11 @@ function viewPlan(){
   return h+'</div>';
 }
 function planCrew(){
+  const RC=typeof reportsCard==='function'?reportsCard():'';
   const T=S.tour, roles=T.roles||[];
   const crew=(T.crew||[]).slice().sort((a,b)=>String(a.name).localeCompare(b.name));
   const RP={owner:'<span class="pill role own">Owner</span>',editor:'<span class="pill role">Editor</span>',rider:''};
-  let h=`<h2>Crew list</h2><div class="card"><p class="muted" style="margin:0 0 6px;font-size:14px">Everyone with an email here can see this tour once it\u2019s published. They sign up in the app with that email. <b>Editors</b> can change everything on this tour (and see it while it\u2019s a draft); only the owner can delete it.</p>
+  let h=RC+`<h2>Crew list</h2><div class="card"><p class="muted" style="margin:0 0 6px;font-size:14px">Everyone with an email here can see this tour once it\u2019s published. They sign up in the app with that email. <b>Editors</b> can change everything on this tour (and see it while it\u2019s a draft); only the owner can delete it.</p>
     <div class="rlist flush">${crew.map(c=>rrowHtml({kind:'crew',rid:c.name,title:esc(c.name||'No name')+' '+RP[roleOf(c.email)],sub:c.email?esc(c.email):'',
       warns:c.email?[]:['No email yet, so they can\u2019t see the tour'],open:`data-editcrew="${esc(c.name)}|${esc(c.email||'')}"`,menu:`crew|${c.name}|${c.email||''}`})).join('')||'<p class="muted">Nobody yet.</p>'}</div>
     <p class="muted" style="font-size:13px;margin:6px 0 0">Always in name order.</p>
@@ -1023,7 +1026,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 /* ---------- delete a tour (editors) ----------
    Firestore doesn't delete sub-collections with their parent, so each one is listed and deleted in batches first. */
-const TOUR_PARTS=['days','stops','bakeries','nights','dinners','announcements','riders','live','wall','wallfull','extras'];
+const TOUR_PARTS=['days','stops','bakeries','nights','dinners','reports','announcements','riders','live','wall','wallfull','extras'];
 async function deleteTourDialog(){
   const T=S.tour; if(!T||!canDeleteTour(T))return;
   if(T.status==='locked') return dlg(`<h3>Delete ${esc(T.name||T.id)}</h3><p>This tour is locked. Unlock it first (tap Draft or Published above) if you really want to delete it.</p><div class="dbtns"><button type="button" class="btn" data-close>OK</button></div>`);
@@ -1074,9 +1077,7 @@ let VAPI=null;
 async function verifyApi(){
   if(FB.verify)return FB.verify; // a rebuilt bundle (or the test mock) can provide this directly
   if(VAPI)return VAPI;
-  const [am,au]=await Promise.all([import(GSTATIC+'firebase-app.js'),import(GSTATIC+'firebase-auth.js')]);
-  const app=am.getApps().length?am.getApp():am.initializeApp(CFG.firebase), auth=au.getAuth(app);
-  await auth.authStateReady();
+  const {au,auth}=await cdnAuth();
   VAPI={ async status(){ const u=auth.currentUser; if(!u||lc(u.email)!==S.user.email)return null; await u.reload(); if(u.emailVerified)await u.getIdToken(true); return u.emailVerified; },
     async send(){ const u=auth.currentUser; if(!u)throw new Error('not signed in'); await au.sendEmailVerification(u); } };
   return VAPI;
@@ -1125,3 +1126,106 @@ function osmNote(x,act,dayId,kind){
   if(x.fromOsm)return `<p class="notice osmnote">Filled in from OpenStreetMap. Check the details (and ring them) before booking. <button type="button" class="linkb" data-${act}="${esc(dayId)}">Pick another</button></p>`;
   const st=nightTown(S.days.find(d=>d.id===dayId)); if(!st||locked())return '';
   return `<p class="osmfind"><button type="button" class="linkb" data-${act}="${esc(dayId)}">🔍 Find places ${kind==='stay'?'to stay':'to eat'} in ${esc(st.town)}</button></p>`; }
+
+/* ---------- account deletion, reports and blocking (v4.18) ----------
+   Apple requires in-app account deletion and, for user content (photos, Koala Court charges), a way to report it and
+   to block people. Reports go to tours/{t}/reports/{id} (riders create, editors read and close). Blocking is per person,
+   kept in my profile (profile.blocked [{uid,name}], copied to all my tours) and hides their photos, finds and charges from me. */
+async function cdnAuth(){
+  if(CDNA)return CDNA;
+  const [am,au]=await Promise.all([import(GSTATIC+'firebase-app.js'),import(GSTATIC+'firebase-auth.js')]);
+  const app=am.getApps().length?am.getApp():am.initializeApp(CFG.firebase), auth=au.getAuth(app);
+  await auth.authStateReady(); return (CDNA={au,auth});
+}
+let CDNA=null;
+async function accountApi(){
+  if(FB.account)return FB.account; // test mock
+  const {au,auth}=await cdnAuth();
+  const me_=()=>{ const u=auth.currentUser; if(!u||lc(u.email)!==S.user.email)throw Object.assign(new Error('signed out'),{code:'auth/no-current-user'}); return u; };
+  return { async reauth(pw){ const u=me_(); await au.reauthenticateWithCredential(u,au.EmailAuthProvider.credential(u.email,pw)); },
+    async deleteUser(){ await au.deleteUser(me_()); } };
+}
+function deleteAccountDialog(){
+  const owned=S.tours.filter(t=>t.ownerUid===S.user.uid);
+  dlg(`<h3>Delete my account</h3>
+    <p>This permanently deletes your Ride Together account and what you’ve added: your profile (including safety details), bakery ticks and scores, Koala Court charges you laid, trivia, likes and the photos you posted. <b>It can’t be undone.</b></p>
+    <p class="muted" style="font-size:13.5px">Organisers’ crew lists may still show your name and email until they remove you. ${owned.length?'':'Tours other people run are not affected.'}</p>
+    ${owned.length?`<div class="notice" style="margin:0 0 10px"><b>You own ${owned.length===1?'a tour':owned.length+' tours'}:</b> ${owned.map(t=>esc(t.name||t.id)).join(', ')}.
+      <div class="seg2r" style="margin-top:8px"><label><input type="radio" name="owned" value="keep" checked><span>Keep for the crew</span></label><label><input type="radio" name="owned" value="delete"><span>Delete ${owned.length===1?'it':'them'} too</span></label></div>
+      <small class="muted">Kept tours stay for the crew; the app’s admins can take them over.</small></div>`:''}
+    ${field('Your password, to confirm','pw','',{type:'password'})}
+    <div class="dbtns"><button type="button" class="btn danger" data-act="delacctgo">Delete my account for good</button><button type="button" class="btn" data-close>Cancel</button></div>`);
+}
+async function purgeTourParts(id,say){ for(const c of TOUR_PARTS){ const docs=await FB.list(`tours/${id}/${c}`); if(say)say(`Deleting ${c} (${docs.length})…`);
+  for(let i=0;i<docs.length;i+=c==='wallfull'?20:400)await FB.batch(docs.slice(i,i+(c==='wallfull'?20:400)).map(d=>({op:'del',path:`tours/${id}/${c}/${d.id}`}))); }
+  await FB.del(`tours/${id}`); }
+async function deleteAccount(){
+  const pw=$('#dlg [name="pw"]')?$('#dlg [name="pw"]').value:''; if(!pw){ dlgError('Type your password to confirm.'); return; }
+  const delOwned=(($('#dlg input[name="owned"]:checked')||{}).value)==='delete', uid=S.user.uid, email=S.user.email;
+  const btn=$('[data-act="delacctgo"]'); if(btn)btn.disabled=true;
+  let api; try{ api=await accountApi(); await api.reauth(pw); }
+  catch(e){ if(btn)btn.disabled=false; dlgError(/wrong-password|invalid-credential|invalid-login/.test(e&&e.code||'')?'That password isn’t right.':e&&e.code==='auth/too-many-requests'?'Too many tries. Wait a few minutes.':'Couldn’t confirm it’s you. Check your signal, or sign out and back in, then try again.'); return; }
+  dlg(`<h3>Deleting your account</h3><p class="muted" id="delmsg">Starting…</p>`); const say=t=>{ const m=$('#delmsg'); if(m)m.textContent=t; };
+  S.unsub.forEach(f=>{try{f()}catch(x){}}); S.unsub=[];
+  try{
+    for(const t of S.tours){ say(`Tidying up ${t.name||t.id}…`);
+      if(t.ownerUid===uid&&delOwned){ await purgeTourParts(t.id,say); continue; }
+      const mine=async c=>(await FB.list(`tours/${t.id}/${c}`).catch(()=>[])).filter(d=>d.exists&&d.data&&d.data.uid===uid).map(d=>d.id);
+      const photos=await mine('wall'), finds=await mine('extras'), ops=[];
+      photos.forEach(id=>ops.push({op:'del',path:`tours/${t.id}/wallfull/${id}`},{op:'del',path:`tours/${t.id}/wall/${id}`}));
+      finds.forEach(id=>ops.push({op:'del',path:`tours/${t.id}/extras/${id}`}));
+      ops.push({op:'del',path:`tours/${t.id}/riders/${uid}`});
+      try{ for(let i=0;i<ops.length;i+=20)await FB.batch(ops.slice(i,i+20)); }catch(x){}
+      // editors who don't own the tour take themselves off its crew and editors list
+      if(t.ownerUid!==uid&&(t.editors||[]).map(lc).includes(email)){ const crew=(t.crew||[]).filter(c=>lc(c.email)!==email);
+        try{ await FB.update(`tours/${t.id}`,{crew,memberEmails:(t.memberEmails||[]).filter(e=>lc(e)!==email),editors:(t.editors||[]).filter(e=>lc(e)!==email),...stamp()}); }catch(x){} } }
+    say('Deleting your sign-in…'); await api.deleteUser();
+    try{ Object.keys(localStorage).filter(k=>/^tru-/.test(k)).forEach(k=>localStorage.removeItem(k)); }catch(x){}
+    closeDlg(); try{ await FB.signOut(); }catch(x){} showAuth('Your account has been deleted.');
+  }catch(e){ dlg(`<h3>Couldn’t finish</h3><p class="err">Something went wrong part way${e&&e.code==='auth/requires-recent-login'?': please sign out, sign back in and try again':'. Check your signal and try again'}.</p><div class="dbtns"><button type="button" class="btn" data-close>Close</button></div>`); }
+}
+/* reports */
+const REPORT_WHY=['Offensive or abusive','Harassment or bullying','Private information','Spam or not about the tour','Something else'];
+function reportDialog(kind,ref,about){
+  dlg(`<h3>Report this ${kind==='photo'?'photo':'charge'}</h3><p class="muted" style="font-size:13.5px;margin:0 0 8px">It goes to this tour’s editors, who can remove it. ${about?esc(about)+' isn’t told who reported it.':''}</p>
+    <div class="fl">What’s wrong<div class="rwhy">${REPORT_WHY.map((w,i)=>`<label><input type="radio" name="rwhy" value="${esc(w)}"${i===0?' checked':''}><span>${esc(w)}</span></label>`).join('')}</div></div>
+    ${field('Anything else (optional)','rnote','',{area:true,max:300})}
+    ${about?`<div class="fl">And<div class="seg2r"><label><input type="radio" name="rblock" value="no" checked><span>Just report</span></label><label><input type="radio" name="rblock" value="yes"><span>Also block ${esc(about)}</span></label></div></div>`:''}
+    <div class="dbtns"><button type="button" class="btn primary" data-act="reportgo" data-kind="${kind}" data-ref="${esc(ref)}" data-about="${esc(about||'')}">Send report</button><button type="button" class="btn" data-close>Cancel</button></div>`);
+}
+async function sendReport(b){
+  const kind=b.dataset.kind, ref=b.dataset.ref, about=b.dataset.about, why=($('#dlg input[name="rwhy"]:checked')||{}).value||'', block=(($('#dlg input[name="rblock"]:checked')||{}).value)==='yes';
+  const aboutUid=kind==='photo'?((R.wall.find(p=>p.id===ref)||{}).uid||''):ref.split('|')[0];
+  try{ await FB.set(tp('reports',FB.newId(tp('reports'))),{kind,ref,why,note:val('rnote'),about,aboutUid,uid:S.user.uid,by:myName(),status:'open',at:FB.now()});
+    if(block&&aboutUid)await blockPerson(aboutUid,about,true);
+    closeDlg(); toast(block?`Reported, and ${about} is blocked`:'Reported to the tour’s editors. Thanks.'); if(typeof closeViewer==='function'&&block)closeViewer(); }
+  catch(e){ dlgError(e&&e.code==='permission-denied'?'Reports need the latest Firebase rules. Ask the organiser.':'Couldn’t send it. Check your signal and try again.'); }
+}
+/* blocking */
+const blockedList=()=>(typeof myProfile==='function'?(myProfile().blocked||[]):[]);
+const isBlocked=uid=>!!uid&&blockedList().some(b=>b.uid===uid);
+async function blockPerson(uid,name,on){
+  if(!uid||uid===S.user.uid)return; let list=blockedList().filter(b=>b.uid!==uid); if(on)list.push({uid,name:name||''});
+  if(typeof saveProfile==='function')await saveProfile({blocked:list}); if(typeof applyBlocks==='function')applyBlocks(); render(); }
+document.addEventListener('click',async e=>{ const t=e.target;
+  if(t.closest('[data-act="delacct"]')){ deleteAccountDialog(); return; }
+  if(t.closest('[data-act="delacctgo"]')){ deleteAccount(); return; }
+  const rp=t.closest('[data-report]'); if(rp){ const [kind,ref,about]=rp.dataset.report.split('|||'); reportDialog(kind,ref,about); return; }
+  const rg=t.closest('[data-act="reportgo"]'); if(rg){ sendReport(rg); return; }
+  const bl=t.closest('[data-block]'); if(bl){ const [uid,name,on]=bl.dataset.block.split('|||'); await blockPerson(uid,name,on==='1'); closeDlg(); toast(on==='1'?`${name||'They'} blocked. You won’t see their photos or charges.`:`${name||'They'} unblocked`); return; }
+  const rr=t.closest('[data-rep]'); if(rr){ const [act,id]=rr.dataset.rep.split('|'); const r=(S.reports||[]).find(x=>x.id===id); if(!r)return;
+    try{ if(act==='view'&&r.kind==='photo'){ if(typeof openViewer==='function')openViewer(r.ref,null); return; }
+      if(act==='remove'){ if(!confirm(r.kind==='photo'?'Remove this photo for everyone?':'Remove this charge for everyone?'))return;
+        if(r.kind==='photo')await FB.batch([{op:'del',path:tp('wallfull',r.ref)},{op:'del',path:tp('wall',r.ref)}]);
+        else { const [ruid,cid]=r.ref.split('|'), v=R.riders[ruid]; if(v)await FB.update(tp('riders',ruid),{kc:(v.kc||[]).filter(c=>c.id!==cid)}); } }
+      await FB.update(tp('reports',id),{status:act==='remove'?'removed':'dismissed',closedBy:myName(),closedAt:FB.now()}); toast(act==='remove'?'Removed':'Dismissed'); }
+    catch(x){ toast('Couldn’t do that.'); } return; }
+});
+function reportsCard(){
+  const open=(S.reports||[]).filter(r=>r.status==='open').sort((a,b)=>tsMs(a.at)-tsMs(b.at)); if(!open.length)return '';
+  return `<h2>Reports to review</h2><div class="card reports">${open.map(r=>{ const p=r.kind==='photo'?R.wall.find(x=>x.id===r.ref)||(R.wallAll||[]).find(x=>x.id===r.ref):null;
+    const c=r.kind==='charge'?(()=>{ const [u,cid]=r.ref.split('|'), v=R.riders[u]; return v&&(v.kc||[]).find(x=>x.id===cid); })():null;
+    return `<div class="rrow"><div class="rmain"><b>${r.kind==='photo'?'Photo':'Koala Court charge'} by ${esc(r.about||'someone')}</b><small>Reported by ${esc(r.by||'a rider')} ${ago(r.at)} · ${esc(r.why||'')}${r.note?` · “${esc(r.note)}”`:''}</small>
+      ${c?`<small>Charge: ${esc(c.to)}, ${esc(c.off||'')}${c.note?` “${esc(c.note)}”`:''}</small>`:''}${(r.kind==='photo'&&!p)||(r.kind==='charge'&&!c)?'<span class="rwarn">Already gone</span>':''}</div>
+      <div class="pact">${p?`<button type="button" class="btn small" data-rep="view|${esc(r.id)}">View</button>`:''}${p||c?`<button type="button" class="btn small danger" data-rep="remove|${esc(r.id)}">Remove</button>`:''}<button type="button" class="btn small" data-rep="dismiss|${esc(r.id)}">${p||c?'Keep':'Close'}</button></div></div>`; }).join('')}</div>`;
+}

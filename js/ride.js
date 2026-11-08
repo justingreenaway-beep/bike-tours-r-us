@@ -21,15 +21,15 @@ const hm2min=hm=>{ if(!hm)return null; const [h,m]=String(hm).split(':').map(Num
 const min2hm=m=>m==null?'':`${pad(Math.floor(m/60)%24)}:${pad(Math.round(m%60))}`;
 
 /* ---------- data ---------- */
-function rideReset(){ R.riders={}; R.live=null; R.wall=[]; R.extras=[]; R.kcNight=null; R.quiz=null; }
+function rideReset(){ R.riders={}; R.live=null; R.wall=[]; R.extras=[]; R.wallAll=[]; R.extrasAll=[]; R.kcNight=null; R.quiz=null; }
 function rideWatch(id){
   rideReset();
   const quiet=()=>{};
   return [
-    FB.watchCol(`tours/${id}/riders`,docs=>{ R.riders={}; docs.forEach(d=>{ if(d.exists)R.riders[d.id]=d.data; }); markSeen(id); render(); if(typeof PV!=='undefined'&&PV.el&&!PV.el.hidden)pvActions(); },quiet),
+    FB.watchCol(`tours/${id}/riders`,docs=>{ R.riders={}; docs.forEach(d=>{ if(d.exists)R.riders[d.id]=d.data; }); applyBlocks(); markSeen(id); render(); if(typeof PV!=='undefined'&&PV.el&&!PV.el.hidden)pvActions(); },quiet),
     FB.watchDoc(`tours/${id}/live/pos`,d=>{ R.live=d.exists?d.data:null; render(); },quiet),
-    FB.watchCol(`tours/${id}/wall`,docs=>{ R.wall=docs.filter(d=>d.exists).map(d=>({id:d.id,...d.data})); render(); },quiet),
-    FB.watchCol(`tours/${id}/extras`,docs=>{ R.extras=docs.filter(d=>d.exists).map(d=>({id:'x:'+d.id,docId:d.id,extra:true,...d.data})); render(); },quiet)
+    FB.watchCol(`tours/${id}/wall`,docs=>{ R.wallAll=docs.filter(d=>d.exists).map(d=>({id:d.id,...d.data})); applyBlocks(); render(); },quiet),
+    FB.watchCol(`tours/${id}/extras`,docs=>{ R.extrasAll=docs.filter(d=>d.exists).map(d=>({id:'x:'+d.id,docId:d.id,extra:true,...d.data})); applyBlocks(); render(); },quiet)
   ];
 }
 const blankMe=()=>({name:'',email:'',ticks:{},ratings:{},quiz:{},votes:{},kc:[],kcj:[],check:{},likes:{}});
@@ -377,7 +377,9 @@ function bench(){ const out={}, pool=[...new Set([...crewNames(),...riders().map
   officersList().forEach(([n,title])=>{ out[n]=title; const a=n.toLowerCase();
     pool.forEach(p=>{ const b=String(p).toLowerCase(); if(b.length>=3&&a.length>=3&&(a.startsWith(b)||b.startsWith(a)))out[p]=title; }); });
   return out; }
-function kcAll(){ const out=[]; riders().forEach(v=>(v.kc||[]).forEach(c=>out.push({...c,by:v.name,byId:v.id}))); return out; }
+// people I've blocked: their photos, bakery finds and charges are hidden from me (v4.18)
+function applyBlocks(){ const B=typeof isBlocked==='function'?isBlocked:()=>false; R.wall=(R.wallAll||[]).filter(p=>!B(p.uid)); R.extras=(R.extrasAll||[]).filter(x=>!B(x.uid)); }
+function kcAll(){ const out=[]; riders().filter(v=>!(typeof isBlocked==='function'&&isBlocked(v.id))).forEach(v=>(v.kc||[]).forEach(c=>out.push({...c,by:v.name,byId:v.id}))); return out; }
 function kcBench(){ const B=bench(), out=[]; riders().forEach(v=>{ if(B[v.name])(v.kcj||[]).forEach(c=>out.push({...c,by:v.name,byId:v.id})); }); return out; }
 function courtTotals(){ const t={}, nights=courtNights(), add=(c,charge)=>{ const r=t[c.to]=t[c.to]||{tot:0,n:{},charges:0}; r.tot+=c.pts; r.n[c.night]=(r.n[c.night]||0)+c.pts; if(charge)r.charges++; };
   kcAll().forEach(c=>add(c,true)); kcBench().forEach(c=>add(c,false)); return {t,nights}; }
@@ -416,7 +418,7 @@ function rideCourt(){
         <div class="bbtns"><button class="mini" type="button" data-bench="1">Sanction +1</button><button class="mini" type="button" data-bench="2">Sanction +2</button><button class="mini good" type="button" data-bench="-1">Reduction \u22121</button><button class="mini good" type="button" data-bench="-2">Reduction \u22122</button></div></div>`:''}</div></div>`;
   const ch=kcAll().filter(c=>c.night===night.dayId).sort((a,b)=>a.at-b.at), bj=kcBench().filter(c=>c.night===night.dayId).sort((a,b)=>a.at-b.at);
   h+=`<div class="docket"><div class="dhead2"><h3>Tonight\u2019s docket</h3><button class="btn primary" type="button" data-ride="kcreview">Start dinner review</button></div><ol>
-    ${ch.length||bj.length?ch.map(c=>`<li><b class="pts">+${c.pts}</b><div><div><b>${personBtn(c.to)}</b> charged by ${personBtn(c.by)}</div><div class="off">${esc(c.off)}${c.note?`: \u201c${esc(c.note)}\u201d`:''}</div></div>${c.byId===myUid()?`<button class="mini" type="button" data-kcdel="${esc(c.id)}">Withdraw</button>`:''}</li>`).join('')+
+    ${ch.length||bj.length?ch.map(c=>`<li><b class="pts">+${c.pts}</b><div><div><b>${personBtn(c.to)}</b> charged by ${personBtn(c.by)}</div><div class="off">${esc(c.off)}${c.note?`: \u201c${esc(c.note)}\u201d`:''}</div></div>${c.byId===myUid()?`<button class="mini" type="button" data-kcdel="${esc(c.id)}">Withdraw</button>`:`<button class="mini rep" type="button" data-report="charge|||${esc(c.byId)}|${esc(c.id)}|||${esc(c.by)}" aria-label="Report this charge">Report</button>`}</li>`).join('')+
       bj.map(c=>`<li class="${c.pts<0?'red':'san'}"><b class="pts">${c.pts>0?'+':''}${c.pts}</b><div><div><b>${esc(c.to)}</b> ${c.pts<0?'good-behaviour reduction':'sanction'} from the ${esc(B[c.by]||'bench')}</div><div class="off">${esc(c.note||'')}</div></div>${c.byId===myUid()?`<button class="mini" type="button" data-kcjdel="${esc(c.id)}">Undo</button>`:''}</li>`).join('')
     :'<li class="muted" style="display:block">No charges yet tonight. Suspicious.</li>'}</ol></div>`;
   const {t}=courtTotals(), rows=Object.entries(t).filter(([,v])=>v.tot!==0||v.charges).sort((a,b)=>b[1].tot-a[1].tot);
@@ -577,7 +579,7 @@ function pvActions(){
   const p=pvPhoto(PV.ids[PV.i]); if(!p)return; const n=likeCounts()[p.id]||0, mine=!!(me().likes||{})[p.id];
   $('#pvact').innerHTML=`${canRide()?`<button type="button" data-pv="like" class="${mine?'liked':''}" aria-pressed="${mine}">${mine?'♥':'♡'} ${n?n+' ':''}${n===1?'like':n?'likes':'Like'}</button>`:n?`<span class="pvn">♥ ${n}</span>`:''}
     <button type="button" data-pv="share">Save or share</button>${S.stops.some(s=>s.id===p.stopId)?'<button type="button" data-pv="stop">Show the stop</button>':''}
-    ${p.uid===myUid()||S.editor?'<button type="button" data-pv="del" class="del">Delete</button>':''}`;
+    ${p.uid!==myUid()?`<button type="button" data-report="photo|||${esc(p.id)}|||${esc(p.rider||'')}">Report</button>`:''}${p.uid===myUid()||S.editor?'<button type="button" data-pv="del" class="del">Delete</button>':''}`;
 }
 function pvGo(dir){ // animate one step, then redraw around the new photo
   const j=PV.i+dir, tr=$('#pvtrack'); if(tr&&!dir){ tr.classList.add('anim'); tr.style.transform=''; return; }

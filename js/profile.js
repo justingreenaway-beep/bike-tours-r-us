@@ -111,8 +111,12 @@ function profileView(){
       <div class="card pcard">${row('🌓','Appearance (this phone)',`<div class="seg3">${[['light','Light'],['dark','Dark'],['auto','Match phone']].map(([k,l])=>`<button type="button" data-theme-set="${k}" aria-pressed="${theme===k}">${l}</button>`).join('')}</div>`)}
         ${row('✉️','Signed in as',`<b>${esc(S.user.email)}</b>`)}
         ${row('🔑','Password','<b>Email me a reset link</b>','<button type="button" class="linkb" data-prof="reset">Send</button>')}
-        ${row('🔄',`App version ${esc(APP_VERSION)}`,'<b id="updmsg">Check for an update</b>','<button type="button" class="linkb" data-prof="update">Check</button>')}</div>
-      <p style="margin:12px 0 0"><button type="button" class="btn danger" data-act="signout" style="width:100%">Sign out</button></p></div>
+        ${row('🔄',`App version ${esc(APP_VERSION)}`,'<b id="updmsg">Check for an update</b>','<button type="button" class="linkb" data-prof="update">Check</button>')}
+        ${row('🛟','Help and support','<b><a href="support.html" target="_blank" rel="noopener">Questions, problems, reporting</a></b>')}
+        ${row('🔒','Privacy','<b><a href="privacy.html" target="_blank" rel="noopener">Privacy policy</a></b>')}
+        ${(pr.blocked||[]).length?row('🚫','People you’ve blocked',pr.blocked.map(b=>`<b>${esc(b.name||'Someone')}</b> <button type="button" class="linkb" data-block="${esc(b.uid)}|||${esc(b.name||'')}|||0">Unblock</button>`).join('<br>')):''}</div>
+      <p style="margin:12px 0 0"><button type="button" class="btn" data-act="signout" style="width:100%">Sign out</button></p>
+      <p style="margin:10px 0 0;text-align:center"><button type="button" class="linkb delacct" data-act="delacct">Delete my account</button></p></div>
   </div>`;
 }
 
@@ -160,7 +164,7 @@ function personCard(name){
       ${row('🥧','This tour',`<b>${ticks} ${ticks===1?'bakery':'bakeries'}</b> · ${against} Koala Court charge${against===1?'':'s'} against`)}
       ${pr.dietary?row('🍽️','Dietary needs',`<b>${esc(pr.dietary)}</b>`):''}</div>
     ${em.name||em.phone||pr.medical?`<div class="card pcard psafe" style="margin-top:10px">${row('🆘','Emergency contact',`<b>${esc(em.name||'')}</b>${em.relation?` (${esc(em.relation)})`:''}${em.phone?` · <a href="${telUrl(em.phone)}">${esc(em.phone)}</a>`:''}`)}${pr.medical?row('⚕️','Medical notes',`<b>${esc(pr.medical)}</b>`):''}</div>`:''}
-    <div class="dbtns">${pr.mobile&&pr.showMobile!==false?`<a class="btn primary" href="${telUrl(pr.mobile)}">📞 Call ${esc(name)}</a>`:''}${canRide()&&name!==me().name?`<button type="button" class="btn" data-charge="${esc(name)}">Lay a charge</button>`:''}<button type="button" class="btn" data-close>Close</button></div>`);
+    <div class="dbtns">${pr.mobile&&pr.showMobile!==false?`<a class="btn primary" href="${telUrl(pr.mobile)}">📞 Call ${esc(name)}</a>`:''}${canRide()&&name!==me().name&&feat('court')?`<button type="button" class="btn" data-charge="${esc(name)}">Lay a charge</button>`:''}${r&&r.id!==myUid()?(isBlocked(r.id)?`<button type="button" class="btn" data-block="${esc(r.id)}|||${esc(name)}|||0">Unblock</button>`:`<button type="button" class="btn" data-block="${esc(r.id)}|||${esc(name)}|||1">Block</button>`):''}<button type="button" class="btn" data-close>Close</button></div>`);
 }
 
 /* ---------- events ---------- */
