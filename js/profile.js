@@ -199,9 +199,9 @@ document.addEventListener('change',async e=>{
 });
 
 /* Plan > Nights: what riders asked for in their profiles */
-function nightsPrefs(){
-  const crew=(S.tour.crew||[]).map(c=>({name:c.name,pr:profileOf(c.name)})), rooms=crew.filter(x=>x.pr.room), diet=crew.filter(x=>x.pr.dietary);
-  if(!rooms.length&&!diet.length)return `<div class="card"><p class="muted" style="margin:0;font-size:14px">Riders’ room and dietary preferences from their profiles will show here.</p></div>`;
+function nightsPrefs(kind){ // kind: 'rooms' (Accommodation tab), 'diet' (Dinner tab), or both
+  const crew=(S.tour.crew||[]).map(c=>({name:c.name,pr:profileOf(c.name)})), rooms=kind==='diet'?[]:crew.filter(x=>x.pr.room), diet=kind==='rooms'?[]:crew.filter(x=>x.pr.dietary);
+  if(!rooms.length&&!diet.length)return `<div class="card"><p class="muted" style="margin:0;font-size:14px">Riders’ ${kind==='rooms'?'room':kind==='diet'?'dietary':'room and dietary'} preferences from their profiles will show here.</p></div>`;
   const counts={}; diet.forEach(x=>String(x.pr.dietary).split(/[,;]+/).map(s=>s.trim().toLowerCase()).filter(Boolean).forEach(s=>counts[s]=(counts[s]||0)+1));
   return `<div class="card"><h3 style="font-size:19px;margin:0 0 6px">From riders’ profiles</h3>
     ${rooms.length?`<p class="muted" style="margin:0 0 4px;font-size:13px">Rooms</p><ul class="plist">${rooms.map(x=>`<li><b>${esc(x.name)}</b>: ${esc(x.pr.room)}</li>`).join('')}</ul>`:''}

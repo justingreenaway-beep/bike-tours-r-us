@@ -313,7 +313,7 @@ function todayDay(d){
       <div class="tdfuel"><div><small>Since fuel</small><b>${since!=null?since+' km':'\u2014'}</b></div><div><small>Next fuel</small><b>${nf>0?esc(times[nf].s.town)+(toF!=null?', '+toF+' km':''):'End of day'}</b></div></div>
       ${low?`<p class="warn tdwarn">More than ${mine?`your bike\u2019s ${range} km range`:`the ${range} km range`} to the next fuel stop. Top up here if you can.</p>`:''}`
     :`<div class="tdcard tdnext" style="--c:${col}"><small>End of the day</small><h3>Made it to ${esc(cur.s.town)}</h3>${night.length?'':''}${courtNights().some(n=>n.dayId===d.id)?`<button type="button" class="btn primary tdgo" data-tab-go="court">Koala Court tonight</button>`:''}</div>`}
-    ${night.map(nightCard).join('')}
+    ${nightBlock(d.id)}
     ${bf}
     <div class="tdwx" style="--c:${col}">${dayWx(d)}</div>
     ${ahead.length?`<div class="tdcard"><h3 class="tdh">Bakeries open ahead</h3><ul class="tdlist2">${ahead.join('')}</ul></div>`:''}
@@ -392,7 +392,7 @@ function rideCourt(){
   if(!ns.length) return h+`<p class="muted">The court sits on nights away. This tour has no overnight stops yet.</p></section>`;
   const night=curNight(); R.kcNight=night.dayId;
   const used=(m.kc||[]).filter(c=>c.night===night.dayId).reduce((a,c)=>a+c.pts,0), left=5-used, F=R.kcForm;
-  const din=nightsOf(night.dayId).map(n=>n.dinner).find(x=>x&&x.place);
+  const din=dinnerFor(night.dayId);
   const names=crewNames();
   h+=`<div class="nights" role="group" aria-label="Night">${ns.map(n=>`<button type="button" class="kn" data-kn="${esc(n.dayId)}" aria-pressed="${n.dayId===night.dayId}"><b>Night ${n.n}</b><small>${esc(n.place)}</small></button>`).join('')}</div>
     <p class="kcdin">${din?`Court sits at dinner: ${esc(din.place)}${din.time?', '+esc(t12(din.time)):''}.`:'Court sits at dinner. Venue to be confirmed.'}</p>

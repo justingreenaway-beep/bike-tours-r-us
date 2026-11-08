@@ -115,7 +115,7 @@ function stopMenu(id){
 }
 /* ---------- shared list rows (v4.10): every Plan list uses the Route pattern ----------
    ≡ drag handle, tap the row to edit, a ⋯ menu for everything else, warnings as orange lines. */
-const FROZEN_LISTS=['day','stop','bak','night']; // locked tours freeze these; crew, roles and brief stay editable
+const FROZEN_LISTS=['day','stop','bak','night','dinner']; // locked tours freeze these; crew, roles and brief stay editable
 const arrOrder=(key,ids)=>{ const arr=S.tour[key]||[]; return FB.update(`tours/${S.tourId}`,{[key]:ids.map(i=>arr[+i]),...stamp()}); };
 const orderBatch=(col,field,base)=>(ids,moved)=>FB.batch(ids.map((id,i)=>({op:'set',path:tp(col,id),data:{[field]:i+base,...(id===moved?stamp():{})},merge:true})));
 const REORDER={
@@ -147,6 +147,8 @@ function rowMenu(spec){
     items=B(`data-editbrief="${i}"`,'✎ Edit')+B(`data-rm="dup|brief|${i}"`,'⎘ Duplicate')+arrMoves('brief',i,arr.length)+B(`data-del="brief|${i}"`,'Delete','del'); }
   if(kind==='roles'){ const arr=T.roles||[], i=+key, r=arr[i]; if(!r)return; title=r.role||'Role';
     items=B(`data-editrole="${i}"`,'✎ Edit')+arrMoves('roles',i,arr.length)+B(`data-del="role|${i}"`,'Delete','del'); }
+  if(kind==='dinner'){ const D=dinnerFor(key), d=S.days.find(x=>x.id===key); if(!D)return; title=D.place||'Dinner';
+    items=B(`data-editdinner="${esc(key)}"`,'✎ Edit dinner')+B(`data-dinbook="${esc(key)}"`,D.booked?'✗ Mark as not booked':'✓ Mark as booked')+B(`data-dincopy="${esc(key)}"`,'📋 Copy booking details')+B(`data-dinsame="${esc(key)}"`,'⎘ Same venue another night…')+B(`data-del="dinner|${esc(key)}"`,'Delete dinner','del'); }
   if(kind==='crew'){ title=key;
     items=B(`data-editcrew="${esc(key)}|${esc(extra||'')}"`,'✎ Edit')+B(`data-del="crew|${esc(key)}|${esc(extra||'')}"`,'Remove from the crew list','del'); }
   if(L&&FROZEN_LISTS.includes(kind))items=items.replace(/<button type="button"( class="del")? data-(?!pickday)/g,m=>m.replace('<button','<button disabled'));

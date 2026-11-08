@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='4.12';
+const APP_VERSION='4.13';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -135,7 +135,7 @@ $('#toursel').addEventListener('change',e=>{ const v=e.target.value; if(v==='__n
 
 function openTour(id){
   S.unsub.forEach(f=>{try{f()}catch(e){}}); S.unsub=[];
-  S.tourId=id; localStorage.setItem('tru-tour',id); S.tour=S.tours.find(t=>t.id===id)||null; S.days=[];S.stops=[];S.bakeries=[];S.nights=[];S.anns=[]; S.planDay=null; S.bakTown=null; S.selMode=null; S.sel=new Set();
+  S.tourId=id; localStorage.setItem('tru-tour',id); S.tour=S.tours.find(t=>t.id===id)||null; S.days=[];S.stops=[];S.bakeries=[];S.nights=[];S.dinners=[];S.anns=[]; S.planDay=null; S.bakTown=null; S.selMode=null; S.sel=new Set();
   renderTourSelect(); render();
   const err=e=>{ if(e&&e.code==='permission-denied') toast('You don\u2019t have access to this tour.'); };
   S.unsub.push(FB.watchDoc(`tours/${id}`,d=>{ if(d.exists){S.tour={id:d.id,...d.data}; const i=S.tours.findIndex(t=>t.id===id); if(i>=0)S.tours[i]=S.tour; renderTourSelect();} render(); },err));
@@ -143,6 +143,7 @@ function openTour(id){
   S.unsub.push(FB.watchCol(`tours/${id}/stops`,docs=>{S.stops=docs.map(d=>({id:d.id,...d.data}));render();},err));
   S.unsub.push(FB.watchCol(`tours/${id}/bakeries`,docs=>{S.bakeries=docs.map(d=>({id:d.id,...d.data}));render();},err));
   S.unsub.push(FB.watchCol(`tours/${id}/nights`,docs=>{S.nights=docs.map(d=>({id:d.id,...d.data}));render();},err));
+  S.unsub.push(FB.watchCol(`tours/${id}/dinners`,docs=>{S.dinners=docs.filter(d=>d.exists!==false).map(d=>({id:d.id,...d.data}));render();},err));
   if(RIDE()){ S.unsub.push(...rideWatch(id)); setTimeout(()=>wxFetch(false),500); }
   S.unsub.push(FB.watchCol(`tours/${id}/announcements`,docs=>{S.anns=docs.map(d=>({id:d.id,...d.data})).sort((a,b)=>tsMs(b.at)-tsMs(a.at));render();},err));
 }
@@ -215,7 +216,7 @@ function bakeryList(town,when){
 }
 const nightsOf=dayId=>S.nights.filter(n=>n.dayId===dayId).sort((a,b)=>(a.order??99)-(b.order??99)||String(a.place||'').localeCompare(String(b.place||'')));
 function nightCard(n){
-  const me=myName(), mine=(n.rooms||[]).find(r=>(r.who||[]).includes(me)), D=n.dinner||{};
+  const me=myName(), mine=(n.rooms||[]).find(r=>(r.who||[]).includes(me));
   const roomTxt=r=>`${esc(r.type||'Room')}${(r.who||[]).length?': '+esc(r.who.join(', ')):''}`;
   return `<div class="night card"><span class="nlbl">Tonight\u2019s bed</span><h3>${esc(n.place||'To be booked')}</h3>
     ${n.address?`<a class="addr" href="${appleMaps((n.place||'')+', '+n.address)}" target="_blank" rel="noopener">${esc(n.address)}</a>`:''}${RIDE()&&(n.place||n.address)?navMenu({q:[n.place,n.address].filter(Boolean).join(', ')},'Navigate to the bed'):''}
@@ -223,10 +224,14 @@ function nightCard(n){
     ${mine?`<p class="myroom">Your room: <b>${esc(mine.type||'Room')}${mine.who.length>1?' with '+esc(mine.who.filter(x=>x!==me).join(', ')):', just you'}</b></p>`:''}
     ${(n.rooms||[]).length?`<details class="rooms"><summary>All rooms (${n.rooms.length})</summary><ul>${n.rooms.map(r=>`<li>${roomTxt(r)}</li>`).join('')}</ul></details>`:''}
     ${n.note?`<p class="note">${esc(n.note)}</p>`:''}
-    ${D.place?`<div class="dinner"><span class="nlbl">Dinner</span><b>${esc(D.place)}</b>${D.time?`, ${esc(t12(D.time))}`:''}${D.booked?' <span class="pill ok">Booked</span>':' <span class="pill">Not booked yet</span>'}
-      ${D.address?`<br><a class="addr" href="${appleMaps(D.place+', '+D.address)}" target="_blank" rel="noopener">${esc(D.address)}</a>`:''}${RIDE()?navMenu({q:[D.place,D.address].filter(Boolean).join(', ')},'Navigate to dinner'):''}${D.note?`<p class="note">${esc(D.note)}</p>`:''}</div>`:''}
   </div>`;
 }
+// dinner for a night: dinners/{dayId}, or (older tours) the first bed's dinner
+const dinnerFor=dayId=>{ const D=(S.dinners||[]).find(x=>x.dayId===dayId); if(D)return D; const o=nightsOf(dayId).map(n=>n.dinner).find(x=>x&&x.place); return o?{...o,dayId,legacy:true}:null; };
+function dinnerCard(D){ if(!D||!D.place)return '';
+  return `<div class="night card dincard"><span class="nlbl">Dinner</span><h3>${esc(D.place)}</h3><p class="nmeta">${D.time?esc(t12(D.time)):'Time to be confirmed'}${D.booked?' <span class="pill ok">Booked</span>':' <span class="pill">Not booked yet</span>'}</p>
+    ${D.address?`<a class="addr" href="${appleMaps(D.place+', '+D.address)}" target="_blank" rel="noopener">${esc(D.address)}</a>`:''}${RIDE()?navMenu({q:[D.place,D.address].filter(Boolean).join(', ')},'Navigate to dinner'):''}${D.note?`<p class="note">${esc(D.note)}</p>`:''}</div>`; }
+const nightBlock=dayId=>nightsOf(dayId).map(nightCard).join('')+dinnerCard(dinnerFor(dayId));
 const annSeenKey=()=>'tru-ann-'+S.tourId;
 function annBanner(){
   const a=S.anns[0]; if(!a)return'';
@@ -261,7 +266,7 @@ function viewRoadbook(){
     const opt=day.alt?(S.opt[day.id]||1):null;
     const st=stopsOf(day.id,opt);
     const dn=RIDE()?rideDayDone(day):{cls:'',bar:''};
-    h+=`<section class="day${dn.cls}" style="--c:var(--${esc(day.colour||'blue')})" id="day-${esc(day.id)}">${dn.bar}${dayHead(day)}<ol class="stops">${st.map((s,i)=>stopCard(s,i+1,day)).join('')||'<li class="muted" style="padding-left:46px">No stops yet.</li>'}</ol>${RIDE()?dayNavBlock(day):''}${mapBlock(day)}${nightsOf(day.id).map(nightCard).join('')}</section>`;
+    h+=`<section class="day${dn.cls}" style="--c:var(--${esc(day.colour||'blue')})" id="day-${esc(day.id)}">${dn.bar}${dayHead(day)}<ol class="stops">${st.map((s,i)=>stopCard(s,i+1,day)).join('')||'<li class="muted" style="padding-left:46px">No stops yet.</li>'}</ol>${RIDE()?dayNavBlock(day):''}${mapBlock(day)}${nightBlock(day.id)}</section>`;
   });
   if(T.brief&&T.brief.length) h+=`<section class="sec"><h2>Tour brief</h2><div class="brief">${T.brief.map(c=>`<div class="card"><h3>${esc(c.h)}</h3>${(c.p||[]).map(p=>`<p>${esc(p)}</p>`).join('')}${c.li&&c.li.length?`<ul>${c.li.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}</div>`).join('')}</div></section>`;
   if(T.roles&&T.roles.length) h+=`<section class="sec"><h2>The crew</h2><div class="roles">${T.roles.map(r=>`<div><span>${esc(r.role)}</span><span>${typeof personBtn==='function'&&r.name?personBtn(r.name):esc(r.name)}</span></div>`).join('')}</div>${T.crew&&T.crew.length?`<p class="muted">Riders: ${T.crew.map(c=>c.name).filter(Boolean).map(n=>typeof personBtn==='function'?personBtn(n):esc(n)).join(', ')}.</p>`:''}</section>`;
@@ -366,7 +371,7 @@ document.addEventListener('click',async e=>{
   if(k==='stop'){ msg=`Delete ${ids.length} ${ids.length===1?'stop':'stops'}?`; ops=ids.map(id=>({op:'del',path:tp('stops',id)})); setTimeout(()=>typeof scheduleAutoEstimate==='function'&&scheduleAutoEstimate(S.planDay,1500),0); }
   if(k==='day'){ const st=S.stops.filter(s=>ids.includes(s.dayId)), ns=S.nights.filter(n=>ids.includes(n.dayId));
     msg=`Delete ${ids.length} ${ids.length===1?'day':'days'}${st.length?`, their ${st.length} stops`:''}${ns.length?` and ${ns.length} ${ns.length===1?'bed':'beds'}`:''}?`;
-    ops=[...ids.map(id=>({op:'del',path:tp('days',id)})),...st.map(s=>({op:'del',path:tp('stops',s.id)})),...ns.map(n=>({op:'del',path:tp('nights',n.id)}))]; }
+    ops=[...ids.map(id=>({op:'del',path:tp('days',id)})),...st.map(s=>({op:'del',path:tp('stops',s.id)})),...ns.map(n=>({op:'del',path:tp('nights',n.id)})),...S.dinners.filter(x=>ids.includes(x.dayId)).map(x=>({op:'del',path:tp('dinners',x.id)}))]; }
   if(!confirm(msg+' This can’t be undone.'))return;
   try{ await FB.batch(ops); toast(`Deleted ${ids.length}`); S.selMode=null; S.sel=new Set(); render(); }catch(x){ toast(x&&x.code==='permission-denied'?'You don’t have permission to change this tour.':'Couldn’t delete. Check your signal and try again.'); }
 });
@@ -470,43 +475,106 @@ function readHours(){
 }
 
 /* Plan: nights */
+/* Plan > Nights (v4.13): two tabs, Accommodation (beds and rooms) and Dinner (one dinner per night, tours/{t}/dinners/{dayId}).
+   Dinners used to live inside each bed (nights/{id}.dinner); dinnerFor() still reads those, and an editor opening Nights
+   on an unlocked tour moves them across once. */
+S.nightTab=sessionStorage.getItem('tru-ntab')||'beds';
+const needsNight=d=>stopsOf(d.id).some(s=>(s.tags||[]).includes('Overnight'))||nightsOf(d.id).length>0||!!dinnerFor(d.id);
+function ridersOn(d){ const crew=crewNames(); if(!d||d.kind!=='solo')return crew; const w=String(d.who||''); const some=crew.filter(n=>new RegExp('\\b'+n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i').test(w)); return some.length?some:crew; }
+function dietsFor(names){ const pr=typeof profileOf==='function'?profileOf:()=>({}); const list=names.map(n=>({n,d:String(pr(n).dietary||'').trim()})).filter(x=>x.d);
+  const counts={}; list.forEach(x=>x.d.split(/[,;]+/).map(s=>s.trim().toLowerCase()).filter(Boolean).forEach(s=>counts[s]=(counts[s]||0)+1));
+  return {list,counts,txt:Object.entries(counts).map(([k,n])=>`${n} ${k}`).join(', ')}; }
+function dinnerBrief(d,D){ const who=ridersOn(d), di=dietsFor(who), dt=dateFor(d);
+  return [`Dinner for ${who.length}${dt?`, ${shortDate(dt)}`:''}${D&&D.time?`, ${t12(D.time)}`:''}${D&&D.place?` at ${D.place}`:''}.`,
+    di.list.length?`Dietary: ${di.list.map(x=>`${x.n} (${x.d})`).join(', ')}.`:'No dietary needs listed.', D&&D.under?`Booked under ${D.under}.`:''].filter(Boolean).join(' '); }
+let dinnersMoved='';
+function moveOldDinners(){ // once per tour, for editors on unlocked tours: nights/{id}.dinner -> dinners/{dayId}
+  if(!S.editor||locked()||dinnersMoved===S.tourId)return; dinnersMoved=S.tourId; const ops=[];
+  S.nights.forEach(n=>{ const D=n.dinner; if(!D||!D.place)return; if(!S.dinners.some(x=>x.dayId===n.dayId)&&!ops.some(o=>o.data&&o.data.dayId===n.dayId))
+      ops.push({op:'set',path:tp('dinners',n.dayId),data:{dayId:n.dayId,place:D.place||'',time:D.time||null,address:D.address||'',booked:!!D.booked,note:D.note||'',...stamp()}});
+    ops.push({op:'set',path:tp('nights',n.id),data:{dinner:null},merge:true}); });
+  if(ops.length)FB.batch(ops).catch(()=>{ dinnersMoved=''; });
+}
 function planNights(){
-  const L=locked(), names=crewNames();
-  let h=`<h2>Nights</h2><p class="muted" style="font-size:14px;margin:-4px 0 10px">Beds, rooms and dinners. Riders see each night at the end of that day in the roadbook and on Today.</p>`;
-  if(typeof nightsPrefs==='function')h+=nightsPrefs();
-  const days=daysSorted(); if(!days.length) return h+'<div class="card"><p class="muted">Add days in Route first.</p></div>';
-  h+=days.map(d=>{ const ns=nightsOf(d.id);
-    return `<div class="card" style="--c:var(--${esc(d.colour||'blue')})"><div class="prow" style="border:0;padding-top:0"><span class="dot"></span><div class="pmain"><b>${esc(d.label)}: ${esc(d.title||'Untitled')}</b><small>${dateFor(d)?'Night of '+esc(shortDate(dateFor(d))):'No date yet'}</small></div><div class="pact"><button type="button" class="btn small" data-addnight="${esc(d.id)}"${L?' disabled':''}>+ Bed</button></div></div>
-      <div class="rlist flush" data-rlist="night">${ns.map(n=>{ const inRoom=new Set((n.rooms||[]).flatMap(r=>r.who||[])), out=names.filter(x=>!inRoom.has(x)), D=n.dinner||{};
-        const warn=[ (n.rooms||[]).length&&out.length?`Not in a room: ${out.join(', ')}`:'', D.place&&!D.booked?'Dinner not booked':'', !D.place?'No dinner yet':''].filter(Boolean);
-        const nr=(n.rooms||[]).length;
-        return rrowHtml({kind:'night',rid:n.id,grip:ns.length>1&&!L,title:esc(n.place||'Unnamed'),
-          sub:`${nr} room${nr===1?'':'s'}${D.place?` · dinner at ${esc(D.place)}${D.time?' '+esc(t12(D.time)):''}`:''}${n.updatedBy?` · edited by ${esc(n.updatedBy)} ${ago(n.updatedAt)}`:''}`,
-          warns:warn,open:L?'':`data-editnight="${esc(n.id)}"`,menu:`night|${n.id}`}); }).join('')||'<p class="muted" style="margin:6px 0 0;font-size:14px">No bed booked.</p>'}</div></div>`;
-  }).join('');
+  const L=locked(), names=crewNames(), days=daysSorted(), tab=S.nightTab==='dinner'?'dinner':'beds';
+  setTimeout(moveOldDinners,0);
+  let h=`<h2>Nights</h2><div class="ntabs" role="tablist" aria-label="Nights"><button type="button" role="tab" data-ntab="beds" aria-selected="${tab==='beds'}">🛏 Accommodation</button><button type="button" role="tab" data-ntab="dinner" aria-selected="${tab==='dinner'}">🍽 Dinner</button></div>`;
+  if(!days.length) return h+'<div class="card"><p class="muted">Add days in Route first.</p></div>';
+  const need=days.filter(needsNight), bar=ok=>need.length?`<div class="nbar">${need.map(d=>`<i class="${ok(d)?'y':'n'}" title="${esc(d.label)}"></i>`).join('')}</div>`:'';
+  const head=(d,extra,btn)=>`<div class="prow" style="border:0;padding-top:0"><span class="dot"></span><div class="pmain"><b>${esc(d.label)}: ${esc(d.title||'Untitled')}</b><small>${dateFor(d)?(tab==='beds'?'Night of ':'')+esc(shortDate(dateFor(d))):'No date yet'}${extra?' · '+extra:''}</small></div>${btn?`<div class="pact">${btn}</div>`:''}</div>`;
+  if(tab==='beds'){
+    const outOf=d=>{ let out=0; nightsOf(d.id).forEach(n=>{ if((n.rooms||[]).length){ const inRoom=new Set(n.rooms.flatMap(r=>r.who||[])); out+=ridersOn(d).filter(x=>!inRoom.has(x)).length; } }); return out; };
+    const has=need.filter(d=>nightsOf(d.id).length).length, short=need.reduce((a,d)=>a+outOf(d),0);
+    h+=`<div class="card nsum"><b>${has} of ${need.length}</b> night${need.length===1?'':'s'} away ${need.length===1?'has':'have'} a bed${has<need.length?` · <b class="w">${need.length-has} still to book</b>`:''}${short?` · <b class="w">${short} rider${short===1?'':'s'}</b> without a room`:''}${bar(d=>nightsOf(d.id).length)}</div>`;
+    if(typeof nightsPrefs==='function')h+=nightsPrefs('rooms');
+    h+=days.map(d=>{ const ns=nightsOf(d.id), who=ridersOn(d);
+      return `<div class="card" style="--c:var(--${esc(d.colour||'blue')})">${head(d,`${who.length} rider${who.length===1?'':'s'}`,`<button type="button" class="btn small" data-addnight="${esc(d.id)}"${L?' disabled':''}>+ Bed</button>`)}
+        <div class="rlist flush" data-rlist="night">${ns.map(n=>{ const inRoom=new Set((n.rooms||[]).flatMap(r=>r.who||[])), out=who.filter(x=>!inRoom.has(x)), nr=(n.rooms||[]).length;
+          return rrowHtml({kind:'night',rid:n.id,grip:ns.length>1&&!L,title:esc(n.place||'Unnamed'),
+            sub:`${nr} room${nr===1?'':'s'}${n.checkIn?` · check in from ${esc(t12(n.checkIn))}`:''}${n.updatedBy?` · edited by ${esc(n.updatedBy)} ${ago(n.updatedAt)}`:''}${nr&&!out.length?'</small><small class="bst open">✓ Everyone has a room':''}`,
+            warns:[nr&&out.length?`Not in a room: ${out.join(', ')}`:'',!nr?'No rooms set yet':''].filter(Boolean),open:L?'':`data-editnight="${esc(n.id)}"`,menu:`night|${n.id}`}); }).join('')
+          ||`<p class="muted nempty">${needsNight(d)?'No bed booked yet.':'No bed (not a night away).'}</p>`}</div></div>`; }).join('');
+    return h;
+  }
+  const booked=need.filter(d=>{ const D=dinnerFor(d.id); return D&&D.booked; }).length, notB=need.filter(d=>{ const D=dinnerFor(d.id); return D&&!D.booked; }).length, none=need.filter(d=>!dinnerFor(d.id)).length;
+  h+=`<div class="card nsum"><b>${booked} of ${need.length}</b> dinner${need.length===1?'':'s'} booked${notB?` · <b class="w">${notB} not booked</b>`:''}${none?` · <b class="w">${none} no venue yet</b>`:''}${bar(d=>{ const D=dinnerFor(d.id); return D&&D.booked; })}</div>`;
+  if(typeof nightsPrefs==='function')h+=nightsPrefs('diet');
+  h+=days.map(d=>{ const D=dinnerFor(d.id), who=ridersOn(d), di=dietsFor(who);
+    return `<div class="card" style="--c:var(--${esc(d.colour||'blue')})">${head(d,`${who.length} for dinner${d.kind==='solo'?' (solo day)':''}`,'')}
+      <div class="rlist flush">${D?rrowHtml({kind:'dinner',rid:d.id,title:esc(D.place||'Venue to be confirmed'),
+          sub:[D.time?esc(t12(D.time)):'',D.under?`booked under ${esc(D.under)}`:'',di.txt?esc(di.txt):'',D.updatedBy?`edited by ${esc(D.updatedBy)} ${ago(D.updatedAt)}`:''].filter(Boolean).join(' · ')+(D.booked?`</small><small class="bst open">✓ Booked${D.deposit?', deposit paid':''}${courtNightIds().has(d.id)?' · Koala Court sits here':''}`:''),
+          warns:D.booked?[]:['Not booked yet'],open:L||D.legacy?'':`data-editdinner="${esc(d.id)}"`,menu:`dinner|${d.id}`,dis:!!D.legacy})
+        :`<div class="nempty2"><span class="muted">${needsNight(d)?'No dinner planned.':'No dinner (not a night away).'}</span><button type="button" class="btn small primary" data-adddinner="${esc(d.id)}"${L?' disabled':''}>+ Add dinner</button></div>`}</div></div>`; }).join('');
   return h;
 }
+const courtNightIds=()=>new Set(typeof courtNights==='function'&&RIDE()?courtNights().map(n=>n.dayId):[]);
 function roomRow(r={}){
   const who=new Set(r.who||[]), names=[...new Set([...crewNames(),...(r.who||[])])];
   return `<div class="drow room"><div class="frow3"><label class="fl">Room<select data-r="type">${ROOM_TYPES.map(t=>`<option${r.type===t?' selected':''}>${t}</option>`).join('')}</select></label><span></span><button type="button" class="ib" data-rowdel aria-label="Remove room">✕</button></div>
     <div class="chips">${names.map(n=>`<label><input type="checkbox" value="${esc(n)}"${who.has(n)?' checked':''}>${esc(n)}</label>`).join('')||'<span class="muted">Add riders to the crew list first.</span>'}</div></div>`;
 }
 function nightDialog(n,dayId){
-  const isNew=!n; n=n||{dayId,rooms:[],dinner:{}}; const D=n.dinner||{};
+  const isNew=!n; n=n||{dayId,rooms:[]};
   dlg(`<h3>${isNew?'Add a bed':'Edit bed'}</h3>
    <label class="fl">Night of<select name="dayId">${daysSorted().map(d=>`<option value="${esc(d.id)}"${d.id===n.dayId?' selected':''}>${esc(d.label)}: ${esc(d.title||'')}</option>`).join('')}</select></label>
    ${field('Where we’re staying','place',n.place,{ph:'e.g. Millthorpe Motel'})}${field('Address','address',n.address,{ph:'26 Victoria St, Millthorpe NSW'})}
    <div class="frow">${field('Phone','phone',n.phone,{type:'tel'})}${field('Check in from','checkIn',n.checkIn,{type:'time'})}</div>
-   ${field('Booking details (ref, paid, who booked)','booking',n.booking,{area:true,max:300})}
-   ${field('Note for riders','note',n.note,{area:true,max:300,ph:'e.g. Park bikes round the back'})}
    <div class="fl">Rooms<div id="rrows">${(n.rooms||[]).map(roomRow).join('')}</div><button type="button" class="btn small" data-act="radd">+ Add room</button></div>
-   <h3 style="font-size:20px;margin-top:6px">Dinner</h3>
-   <div class="frow">${field('Where','dPlace',D.place,{ph:'e.g. The Commercial'})}${field('Time','dTime',D.time,{type:'time'})}</div>
-   ${field('Address','dAddress',D.address)}
-   <label class="fl chk"><input type="checkbox" name="dBooked"${D.booked?' checked':''}> Booked</label>
-   ${field('Dinner note','dNote',D.note,{area:true,max:300,ph:'e.g. Booked for 12 under Gary'})}
+   ${field('Note for riders','note',n.note,{area:true,max:300,ph:'e.g. Park bikes round the back'})}
+   <details class="sfmore"${n.booking?' open':''}><summary>More: booking details for editors</summary>${field('Booking details (ref, paid, who booked)','booking',n.booking,{area:true,max:300})}</details>
+   <p class="muted" style="font-size:13px;margin:0 0 8px">Dinner is planned on the Dinner tab.</p>
    <div class="dbtns"><button type="button" class="btn primary" data-save="night" data-id="${isNew?'':esc(n.id)}">Save</button><button type="button" class="btn" data-close>Cancel</button>${isNew?'':`<button type="button" class="btn danger" data-del="night|${esc(n.id)}">Delete</button>`}</div>`);
 }
+function dinnerDialog(dayId,copyFrom){
+  const ex=S.dinners.find(x=>x.dayId===dayId), D=ex||(copyFrom?{place:copyFrom.place,address:copyFrom.address,phone:copyFrom.phone}:{}), isNew=!ex;
+  const free=daysSorted().filter(d=>d.id===dayId||!S.dinners.some(x=>x.dayId===d.id));
+  const st=D.deposit?'deposit':D.booked?'booked':'no';
+  dlg(`<h3>${isNew?'Add dinner':'Edit dinner'}</h3>
+   <label class="fl">Night of<select name="dayId" data-dinday>${free.map(d=>`<option value="${esc(d.id)}"${d.id===dayId?' selected':''}>${esc(d.label)}: ${esc(d.title||'')}${dateFor(d)?' ('+esc(shortDate(dateFor(d)))+')':''}</option>`).join('')}</select></label>
+   ${field('Where','place',D.place,{ph:'e.g. The Commercial Hotel'})}
+   <div class="frow">${field('Time','time',D.time,{type:'time'})}${field('Booked under','under',D.under,{ph:'e.g. Gary'})}</div>
+   ${field('Address','address',D.address,{ph:'e.g. 30 Market St, Mudgee'})}
+   <div class="fl">Booking<div class="seg2r dinst"><label><input type="radio" name="dst" value="no"${st==='no'?' checked':''}><span>Not booked</span></label><label><input type="radio" name="dst" value="booked"${st==='booked'?' checked':''}><span>Booked</span></label><label><input type="radio" name="dst" value="deposit"${st==='deposit'?' checked':''}><span>Deposit paid</span></label></div></div>
+   <div class="dinfo" id="dinfo">${dinnerInfo(dayId)}</div>
+   ${field('Note for riders','note',D.note,{area:true,max:300,ph:'e.g. Walk from the motel, 5 min'})}
+   <details class="sfmore"${D.phone||D.booking?' open':''}><summary>More: phone, booking notes for editors</summary>${field('Phone','phone',D.phone,{type:'tel'})}${field('Booking notes (editors only)','booking',D.booking,{area:true,max:300})}</details>
+   <div class="dbtns"><button type="button" class="btn primary" data-save="dinner" data-was="${isNew?'':esc(dayId)}">Save</button><button type="button" class="btn" data-close>Cancel</button>${isNew?'':`<button type="button" class="btn danger" data-del="dinner|${esc(dayId)}">Delete</button>`}</div>`);
+}
+function dinnerInfo(dayId){ const d=S.days.find(x=>x.id===dayId), who=ridersOn(d), di=dietsFor(who);
+  return `<b>For the booking</b>${who.length} rider${who.length===1?'':'s'} that night${d&&d.kind==='solo'?' (solo day)':' (everyone)'}
+    ${di.list.length?`<div class="dchips">${Object.entries(di.counts).map(([k,n])=>`<i>${n} ${esc(k)}</i>`).join('')}</div><small>${di.list.map(x=>`${esc(x.n)}: ${esc(x.d)}`).join(' · ')}</small>`:'<small>No dietary needs in riders’ profiles.</small>'}
+    <button type="button" class="linkb" data-dincopy="${esc(dayId)}">Copy booking details</button>`; }
+async function copyText(t){ try{ await navigator.clipboard.writeText(t); toast('Copied. Paste it into a text or email to the venue.'); }catch(e){ prompt('Copy this:',t); } }
+document.addEventListener('change',e=>{ const s=e.target.closest('[data-dinday]'); if(s&&$('#dinfo'))$('#dinfo').innerHTML=dinnerInfo(s.value); });
+document.addEventListener('click',async e=>{ const t=e.target;
+  const nt=t.closest('[data-ntab]'); if(nt){ S.nightTab=nt.dataset.ntab; sessionStorage.setItem('tru-ntab',S.nightTab); render(); return; }
+  const ad=t.closest('[data-adddinner]'); if(ad)return dinnerDialog(ad.dataset.adddinner);
+  const ed=t.closest('[data-editdinner]'); if(ed)return dinnerDialog(ed.dataset.editdinner);
+  const cp=t.closest('[data-dincopy]'); if(cp){ const d=S.days.find(x=>x.id===cp.dataset.dincopy); const D=$('#dlg [name="place"]')&&$('#dlg [data-save="dinner"]')?{place:val('place'),time:val('time'),under:val('under')}:dinnerFor(cp.dataset.dincopy); return copyText(dinnerBrief(d,D)); }
+  const bk=t.closest('[data-dinbook]'); if(bk){ const D=dinnerFor(bk.dataset.dinbook); if(!D||D.legacy)return; try{ await FB.set(tp('dinners',bk.dataset.dinbook),{booked:!D.booked,...(D.booked?{deposit:false}:{}),...stamp()},true); closeDlg(); toast(D.booked?'Marked as not booked':'Marked as booked'); }catch(x){ toast('Couldn’t change that.'); } return; }
+  const sm=t.closest('[data-dinsame]'); if(sm){ const D=dinnerFor(sm.dataset.dinsame), next=daysSorted().find(d=>!dinnerFor(d.id)&&needsNight(d))||daysSorted().find(d=>!dinnerFor(d.id));
+    if(!next){ closeDlg(); return toast('Every night already has a dinner.'); } return dinnerDialog(next.id,D); }
+});
 
 /* Plan: brief */
 function planBrief(){
@@ -771,11 +839,18 @@ async function doSave(btn){
     const rooms=$$('#rrows .room').map(r=>({type:$('[data-r=type]',r).value,who:$$('input[type=checkbox]:checked',r).map(x=>x.value)}));
     const seen={}, dup=rooms.flatMap(r=>r.who).find(n=>seen[n]?true:(seen[n]=1,false));
     if(dup){dlgError(`${dup} is in two rooms.`);return}
-    if(!val('place')&&!val('dPlace')){dlgError('Add where you’re staying or the dinner.');return}
+    if(!val('place')){dlgError('Add where you’re staying.');return}
     const id=btn.dataset.id||FB.newId(tp('nights'));
-    const data={dayId:val('dayId'),place:val('place'),address:val('address'),phone:val('phone'),checkIn:val('checkIn')||null,booking:val('booking'),note:val('note'),rooms,
-      dinner:{place:val('dPlace'),time:val('dTime')||null,address:val('dAddress'),booked:!!($('#dlg [name="dBooked"]')||{}).checked,note:val('dNote')},...stamp()};
+    const data={dayId:val('dayId'),place:val('place'),address:val('address'),phone:val('phone'),checkIn:val('checkIn')||null,booking:val('booking'),note:val('note'),rooms,...stamp()};
+    const old=btn.dataset.id&&S.nights.find(x=>x.id===id); if(old&&old.order!=null)data.order=old.order;
     return save(()=>FB.set(tp('nights',id),data),btn.dataset.id?'Bed saved':'Bed added');
+  }
+  if(k==='dinner'){
+    const dayId=val('dayId'), was=btn.dataset.was; if(!val('place')){dlgError('Add where dinner is.');return}
+    if(dayId!==was&&S.dinners.some(x=>x.dayId===dayId)){dlgError('That night already has a dinner.');return}
+    const st=($('#dlg input[name="dst"]:checked')||{}).value||'no', old=was&&S.dinners.find(x=>x.dayId===was)||{};
+    const data={...old,dayId,place:val('place'),time:val('time')||null,under:val('under'),address:val('address'),phone:val('phone'),booking:val('booking'),note:val('note'),booked:st!=='no',deposit:st==='deposit',...stamp()}; delete data.id;
+    return save(async()=>{ if(was&&was!==dayId)await FB.batch([{op:'set',path:tp('dinners',dayId),data},{op:'del',path:tp('dinners',was)}]); else await FB.set(tp('dinners',dayId),data); },was?'Dinner saved':'Dinner added');
   }
   if(k==='role'||k==='brief'){
     const key=k==='brief'?'brief':'roles', arr=(S.tour[key]||[]).slice(), i=btn.dataset.id===''?null:+btn.dataset.id;
@@ -865,9 +940,10 @@ async function doSave(btn){
 async function doDelete(spec){
   const [kind,id,extra]=spec.split('|');
   if(kind==='day'){ const n=stopsOf(id).length, nn=nightsOf(id).length; if(!confirm(`Delete this day${n?` and its ${n} stops`:''}${nn?`${n?',':' and'} its bed and dinner`:''}? This can\u2019t be undone.`))return;
-    return save(()=>FB.batch([{op:'del',path:tp('days',id)},...stopsOf(id).map(s=>({op:'del',path:tp('stops',s.id)})),...nightsOf(id).map(x=>({op:'del',path:tp('nights',x.id)}))]),'Day deleted'); }
+    return save(()=>FB.batch([{op:'del',path:tp('days',id)},...stopsOf(id).map(s=>({op:'del',path:tp('stops',s.id)})),...nightsOf(id).map(x=>({op:'del',path:tp('nights',x.id)})),...S.dinners.filter(x=>x.dayId===id).map(x=>({op:'del',path:tp('dinners',x.id)}))]),'Day deleted'); }
   if(kind==='bakery'){ if(!confirm('Delete this bakery?'))return; return save(()=>FB.del(tp('bakeries',id)),'Bakery deleted'); }
-  if(kind==='night'){ if(!confirm('Delete this bed and its dinner?'))return; return save(()=>FB.del(tp('nights',id)),'Bed deleted'); }
+  if(kind==='dinner'){ if(!confirm('Delete this dinner?'))return; return save(()=>FB.del(tp('dinners',id)),'Dinner deleted'); }
+  if(kind==='night'){ if(!confirm('Delete this bed?'))return; return save(()=>FB.del(tp('nights',id)),'Bed deleted'); }
   if(kind==='ann'){ if(!confirm('Delete this update? Riders won\u2019t see it any more.'))return; try{await FB.del(tp('announcements',id)); toast('Update deleted');}catch(x){toast('Couldn\u2019t delete that.')} return; }
   if(kind==='brief'||kind==='role'){ const key=kind==='brief'?'brief':'roles'; if(!confirm(kind==='brief'?'Delete this brief card?':'Delete this role?'))return;
     const arr=(S.tour[key]||[]).slice(); arr.splice(+id,1); return save(()=>FB.update(`tours/${S.tourId}`,{[key]:arr,...stamp()}),kind==='brief'?'Card deleted':'Role deleted'); }
@@ -922,14 +998,14 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 /* ---------- delete a tour (editors) ----------
    Firestore doesn't delete sub-collections with their parent, so each one is listed and deleted in batches first. */
-const TOUR_PARTS=['days','stops','bakeries','nights','announcements','riders','live','wall','wallfull','extras'];
+const TOUR_PARTS=['days','stops','bakeries','nights','dinners','announcements','riders','live','wall','wallfull','extras'];
 async function deleteTourDialog(){
   const T=S.tour; if(!T||!S.editor)return;
   if(T.status==='locked') return dlg(`<h3>Delete ${esc(T.name||T.id)}</h3><p>This tour is locked. Unlock it first (tap Draft or Published above) if you really want to delete it.</p><div class="dbtns"><button type="button" class="btn" data-close>OK</button></div>`);
   dlg(`<h3>Delete ${esc(T.name||T.id)}</h3><p class="muted">Counting what’s in it…</p>`);
   const counts={}; try{ await Promise.all(TOUR_PARTS.map(async c=>{ counts[c]=(await FB.list(tp(c))).length; })); }catch(e){}
   if(!$('#dlg').open)return;
-  const n=k=>counts[k]||0, list=[[n('days'),'day'],[n('stops'),'stop'],[n('bakeries'),'bakery','bakeries'],[n('nights'),'bed'],[n('riders'),'rider’s results','riders’ results'],[n('wall'),'photo'],[n('announcements'),'update'],[n('extras'),'crew bakery find']]
+  const n=k=>counts[k]||0, list=[[n('days'),'day'],[n('stops'),'stop'],[n('bakeries'),'bakery','bakeries'],[n('nights'),'bed'],[n('dinners'),'dinner'],[n('riders'),'rider’s results','riders’ results'],[n('wall'),'photo'],[n('announcements'),'update'],[n('extras'),'crew bakery find']]
     .filter(([c])=>c).map(([c,one,many])=>`${c} ${c===1?one:(many||one+'s')}`);
   dlg(`<h3>Delete ${esc(T.name||T.id)}</h3>
     <p>This permanently deletes the tour and everything in it${list.length?`: <b>${list.join(', ')}</b>`:''}. Riders on its crew list lose it too. <b>It can’t be undone.</b></p>
