@@ -289,8 +289,7 @@ function rideToday(){
     ${feat('wrapped')?`    <div class="tdmain" style="--c:var(--purple)"><span class="tag">That\u2019s a wrap</span><h2>Your Wrapped is ready</h2><p class="muted" style="margin:0">A picture card of your tour to save or share.</p>
       <div class="planbar"><button class="btn primary" type="button" data-wrapped="me">My Wrapped</button><button class="btn" type="button" data-wrapped="crew">Crew Wrapped</button></div></div>`:''}
     ${feat('bakeries')?`    <div class="tdcard"><h3 class="tdh">The awards</h3><div class="awmini">
-      <div>Best bakery<b>${A.bo?esc(b(A.bo).name):'Not judged'}</b></div><div>Best pie<b>${A.bp?esc(b(A.bp).name):'Not judged'}</b></div>
-      <div>Pie champion<b>${rows[0]&&rows[0].t?esc(rows[0].name):'Nobody'}</b></div>${feat('court')?`<div>Most wanted<b>${wanted?esc(wanted[0]):'Nobody'}</b></div>`:''}</div>
+      <div>Best bakery<b>${A.bo?esc(b(A.bo).name):'Not judged'}</b></div>${feat('court')?`<div>Most wanted<b>${wanted?esc(wanted[0]):'Nobody'}</b></div>`:''}</div>
       <p style="margin:8px 0 0"><button type="button" class="linkb" data-tab-go="bakeries">See the full board</button></p></div>`:''}
     ${feat('photos')&&R.wall.length?`<div class="tdcard"><h3 class="tdh">Photo wall</h3><span class="muted" style="font-size:13px">${R.wall.length} photos from the crew</span><div class="phmini">${ph.map(p=>`<button type="button" class="thumb" data-photo="${esc(p.id)}"><img src="${p.thumb}" alt=""></button>`).join('')}</div><p style="margin:8px 0 0"><button type="button" class="linkb" data-tab-go="crew">Open the photo wall</button></p></div>`:''}`;
 }
@@ -332,13 +331,13 @@ function boardRows(){
     const per={}; groupDays().forEach(d=>{ const di=new Set(dayBakIds(d)); per[d.id]=t.filter(n=>di.has(n)).length; });
     return {id:v.id,name:v.name,t:t.length,r:Object.keys(v.ratings||{}).length,q,per,mine:v.id===myUid()}; }).sort((a,b)=>b.t-a.t||b.q-a.q||a.name.localeCompare(b.name));
 }
-function awards(){
-  const avg=crewAvg(), ent=Object.entries(avg).filter(([id])=>bakById(id));
-  const by=(f,dir=-1)=>ent.filter(([id])=>f(bakById(id))).sort((a,b)=>dir*(a[1].a-b[1].a)||b[1].c-a[1].c)[0];
-  const tc={}; riders().forEach(v=>Object.keys(v.ticks||{}).forEach(n=>{ if(bakById(n))tc[n]=(tc[n]||0)+1; }));
-  const mv=Object.entries(tc).sort((a,b)=>b[1]-a[1])[0], rows=boardRows(), quizTop=rows.filter(r=>r.q>0).sort((a,b)=>b.q-a.q)[0];
-  const bp=by(isPie), bo=by(()=>true), wd=ent.length>1?by(()=>true,1):null, B=x=>x&&bakById(x[0]);
-  return {bp,bo,wd,mv,rows,quizTop,B};
+const BEST_MIN=3; // Best bakery needs scores from at least this many riders
+function awards(){ // v4.19: one award (Best bakery); the trivia champion lives in the Trivia section
+  const ent=Object.entries(crewAvg()).filter(([id])=>bakById(id)), rows=boardRows();
+  const bo=ent.filter(([,v])=>v.c>=BEST_MIN).sort((a,b)=>b[1].a-a[1].a||b[1].c-a[1].c)[0]||null;
+  const near=ent.filter(([,v])=>v.c<BEST_MIN).sort((a,b)=>b[1].c-a[1].c||b[1].a-a[1].a)[0]||null;
+  const quizTop=rows.filter(r=>r.q>0).sort((a,b)=>b.q-a.q)[0];
+  return {bo,near,rows,quizTop,B:x=>x&&bakById(x[0])};
 }
 function rideBakeries(){
   if(!canRide())return notRiding();
@@ -350,15 +349,10 @@ function rideBakeries(){
     <div class="ppbig"><b>${mine}</b><span>of ${ids.length} bakeries on the group route</span></div>
     <div class="pdays">${groupDays().map(d=>{ const di=dayBakIds(d), you=di.filter(id=>m.ticks[id]).length, top=rows.filter(r=>r.per[d.id]>0).sort((a,c)=>c.per[d.id]-a.per[d.id])[0];
       return `<div class="pday" style="--c:var(--${esc(d.colour||'blue')})"><h3>${esc(d.label)}</h3><div class="bar"><i style="width:${di.length?Math.round(you/di.length*100):0}%"></i></div><small>You: ${you} of ${di.length}</small><small>Leader: ${top?esc(top.name)+' ('+top.per[d.id]+')':'nobody yet'}</small></div>`; }).join('')}</div>
-    <p class="muted" style="font-size:14px">Tick bakeries and score them in each town\u2019s bakery audit in the roadbook.</p></section>
-    <section class="sec"><h2>Leaderboard</h2><div class="lbwrap">${rows.length?`<table class="lb"><thead><tr><th></th><th>Rider</th><th>Bakeries</th><th>Rated</th><th>Trivia</th></tr></thead><tbody>${rows.map((r,i)=>`<tr class="${r.mine?'mine':''}"><td class="pos">${i===0&&r.t>0?'<span class="crown">Pie champ</span>':i+1}</td><td>${personBtn(r.name)}</td><td><b>${r.t}</b></td><td>${r.r}</td><td>${r.q}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">No one on the board yet. Tick a bakery to get started.</p>'}</div></section>
-    <section class="sec"><h2>Awards</h2><div class="awards">
-      ${aw(`Best pie of ${esc(S.tour.name||'the tour')}`,A.bp&&b(A.bp).name,A.bp?`${esc(b(A.bp).must)}, ${esc(b(A.bp).town)}. Crew ${A.bp[1].a.toFixed(1)}/10`:'')}
-      ${aw('Best bakery overall',A.bo&&b(A.bo).name,A.bo?`${esc(b(A.bo).town)}. Crew ${A.bo[1].a.toFixed(1)}/10 from ${A.bo[1].c}`:'')}
-      ${aw('Biggest disappointment',A.wd&&b(A.wd).name,A.wd?`${esc(b(A.wd).town)}. Crew ${A.wd[1].a.toFixed(1)}/10`:'')}
-      ${aw('Most visited',A.mv&&bakById(A.mv[0]).name,A.mv?`${A.mv[1]} rider${A.mv[1]>1?'s':''}`:'')}
-      ${aw('Pie champion',rows[0]&&rows[0].t>0&&rows[0].name,rows[0]&&rows[0].t>0?`${rows[0].t} baker${rows[0].t===1?'y':'ies'}`:'')}
-      ${aw('Trivia champion',A.quizTop&&A.quizTop.name,A.quizTop?`${A.quizTop.q} points`:'')}</div></section>
+    <div class="bkrules"><span class="bkh">How it works</span><p><b>Tick</b> a bakery in the roadbook when you eat there, then <b>score</b> it out of 10.</p><p><b>Best bakery</b> goes to the crew\u2019s highest average score, from at least ${BEST_MIN} riders.</p></div></section>
+    <section class="sec"><h2>Leaderboard</h2><div class="lbwrap">${rows.length?`<table class="lb"><thead><tr><th></th><th>Rider</th><th>Bakeries</th><th>Rated</th><th>Trivia</th></tr></thead><tbody>${rows.map((r,i)=>`<tr class="${r.mine?'mine':''}"><td class="pos">${i+1}</td><td>${personBtn(r.name)}</td><td><b>${r.t}</b></td><td>${r.r}</td><td>${r.q}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">No one on the board yet. Tick a bakery to get started.</p>'}</div></section>
+    <section class="sec"><h2>Best bakery</h2><div class="awards one">
+      ${aw(`Best bakery of ${esc(S.tour.name||'the tour')}`,A.bo&&b(A.bo).name,A.bo?`${esc(b(A.bo).town)} · crew average ${A.bo[1].a.toFixed(1)}/10 from ${A.bo[1].c} riders`:(A.near?`Closest so far: ${esc(b(A.near).name)}, scored by ${A.near[1].c} of the ${BEST_MIN} riders needed`:`Needs scores from at least ${BEST_MIN} riders`))}</div></section>
     <section class="sec"><h2>What I\u2019ve tried</h2><ul class="tried">${tried.length?tried.map(x=>`<li>${esc(x.name)}${m.ratings[x.id]?` <b>${m.ratings[x.id]}/10</b>`:''} <span class="muted">${esc(x.town)}</span></li>`).join(''):'<li class="muted" style="list-style:none;margin-left:-18px">Nothing ticked yet.</li>'}</ul>
       <div class="planbar"><button type="button" class="btn" data-wrapped="me">My Wrapped</button><button type="button" class="btn" data-wrapped="crew">Crew Wrapped</button>${tried.length||Object.keys(m.quiz).length?'<button type="button" class="btn small danger" data-ride="resetme">Clear my ticks and scores</button>':''}</div></section>`;
 }
@@ -462,9 +456,9 @@ function quizHtml(){
     return `<div class="qcard" style="--c:${col}"><div class="qmeta">${esc(d.label)}, question ${Q.i+1} of ${qs.length}${Q.practice?' (practice, score already saved)':''}</div><p class="qclue">${esc(q.clue)}</p>
       <div class="qopts">${q.opts.map(o=>`<button type="button" class="qopt${Q.ans?(o===q.t?' right':o===Q.ans?' wrong':''):''}" data-qa="${esc(o)}"${Q.ans?' disabled':''}>${esc(o)}</button>`).join('')}</div>
       ${Q.ans?`<div class="qfoot"><p>${Q.ans===q.t?'Correct.':'It was '+esc(q.t)+'.'}</p><button type="button" class="btn" data-ride="${Q.i===qs.length-1?'qdone':'qnext'}">${Q.i===qs.length-1?'See score':'Next question'}</button></div>`:''}</div>`; }
-  const days=groupDays().map((d,i)=>({d,qs:quizFor(d,i)})).filter(x=>x.qs.length);
+  const days=groupDays().map((d,i)=>({d,qs:quizFor(d,i)})).filter(x=>x.qs.length), qt=boardRows().filter(r=>r.q>0).sort((a,b)=>b.q-a.q)[0];
   if(!days.length) return '<p class="muted">Trivia is built from the \u201cDid you know?\u201d facts on each stop. None yet for this tour.</p>';
-  return `<div class="qtabs">${days.map(({d,qs})=>{ const r=m.quiz[d.id]; return `<button type="button" class="qtab" style="--c:var(--${esc(d.colour||'blue')})" data-qday="${esc(d.id)}"><b>${esc(d.label)}</b><small>${qs.length} questions</small><span>${r?`Your score ${r.s}/${r.n}`:'Not played'}</span></button>`; }).join('')}</div>`;
+  return `${qt?`<p class="qchamp">Trivia champion: <b>${esc(qt.name)}</b>, ${qt.q} point${qt.q===1?'':'s'}</p>`:''}<div class="qtabs">${days.map(({d,qs})=>{ const r=m.quiz[d.id]; return `<button type="button" class="qtab" style="--c:var(--${esc(d.colour||'blue')})" data-qday="${esc(d.id)}"><b>${esc(d.label)}</b><small>${qs.length} questions</small><span>${r?`Your score ${r.s}/${r.n}`:'Not played'}</span></button>`; }).join('')}</div>`;
 }
 /* Photo wall (v4.11): filter pills, collapsible days with counts, likes. Viewer below. */
 S.wallF='all'; S.wallClosed=new Set();
@@ -662,10 +656,8 @@ async function wrDraw(kind){
     const wanted=Object.entries(ct).filter(([,v])=>v.tot>0).sort((a,b)=>b[1].tot-a[1].tot)[0];
     x.fillStyle=WR.ink; x.font=Bf(600,36); x.fillText('The crew awards',72,384);
     stat(72,520,String(Object.keys(tc).length),'bakeries visited',WR.vis); stat(420,520,String(Object.values(tc).reduce((a,b)=>a+b,0)),'bakery ticks'); stat(760,520,String(R.wall.length),'photos');
-    card(72,600,456,210,'Best bakery',A.bo&&B(A.bo).name,A.bo?`${B(A.bo).town}, crew ${A.bo[1].a.toFixed(1)}/10`:'');
-    card(552,600,456,210,'Best pie',A.bp&&B(A.bp).must,A.bp?`${B(A.bp).name}, ${B(A.bp).town}`:'');
-    card(72,834,456,190,'Pie champion',A.rows[0]&&A.rows[0].t?A.rows[0].name:null,A.rows[0]&&A.rows[0].t?`${A.rows[0].t} bakeries`:'');
-    card(552,834,456,190,'Koala Court: most wanted',wanted&&wanted[0],wanted?`${wanted[1].tot} points`:'',WR.red);
+    card(72,600,936,210,'Best bakery',A.bo&&B(A.bo).name,A.bo?`${B(A.bo).town}, crew average ${A.bo[1].a.toFixed(1)}/10 from ${A.bo[1].c} riders`:'');
+    if(feat('court'))card(72,834,936,190,'Koala Court: most wanted',wanted&&wanted[0],wanted?`${wanted[1].tot} points`:'',WR.red);
   }
   const lk=likeCounts(), ph=kind==='me'?R.wall.filter(p=>p.uid===myUid()).sort(tripOrder).slice(-4):R.wall.slice().sort((a,b)=>(lk[b.id]||0)-(lk[a.id]||0)||tsMs(b.at)-tsMs(a.at)).slice(0,4); // crew card: the most-loved photos
   for(let i=0;i<ph.length;i++){ const im=await new Promise(r=>{ const k=new Image(); k.onload=()=>r(k); k.onerror=()=>r(null); k.src=ph[i].thumb; }); if(!im)continue;

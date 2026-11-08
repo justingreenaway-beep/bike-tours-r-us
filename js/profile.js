@@ -63,7 +63,6 @@ async function loadHistory(){
     const court=against[name]||0, q=Object.values(mine.quiz||{}).reduce((a,v)=>a+(v&&v.s||0),0);
     const tops=(f)=>{ const s=R2.map(r=>[r.name,f(r)]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]); return s[0]&&s[0][0]===name; };
     const trophies=[];
-    if(tops(r=>Object.keys(r.ticks||{}).length))trophies.push('Pie champion');
     const mw=Object.entries(against).sort((a,b)=>b[1]-a[1])[0]; if(mw&&mw[0]===name&&mw[1]>0)trophies.push('Most wanted');
     if(tops(r=>Object.values(r.quiz||{}).reduce((a,v)=>a+(v&&v.s||0),0)))trophies.push('Trivia champion');
     (t.roles||[]).forEach(r=>{ if(r.name&&name&&(r.name===name||r.name.toLowerCase().startsWith(name.toLowerCase())||name.toLowerCase().startsWith(r.name.toLowerCase())))trophies.push(r.role); });
