@@ -372,7 +372,7 @@ function bench(){ const out={}, pool=[...new Set([...crewNames(),...riders().map
     pool.forEach(p=>{ const b=String(p).toLowerCase(); if(b.length>=3&&a.length>=3&&(a.startsWith(b)||b.startsWith(a)))out[p]=title; }); });
   return out; }
 // people I've blocked: their photos, bakery finds and charges are hidden from me (v4.18)
-function applyBlocks(){ const B=typeof isBlocked==='function'?isBlocked:()=>false; R.wall=(R.wallAll||[]).filter(p=>!B(p.uid)); R.extras=(R.extrasAll||[]).filter(x=>!B(x.uid)); }
+function applyBlocks(){ const B=typeof isBlocked==='function'?isBlocked:()=>false; R.wall=(R.wallAll||[]).filter(p=>!B(p.uid)); R.extras=(R.extrasAll||[]).filter(x=>!B(x.uid)); if(S.annsAll)S.anns=S.annsAll.filter(a=>!B(a.uid)); }
 function kcAll(){ const out=[]; riders().filter(v=>!(typeof isBlocked==='function'&&isBlocked(v.id))).forEach(v=>(v.kc||[]).forEach(c=>out.push({...c,by:v.name,byId:v.id}))); return out; }
 function kcBench(){ const B=bench(), out=[]; riders().forEach(v=>{ if(B[v.name])(v.kcj||[]).forEach(c=>out.push({...c,by:v.name,byId:v.id})); }); return out; }
 function courtTotals(){ const t={}, nights=courtNights(), add=(c,charge)=>{ const r=t[c.to]=t[c.to]||{tot:0,n:{},charges:0}; r.tot+=c.pts; r.n[c.night]=(r.n[c.night]||0)+c.pts; if(charge)r.charges++; };
@@ -495,7 +495,7 @@ function wallHtml(){
 document.addEventListener('toggle',e=>{ const d=e.target; if(d.matches&&d.matches('details.wdet')){ d.open?S.wallClosed.delete(d.dataset.wd):S.wallClosed.add(d.dataset.wd); } },true);
 function rideCrew(){
   if(!canRide())return notRiding();
-  return `<section class="sec" style="margin-top:14px"><h2>Updates</h2>${S.anns.length?`<div class="updates">${S.anns.slice(0,8).map(a=>`<div class="card"><small class="muted">${a.kind==='publish'?'Tour published':'Update'}${a.by?` from ${esc(a.by)}`:''}, ${ago(a.at)}</small><p style="margin:4px 0 0;white-space:pre-line">${esc(a.text)}</p></div>`).join('')}</div>`:'<p class="muted">No updates from Justin and Tony yet.</p>'}</section>
+  return `<section class="sec" style="margin-top:14px"><h2>Updates</h2>${updatesHtml()}</section>
     ${feat('trivia')?`<section class="sec"><h2>Trivia</h2>${quizHtml()}</section>`:''}
     ${feat('photos')?`<section class="sec"><h2>Photo wall</h2>${wallHtml()}</section>`:''}
     ${feat('wrapped')?`    <section class="sec"><h2>Wrapped</h2><p class="muted" style="margin:0 0 8px">A picture card of your tour to save or share.</p><div class="planbar"><button type="button" class="btn primary" data-wrapped="me">My Wrapped</button><button type="button" class="btn" data-wrapped="crew">Crew Wrapped</button></div></section>`:''}`;
@@ -882,3 +882,23 @@ function restOfDayNav(day){
   const rest=st.slice(Math.max(0,i)); if(rest.length<2)return '';
   return routeButtons(rest,i>0?'Rest of today':'Today’s route');
 }
+
+/* ---------- updates from anyone on the crew (v4.22) ----------
+   tours/{t}/announcements/{id} {text, kind 'publish'|'update' (editors, from Plan) or 'post' (anyone on the crew), by, uid, at}.
+   Posters delete their own; editors delete any; others can report a post; posts from blocked people are hidden (S.anns). */
+function updatesHtml(){
+  const list=S.anns.slice(0,15);
+  return `${canRide()?`<div class="card annpost"><label class="fl" style="margin:0">Post an update for the crew<textarea id="annpost" maxlength="500" rows="2" placeholder="e.g. Running 20 minutes late, start without me"></textarea></label>
+      <div class="planbar" style="margin-top:6px"><button type="button" class="btn primary small" data-act="annpost">Post</button><small class="muted">Everyone on the tour sees it on Home and here.</small></div></div>`:''}
+    ${list.length?`<div class="updates">${list.map(a=>{ const mine=a.uid&&a.uid===myUid();
+      return `<div class="card"><small class="muted">${annLabel(a)}, ${ago(a.at)}</small><p style="margin:4px 0 0;white-space:pre-line">${esc(a.text)}</p>
+        ${mine||S.editor?`<div class="annact"><button type="button" class="linkb" data-del="ann|${esc(a.id)}">Delete</button></div>`:a.uid?`<div class="annact"><button type="button" class="linkb" data-report="post|||${esc(a.id)}|||${esc(a.by||'')}">Report</button></div>`:''}</div>`; }).join('')}</div>`
+      :'<p class="muted">No updates yet.</p>'}`;
+}
+document.addEventListener('click',async e=>{ const b=e.target.closest('[data-act="annpost"]'); if(!b)return;
+  const ta=$('#annpost'), text=(ta&&ta.value||'').trim(); if(!text){ toast('Write something first.'); return; }
+  b.disabled=true; const id=FB.newId(tp('announcements'));
+  try{ await FB.set(tp('announcements',id),{text:text.slice(0,500),kind:'post',by:myName(),uid:myUid(),at:FB.now()}); try{localStorage.setItem(annSeenKey(),id)}catch(x){}
+    if($('#annpost'))$('#annpost').value=''; toast('Posted to the crew'); render(); }
+  catch(x){ toast(x&&x.code==='permission-denied'?'Posting needs the latest Firebase rules. Ask the organiser.':'Couldn’t post. Check your signal.'); }
+  b.disabled=false; });

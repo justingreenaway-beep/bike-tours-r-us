@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='4.21';
+const APP_VERSION='4.22';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -151,7 +151,7 @@ function openTour(id){
   S.reports=[]; if(canEditTour(S.tour))S.unsub.push(FB.watchCol(`tours/${id}/reports`,docs=>{S.reports=docs.filter(d=>d.exists!==false).map(d=>({id:d.id,...d.data}));render();},()=>{}));
   S.unsub.push(FB.watchCol(`tours/${id}/dinners`,docs=>{S.dinners=docs.filter(d=>d.exists!==false).map(d=>({id:d.id,...d.data}));render();},err));
   if(RIDE()){ S.unsub.push(...rideWatch(id)); setTimeout(()=>wxFetch(false),500); }
-  S.unsub.push(FB.watchCol(`tours/${id}/announcements`,docs=>{S.anns=docs.map(d=>({id:d.id,...d.data})).sort((a,b)=>tsMs(b.at)-tsMs(a.at));render();},err));
+  S.unsub.push(FB.watchCol(`tours/${id}/announcements`,docs=>{S.annsAll=docs.filter(d=>d.exists!==false).map(d=>({id:d.id,...d.data})).sort((a,b)=>tsMs(b.at)-tsMs(a.at)); S.anns=S.annsAll.filter(a=>!(typeof isBlocked==='function'&&isBlocked(a.uid))); render();},err));
 }
 
 function editorWhy(){
@@ -239,11 +239,12 @@ function dinnerCard(D){ if(!D||!D.place)return '';
     ${D.address?`<a class="addr" href="${appleMaps(D.place+', '+D.address)}" target="_blank" rel="noopener">${esc(D.address)}</a>`:''}${RIDE()?navMenu({q:[D.place,D.address].filter(Boolean).join(', ')},'Navigate to dinner'):''}${D.note?`<p class="note">${esc(D.note)}</p>`:''}</div>`; }
 const nightBlock=dayId=>!feat('nights')?'':nightsOf(dayId).map(nightCard).join('')+dinnerCard(dinnerFor(dayId));
 const annSeenKey=()=>'tru-ann-'+S.tourId;
+const annLabel=a=>(a.kind==='publish'?'Tour published':'Update')+(a.by?` from ${esc(a.by)}`:'');
 function annBanner(){
   const a=S.anns[0]; if(!a)return'';
   let seen=''; try{seen=localStorage.getItem(annSeenKey())||''}catch(e){}
   if(seen===a.id)return'';
-  return `<div class="ann" role="status"><span class="nlbl">${a.kind==='publish'?'Tour published':'Update'}${a.by?` from ${esc(a.by)}`:''}, ${ago(a.at)}</span><p>${esc(a.text)}</p><button type="button" class="btn small" data-anndismiss="${esc(a.id)}">Got it</button></div>`;
+  return `<div class="ann" role="status"><span class="nlbl">${annLabel(a)}, ${ago(a.at)}</span><p>${esc(a.text)}</p><button type="button" class="btn small" data-anndismiss="${esc(a.id)}">Got it</button></div>`;
 }
 document.addEventListener('click',e=>{ const d=e.target.closest('[data-anndismiss]'); if(d){ try{localStorage.setItem(annSeenKey(),d.dataset.anndismiss)}catch(x){} render(); } });
 function stopCard(s,k,day){
@@ -324,7 +325,7 @@ function viewPlan(){
      <div class="statusrow" role="group" aria-label="Who can see it">${[['draft','Draft'],['published','Published'],['locked','Locked']].map(([k,l])=>`<button type="button" class="btn small" data-status="${k}" aria-pressed="${T.status===k}">${l}</button>`).join('')}</div>
      <p class="muted" style="font-size:13.5px;margin:4px 0 0">${T.status==='draft'?'Draft: only this tour’s editors can see it.':T.status==='published'?'Published: everyone on the crew list can see it.':'Locked: visible to the crew, route frozen.'}</p>${edited(T)}
      <div class="planbar"><button type="button" class="btn small" data-act="newtour">New tour</button>${has2026||!S.admin?'':'<button type="button" class="btn small" data-act="import2026">Bring in the 2026 tour</button>'}<button type="button" class="btn small" data-act="announce">Send the crew an update</button>${canDeleteTour(T)?'<button type="button" class="btn small danger" data-act="deltour">Delete tour</button>':''}${S.tourId==='2026'&&RIDE()&&S.admin?'<button type="button" class="btn small" data-ride="import26crew">Bring in 2026 crew results</button>':''}</div>
-     ${S.anns.length?`<details class="sent"><summary>Updates sent (${S.anns.length})</summary>${S.anns.map(a=>`<div class="prow"><div class="pmain"><small>${a.kind==='publish'?'Published':'Update'} by ${esc(a.by||'?')}, ${ago(a.at)}</small>${esc(a.text)}</div><div class="pact"><button type="button" class="ib" data-del="ann|${esc(a.id)}" aria-label="Delete update">✕</button></div></div>`).join('')}</details>`:''}</div>`;
+     ${S.anns.length?`<details class="sent"><summary>Updates (${S.anns.length})</summary>${S.anns.map(a=>`<div class="prow"><div class="pmain"><small>${a.kind==='publish'?'Published':'Update'} by ${esc(a.by||'?')}, ${ago(a.at)}</small>${esc(a.text)}</div><div class="pact"><button type="button" class="ib" data-del="ann|${esc(a.id)}" aria-label="Delete update">✕</button></div></div>`).join('')}</details>`:''}</div>`;
   h+=featuresCard();
   const secs=[['route','Route'],['bakeries','Bakeries'],['nights','Nights'],['crew','Crew'],['brief','Brief']].filter(([k])=>!['bakeries','nights'].includes(k)||feat(k));
   if(!secs.some(s=>s[0]===S.planSec))S.planSec='route';
@@ -892,7 +893,7 @@ async function doSave(btn){
     if(tell&&!text){dlgError('Write a message first.');return}
     const ops=[];
     if(k==='publish') ops.push({op:'set',path:`tours/${S.tourId}`,data:{status:'published',...stamp()},merge:true});
-    if(tell) ops.push({op:'set',path:tp('announcements',FB.newId(tp('announcements'))),data:{text,kind:k==='publish'?'publish':'update',by:myName(),at:FB.now()}});
+    if(tell) ops.push({op:'set',path:tp('announcements',FB.newId(tp('announcements'))),data:{text,kind:k==='publish'?'publish':'update',by:myName(),uid:S.user.uid,at:FB.now()}});
     if(k==='publish'&&!(S.tour.crew||[]).some(c=>c.email)) setTimeout(()=>toast('Published. Add riders’ emails to the crew list so they can see it.'),3000);
     return save(()=>FB.batch(ops),k==='publish'?(tell?'Published and the crew told':'Published'):'Update sent');
   }
@@ -968,7 +969,7 @@ async function doDelete(spec){
   if(kind==='bakery'){ if(!confirm('Delete this bakery?'))return; return save(()=>FB.del(tp('bakeries',id)),'Bakery deleted'); }
   if(kind==='dinner'){ if(!confirm('Delete this dinner?'))return; return save(()=>FB.del(tp('dinners',id)),'Dinner deleted'); }
   if(kind==='night'){ if(!confirm('Delete this bed?'))return; return save(()=>FB.del(tp('nights',id)),'Bed deleted'); }
-  if(kind==='ann'){ if(!confirm('Delete this update? Riders won\u2019t see it any more.'))return; try{await FB.del(tp('announcements',id)); toast('Update deleted');}catch(x){toast('Couldn\u2019t delete that.')} return; }
+  if(kind==='ann'){ if(!confirm('Delete this update? The crew won\u2019t see it any more.'))return; try{await FB.del(tp('announcements',id)); toast('Update deleted');}catch(x){toast('Couldn\u2019t delete that.')} return; }
   if(kind==='brief'||kind==='role'){ const key=kind==='brief'?'brief':'roles'; if(!confirm(kind==='brief'?'Delete this brief card?':'Delete this role?'))return;
     const arr=(S.tour[key]||[]).slice(); arr.splice(+id,1); return save(()=>FB.update(`tours/${S.tourId}`,{[key]:arr,...stamp()}),kind==='brief'?'Card deleted':'Role deleted'); }
   if(kind==='stop'){ if(!confirm('Delete this stop?'))return; const sd=(S.stops.find(s=>s.id===id)||{}).dayId; return save(async()=>{ await FB.del(tp('stops',id)); if(typeof scheduleAutoEstimate==='function')scheduleAutoEstimate(sd,500); },'Stop deleted'); }
@@ -1187,7 +1188,7 @@ async function deleteAccount(){
 /* reports */
 const REPORT_WHY=['Offensive or abusive','Harassment or bullying','Private information','Spam or not about the tour','Something else'];
 function reportDialog(kind,ref,about){
-  dlg(`<h3>Report this ${kind==='photo'?'photo':'charge'}</h3><p class="muted" style="font-size:13.5px;margin:0 0 8px">It goes to this tour’s editors, who can remove it. ${about?esc(about)+' isn’t told who reported it.':''}</p>
+  dlg(`<h3>Report this ${({photo:'photo',charge:'charge',post:'update'})[kind]||'post'}</h3><p class="muted" style="font-size:13.5px;margin:0 0 8px">It goes to this tour’s editors, who can remove it. ${about?esc(about)+' isn’t told who reported it.':''}</p>
     <div class="fl">What’s wrong<div class="rwhy">${REPORT_WHY.map((w,i)=>`<label><input type="radio" name="rwhy" value="${esc(w)}"${i===0?' checked':''}><span>${esc(w)}</span></label>`).join('')}</div></div>
     ${field('Anything else (optional)','rnote','',{area:true,max:300})}
     ${about?`<div class="fl">And<div class="seg2r"><label><input type="radio" name="rblock" value="no" checked><span>Just report</span></label><label><input type="radio" name="rblock" value="yes"><span>Also block ${esc(about)}</span></label></div></div>`:''}
@@ -1195,7 +1196,7 @@ function reportDialog(kind,ref,about){
 }
 async function sendReport(b){
   const kind=b.dataset.kind, ref=b.dataset.ref, about=b.dataset.about, why=($('#dlg input[name="rwhy"]:checked')||{}).value||'', block=(($('#dlg input[name="rblock"]:checked')||{}).value)==='yes';
-  const aboutUid=kind==='photo'?((R.wall.find(p=>p.id===ref)||{}).uid||''):ref.split('|')[0];
+  const aboutUid=kind==='photo'?((R.wall.find(p=>p.id===ref)||{}).uid||''):kind==='post'?(((S.annsAll||[]).find(a=>a.id===ref)||{}).uid||''):ref.split('|')[0];
   try{ await FB.set(tp('reports',FB.newId(tp('reports'))),{kind,ref,why,note:val('rnote'),about,aboutUid,uid:S.user.uid,by:myName(),status:'open',at:FB.now()});
     if(block&&aboutUid)await blockPerson(aboutUid,about,true);
     closeDlg(); toast(block?`Reported, and ${about} is blocked`:'Reported to the tour’s editors. Thanks.'); if(typeof closeViewer==='function'&&block)closeViewer(); }
@@ -1215,8 +1216,9 @@ document.addEventListener('click',async e=>{ const t=e.target;
   const bl=t.closest('[data-block]'); if(bl){ const [uid,name,on]=bl.dataset.block.split('|||'); await blockPerson(uid,name,on==='1'); closeDlg(); toast(on==='1'?`${name||'They'} blocked. You won’t see their photos or charges.`:`${name||'They'} unblocked`); return; }
   const rr=t.closest('[data-rep]'); if(rr){ const [act,id]=rr.dataset.rep.split('|'); const r=(S.reports||[]).find(x=>x.id===id); if(!r)return;
     try{ if(act==='view'&&r.kind==='photo'){ if(typeof openViewer==='function')openViewer(r.ref,null); return; }
-      if(act==='remove'){ if(!confirm(r.kind==='photo'?'Remove this photo for everyone?':'Remove this charge for everyone?'))return;
-        if(r.kind==='photo')await FB.batch([{op:'del',path:tp('wallfull',r.ref)},{op:'del',path:tp('wall',r.ref)}]);
+      if(act==='remove'){ if(!confirm(`Remove this ${r.kind==='photo'?'photo':r.kind==='post'?'update':'charge'} for everyone?`))return;
+        if(r.kind==='post')await FB.del(tp('announcements',r.ref));
+        else if(r.kind==='photo')await FB.batch([{op:'del',path:tp('wallfull',r.ref)},{op:'del',path:tp('wall',r.ref)}]);
         else { const [ruid,cid]=r.ref.split('|'), v=R.riders[ruid]; if(v)await FB.update(tp('riders',ruid),{kc:(v.kc||[]).filter(c=>c.id!==cid)}); } }
       await FB.update(tp('reports',id),{status:act==='remove'?'removed':'dismissed',closedBy:myName(),closedAt:FB.now()}); toast(act==='remove'?'Removed':'Dismissed'); }
     catch(x){ toast('Couldn’t do that.'); } return; }
@@ -1224,8 +1226,9 @@ document.addEventListener('click',async e=>{ const t=e.target;
 function reportsCard(){
   const open=(S.reports||[]).filter(r=>r.status==='open').sort((a,b)=>tsMs(a.at)-tsMs(b.at)); if(!open.length)return '';
   return `<h2>Reports to review</h2><div class="card reports">${open.map(r=>{ const p=r.kind==='photo'?R.wall.find(x=>x.id===r.ref)||(R.wallAll||[]).find(x=>x.id===r.ref):null;
+    const a=r.kind==='post'?(S.annsAll||[]).find(x=>x.id===r.ref):null;
     const c=r.kind==='charge'?(()=>{ const [u,cid]=r.ref.split('|'), v=R.riders[u]; return v&&(v.kc||[]).find(x=>x.id===cid); })():null;
-    return `<div class="rrow"><div class="rmain"><b>${r.kind==='photo'?'Photo':'Koala Court charge'} by ${esc(r.about||'someone')}</b><small>Reported by ${esc(r.by||'a rider')} ${ago(r.at)} · ${esc(r.why||'')}${r.note?` · “${esc(r.note)}”`:''}</small>
-      ${c?`<small>Charge: ${esc(c.to)}, ${esc(c.off||'')}${c.note?` “${esc(c.note)}”`:''}</small>`:''}${(r.kind==='photo'&&!p)||(r.kind==='charge'&&!c)?'<span class="rwarn">Already gone</span>':''}</div>
-      <div class="pact">${p?`<button type="button" class="btn small" data-rep="view|${esc(r.id)}">View</button>`:''}${p||c?`<button type="button" class="btn small danger" data-rep="remove|${esc(r.id)}">Remove</button>`:''}<button type="button" class="btn small" data-rep="dismiss|${esc(r.id)}">${p||c?'Keep':'Close'}</button></div></div>`; }).join('')}</div>`;
+    return `<div class="rrow"><div class="rmain"><b>${r.kind==='photo'?'Photo':r.kind==='post'?'Update':'Koala Court charge'} by ${esc(r.about||'someone')}</b><small>Reported by ${esc(r.by||'a rider')} ${ago(r.at)} · ${esc(r.why||'')}${r.note?` · “${esc(r.note)}”`:''}</small>
+      ${c?`<small>Charge: ${esc(c.to)}, ${esc(c.off||'')}${c.note?` “${esc(c.note)}”`:''}</small>`:''}${a?`<small>“${esc(String(a.text).slice(0,200))}”</small>`:''}${(r.kind==='photo'&&!p)||(r.kind==='charge'&&!c)||(r.kind==='post'&&!a)?'<span class="rwarn">Already gone</span>':''}</div>
+      <div class="pact">${p?`<button type="button" class="btn small" data-rep="view|${esc(r.id)}">View</button>`:''}${p||c||a?`<button type="button" class="btn small danger" data-rep="remove|${esc(r.id)}">Remove</button>`:''}<button type="button" class="btn small" data-rep="dismiss|${esc(r.id)}">${p||c||a?'Keep':'Close'}</button></div></div>`; }).join('')}</div>`;
 }
