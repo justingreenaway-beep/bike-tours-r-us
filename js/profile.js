@@ -41,8 +41,17 @@ async function loadMyTours(){
   render(); loadHistory();
 }
 const crewNameIn=t=>{ const c=(t.crew||[]).find(x=>x.email&&x.email.toLowerCase()===S.user.email); return c?c.name:''; };
+// v4.23: my profile combined from every tour's copy, oldest to newest, so newer values win but nothing a newer
+// (possibly partial) copy is missing gets dropped. This tour's copy can be missing or behind, e.g. on a new tour.
+async function newestProfile(){
+  const uid=myUid(), copies=[myProfile()];
+  const ids=new Set([S.tourId,...S.tours.map(t=>t.id)].filter(Boolean));
+  for(const id of ids){ try{ const d=await FB.get(`tours/${id}/riders/${uid}`); const p=d.exists&&d.data&&d.data.profile; if(p)copies.push(p); }catch(e){} }
+  let best={}; copies.filter(p=>p&&Object.keys(p).length).sort((a,b)=>(a.updatedAt||0)-(b.updatedAt||0)).forEach(p=>Object.assign(best,JSON.parse(JSON.stringify(p)))); const cur=R.riders[uid]; if(cur)R.riders[uid]={...cur,profile:best}; else if(Object.keys(best).length)R.riders[uid]={...blankMe(),profile:best};
+  return best;
+}
 async function saveProfile(patch){
-  const pr=Object.assign(myProfile(),patch,{updatedAt:Date.now()}), uid=myUid();
+  const base=await newestProfile(), pr=Object.assign(base,patch,{updatedAt:Date.now()}), uid=myUid();
   Object.keys(pr).forEach(k=>{ if(pr[k]===undefined)delete pr[k]; });
   if(R.riders[uid])R.riders[uid]={...R.riders[uid],profile:pr}; else R.riders[uid]={...me(),profile:pr};
   const targets=new Set([S.tourId]); (P.tours||[]).forEach(x=>{ if(x.member)targets.add(x.t.id); });
@@ -175,7 +184,7 @@ document.addEventListener('click',async e=>{
   const pt=t.closest('[data-prof-tour]'); if(pt){ openTour(pt.dataset.profTour); S.tab='today'; render(); return; }
   const a=t.closest('[data-prof]'); if(a){ const k=a.dataset.prof;
     if(k==='back'){ S.tab=P.back&&P.back!=='profile'?P.back:'today'; render(); return; }
-    if(k.startsWith('edit-'))return profileDialog(k.slice(5));
+    if(k.startsWith('edit-')){ dlg('<p class="muted">Loading your details…</p>'); await newestProfile(); return profileDialog(k.slice(5)); }
     if(k==='nophoto'){ await saveProfile({photo:null}); closeDlg(); toast('Photo removed'); return; }
     if(k==='safety-ok'){ await saveProfile({safetyAt:Date.now()}); toast('Thanks, noted'); return; }
     if(k==='reset'){ try{ await FB.reset(S.user.email); toast('Password reset email sent. Check your inbox and junk folder.'); }catch(x){ toast('Couldn’t send it. Try again with signal.'); } return; }

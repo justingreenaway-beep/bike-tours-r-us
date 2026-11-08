@@ -21,12 +21,12 @@ const hm2min=hm=>{ if(!hm)return null; const [h,m]=String(hm).split(':').map(Num
 const min2hm=m=>m==null?'':`${pad(Math.floor(m/60)%24)}:${pad(Math.round(m%60))}`;
 
 /* ---------- data ---------- */
-function rideReset(){ R.riders={}; R.live=null; R.wall=[]; R.extras=[]; R.wallAll=[]; R.extrasAll=[]; R.kcNight=null; R.quiz=null; }
+function rideReset(){ R.ridersFor=null; R.riders={}; R.live=null; R.wall=[]; R.extras=[]; R.wallAll=[]; R.extrasAll=[]; R.kcNight=null; R.quiz=null; }
 function rideWatch(id){
   rideReset();
   const quiet=()=>{};
   return [
-    FB.watchCol(`tours/${id}/riders`,docs=>{ R.riders={}; docs.forEach(d=>{ if(d.exists)R.riders[d.id]=d.data; }); applyBlocks(); markSeen(id); render(); if(typeof PV!=='undefined'&&PV.el&&!PV.el.hidden)pvActions(); },quiet),
+    FB.watchCol(`tours/${id}/riders`,docs=>{ R.riders={}; docs.forEach(d=>{ if(d.exists)R.riders[d.id]=d.data; }); R.ridersFor=id; applyBlocks(); markSeen(id); render(); if(typeof PV!=='undefined'&&PV.el&&!PV.el.hidden)pvActions(); },quiet),
     FB.watchDoc(`tours/${id}/live/pos`,d=>{ R.live=d.exists?d.data:null; render(); },quiet),
     FB.watchCol(`tours/${id}/wall`,docs=>{ R.wallAll=docs.filter(d=>d.exists).map(d=>({id:d.id,...d.data})); applyBlocks(); render(); },quiet),
     FB.watchCol(`tours/${id}/extras`,docs=>{ R.extrasAll=docs.filter(d=>d.exists).map(d=>({id:'x:'+d.id,docId:d.id,extra:true,...d.data})); applyBlocks(); render(); },quiet)
@@ -37,10 +37,15 @@ const myUid=()=>S.user&&S.user.uid;
 function me(){ // name from this tour's crew list; otherwise keep the name already saved (e.g. imported from 2026)
   const m=R.riders[myUid()], c=(S.tour&&S.tour.crew||[]).find(x=>x.email&&x.email.toLowerCase()===S.user.email);
   return Object.assign(blankMe(),m||{},{name:c?c.name:(m&&m.name)||myName(),email:S.user.email}); }
-function saveMe(m){ // whole-document write so removed ticks really go
-  R.riders[myUid()]=m; render();
+function saveMe(m,keys){ // v4.23: writes only the fields this action changed (whole fields, so removed ticks really go).
+  // Never before this tour's records have loaded (a blank record used to overwrite the real one), never the profile.
+  if(R.ridersFor!==S.tourId){ toast('Still loading your details. Try again in a moment.'); return; }
+  const uid=myUid(), cur=R.riders[uid]||{}; R.riders[uid]={...cur,...m,profile:cur.profile}; render();
+  const ks=keys&&keys.length?keys:[], data={name:m.name||cur.name||myName(),email:S.user.email,at:FB.now()};
+  ks.forEach(k=>{ data[k]=JSON.parse(JSON.stringify(m[k]??(Array.isArray(blankMe()[k])?[]:{}))); });
+  R.pend=Object.assign(R.pend||{},data); const path=tp('riders',uid);
   clearTimeout(R.saveT);
-  R.saveT=setTimeout(()=>FB.set(tp('riders',myUid()),{...JSON.parse(JSON.stringify(m)),at:FB.now()}).catch(e=>toast(e&&e.code==='permission-denied'?'Your account can\u2019t save to this tour yet. Ask Justin to check the rules.':'Saved on this phone. It will sync when you have signal.')),400);
+  R.saveT=setTimeout(()=>{ const d=R.pend; R.pend=null; FB.update(path,d).catch(e=>{ if(e&&e.code==='not-found')return FB.set(path,d,true); throw e; }).catch(e=>toast(e&&e.code==='permission-denied'?'Your account can\u2019t save to this tour yet. Ask Justin to check the rules.':'Saved on this phone. It will sync when you have signal.')); },400);
 }
 const canRide=()=>!!(S.tour&&(S.tour.memberEmails||[]).includes(S.user.email))||S.editor;
 const riders=()=>Object.entries(R.riders).map(([id,v])=>({id,...v})).filter(v=>v.name);
@@ -293,7 +298,7 @@ function rideToday(){
       <p style="margin:8px 0 0"><button type="button" class="linkb" data-tab-go="bakeries">See the full board</button></p></div>`:''}
     ${feat('photos')&&R.wall.length?`<div class="tdcard"><h3 class="tdh">Photo wall</h3><span class="muted" style="font-size:13px">${R.wall.length} photos from the crew</span><div class="phmini">${ph.map(p=>`<button type="button" class="thumb" data-photo="${esc(p.id)}"><img src="${p.thumb}" alt=""></button>`).join('')}</div><p style="margin:8px 0 0"><button type="button" class="linkb" data-tab-go="crew">Open the photo wall</button></p></div>`:''}`;
 }
-document.addEventListener('click',e=>{ const b=e.target.closest('[data-check]'); if(!b)return; const m=me(); m.check=Object.assign({},m.check); const k=b.dataset.check; if(m.check[k])delete m.check[k]; else m.check[k]=true; saveMe(m); });
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-check]'); if(!b)return; const m=me(); m.check=Object.assign({},m.check); const k=b.dataset.check; if(m.check[k])delete m.check[k]; else m.check[k]=true; saveMe(m,['check']); });
 
 function todayDay(d){
   const col=`var(--${esc(d.colour||'blue')})`, opt=optFor(d), times=dayTimes(d,opt), L=liveOn(d);
@@ -594,7 +599,7 @@ document.addEventListener('click',async e=>{
   if(a==='close')return closeViewer();
   if(a==='prev'||a==='next')return pvGo(a==='next'?1:-1);
   if(!p)return;
-  if(a==='like'){ const m=me(); m.likes={...(m.likes||{})}; m.likes[p.id]?delete m.likes[p.id]:m.likes[p.id]=1; saveMe(m); pvActions(); return; }
+  if(a==='like'){ const m=me(); m.likes={...(m.likes||{})}; m.likes[p.id]?delete m.likes[p.id]:m.likes[p.id]=1; saveMe(m,['likes']); pvActions(); return; }
   if(a==='share')return pvShare(p);
   if(a==='stop'){ closeViewer(); S.tab='roadbook'; sessionStorage.setItem('tru-tab','roadbook'); S.dayOpen.add(p.dayId); render();
     setTimeout(()=>{ const el=document.getElementById('stop-'+p.stopId); if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1800); } },120); return; }
@@ -720,14 +725,14 @@ async function showWrapped(kind){
 /* ---------- events ---------- */
 document.addEventListener('click',async e=>{
   const t=e.target;
-  const tk=t.closest('[data-tick]'); if(tk){ const id=tk.dataset.tick, m=me(); if(m.ticks[id]){ delete m.ticks[id]; delete m.ratings[id]; } else m.ticks[id]=1; saveMe(m); return; }
-  const rt=t.closest('[data-rate]'); if(rt){ const [id,v]=rt.dataset.rate.split('|'), m=me(); if(m.ratings[id]===+v)delete m.ratings[id]; else m.ratings[id]=+v; saveMe(m); return; }
+  const tk=t.closest('[data-tick]'); if(tk){ const id=tk.dataset.tick, m=me(); if(m.ticks[id]){ delete m.ticks[id]; delete m.ratings[id]; } else m.ticks[id]=1; saveMe(m,['ticks','ratings']); return; }
+  const rt=t.closest('[data-rate]'); if(rt){ const [id,v]=rt.dataset.rate.split('|'), m=me(); if(m.ratings[id]===+v)delete m.ratings[id]; else m.ratings[id]=+v; saveMe(m,['ratings']); return; }
   const pk=t.closest('[data-pick]'); if(pk){ const items=$$('ol.bk > li',pk.closest('details')); if(!items.length)return; items.forEach(li=>li.classList.remove('picked'));
     let i=0; const spins=8+Math.floor(Math.random()*items.length); const iv=setInterval(()=>{ items.forEach(li=>li.classList.remove('picked')); items[i%items.length].classList.add('picked'); i++; if(i>spins){ clearInterval(iv); items[(i-1)%items.length].scrollIntoView({block:'nearest',behavior:'smooth'}); } },110); return; }
   const hr=t.closest('[data-here]'); if(hr){ const v=hr.dataset.here; if(!v){ if(!confirm('Clear the group\u2019s position?'))return; FB.del(tp('live','pos')).catch(()=>{}); return; }
     const [dayId,stopId]=v.split('|'), s=S.stops.find(x=>x.id===stopId), d=S.days.find(x=>x.id===dayId);
     FB.set(tp('live','pos'),{dayId,stopId,opt:d&&d.alt?(S.opt[d.id]||1):null,at:FB.now(),by:myName()}).then(()=>toast(`Crew position set: ${s?s.town:''}`)).catch(()=>toast('Couldn\u2019t set the position.')); return; }
-  const vt=t.closest('[data-vote]'); if(vt){ const id=vt.dataset.vote, d=S.days.find(x=>x.id===id), m=me(); if(m.votes[id]===d.best.title)delete m.votes[id]; else m.votes[id]=d.best.title; saveMe(m); return; }
+  const vt=t.closest('[data-vote]'); if(vt){ const id=vt.dataset.vote, d=S.days.find(x=>x.id===id), m=me(); if(m.votes[id]===d.best.title)delete m.votes[id]; else m.votes[id]=d.best.title; saveMe(m,['votes']); return; }
   const dop=t.closest('[data-dayopen]'); if(dop){ const id=dop.dataset.dayopen; S.dayOpen.has(id)?S.dayOpen.delete(id):S.dayOpen.add(id); render(); return; }
   const ph=t.closest('[data-photo]'); if(ph){ openViewer(ph.dataset.photo,ph.closest('.wgrid')?wallList():null); return; }
   const wf=t.closest('[data-wallf]'); if(wf){ S.wallF=S.wallF===wf.dataset.wallf&&wf.dataset.wallf!=='all'?'all':wf.dataset.wallf; render(); return; }
@@ -735,10 +740,10 @@ document.addEventListener('click',async e=>{
   const ab=t.closest('[data-addbak]'); if(ab){ const town=ab.dataset.addbak; dlg(`<h3>Add a bakery</h3><p class="muted" style="margin:0 0 8px">Found somewhere good in ${esc(town)}? Add it so the crew can tick and score it.</p>${field('Name','xname','',{ph:'e.g. The Pie Shop'})}${field('What to order','xmust','',{ph:'e.g. Steak and mushroom pie'})}${field('Why (optional)','xwhy','',{area:true,max:300})}<div class="dbtns"><button type="button" class="btn primary" data-ride="addbak" data-town="${esc(town)}">Add</button><button type="button" class="btn" data-close>Cancel</button></div>`); return; }
   const xd=t.closest('[data-xdel]'); if(xd){ if(!confirm('Remove this bakery you added?'))return; FB.del(tp('extras',xd.dataset.xdel)).catch(()=>toast('Couldn\u2019t remove it.')); return; }
   const kn=t.closest('[data-kn]'); if(kn){ R.kcNight=kn.dataset.kn; render(); return; }
-  const kd=t.closest('[data-kcdel]'); if(kd){ const m=me(); m.kc=(m.kc||[]).filter(c=>c.id!==kd.dataset.kcdel); saveMe(m); return; }
-  const kj=t.closest('[data-kcjdel]'); if(kj){ const m=me(); m.kcj=(m.kcj||[]).filter(c=>c.id!==kj.dataset.kcjdel); saveMe(m); return; }
+  const kd=t.closest('[data-kcdel]'); if(kd){ const m=me(); m.kc=(m.kc||[]).filter(c=>c.id!==kd.dataset.kcdel); saveMe(m,['kc']); return; }
+  const kj=t.closest('[data-kcjdel]'); if(kj){ const m=me(); m.kcj=(m.kcj||[]).filter(c=>c.id!==kj.dataset.kcjdel); saveMe(m,['kcj']); return; }
   const bb=t.closest('[data-bench]'); if(bb){ const F=R.kcForm; if(!F.bto){ toast('Choose a rider.'); return; } const m=me(); m.kcj=m.kcj||[];
-    m.kcj.push({id:rid(),night:R.kcNight,to:F.bto,pts:+bb.dataset.bench,note:(F.bnote||'').slice(0,100),at:Date.now()}); F.bnote=''; saveMe(m); toast(+bb.dataset.bench<0?'Reduction granted':'Sanction imposed'); return; }
+    m.kcj.push({id:rid(),night:R.kcNight,to:F.bto,pts:+bb.dataset.bench,note:(F.bnote||'').slice(0,100),at:Date.now()}); F.bnote=''; saveMe(m,['kcj']); toast(+bb.dataset.bench<0?'Reduction granted':'Sanction imposed'); return; }
   const dr=t.closest('[data-dr]'); if(dr){ if(dr.dataset.dr==='next'){ R.review.i++; reviewStep(); } else { closeDlg(); S.tab='court'; render(); setTimeout(startTimer,50); } return; }
   const qd=t.closest('[data-qday]'); if(qd){ R.quiz={dayId:qd.dataset.qday,i:0,s:0,ans:null,practice:!!me().quiz[qd.dataset.qday]}; render(); return; }
   const qa=t.closest('[data-qa]'); if(qa&&R.quiz&&!R.quiz.ans){ const Q=R.quiz, d=S.days.find(x=>x.id===Q.dayId), q=quizFor(d,groupDays().indexOf(d))[Q.i]; Q.ans=qa.dataset.qa; if(Q.ans===q.t)Q.s++; render(); return; }
@@ -750,22 +755,22 @@ document.addEventListener('click',async e=>{
     const off=F.off==='other'?((F.other||'').trim()||'Unspecified misconduct'):F.off, pts=Math.min(+F.pts||1,5-used);
     if(!F.to){ toast('Choose the accused.'); return; } if(!off){ toast('Choose an offence.'); return; } if(pts<=0){ toast('No points left tonight.'); return; }
     m.kc=m.kc||[]; m.kc.push({id:rid(),night:R.kcNight,to:F.to,pts,off,note:(F.note||'').trim().slice(0,100),at:Date.now()});
-    Object.assign(F,{note:'',other:'',pts:1}); saveMe(m); toast(`Charge laid against ${F.to}`); return; }
+    Object.assign(F,{note:'',other:'',pts:1}); saveMe(m,['kc']); toast(`Charge laid against ${F.to}`); return; }
   if(act==='kctimer'){ startTimer(); return; }
   if(act==='kcreview'){ const n=R.kcNight, B=bench();
     const ch=kcAll().filter(c=>c.night===n).sort((x,y)=>x.at-y.at), bj=kcBench().filter(c=>c.night===n).map(c=>({...c,off:(c.pts<0?'Good-behaviour reduction':'Sanction')+(c.note?': '+c.note:''),bench:true}));
     R.review={night:n,list:[...ch,...bj],i:-1}; reviewStep(); return; }
   if(act==='qnext'){ R.quiz.i++; R.quiz.ans=null; render(); return; }
-  if(act==='qdone'){ const Q=R.quiz, d=S.days.find(x=>x.id===Q.dayId), n=quizFor(d,groupDays().indexOf(d)).length; if(!Q.practice){ const m=me(); m.quiz[Q.dayId]={s:Q.s,n}; saveMe(m); } Q.done=true; render(); return; }
+  if(act==='qdone'){ const Q=R.quiz, d=S.days.find(x=>x.id===Q.dayId), n=quizFor(d,groupDays().indexOf(d)).length; if(!Q.practice){ const m=me(); m.quiz[Q.dayId]={s:Q.s,n}; saveMe(m,['quiz']); } Q.done=true; render(); return; }
   if(act==='qhome'){ R.quiz=null; render(); return; }
   if(act==='savephotos'){ savePhotos(); return; }
-  if(act==='resetme'){ if(!confirm('Clear your ticks, scores and trivia results for this tour?'))return; const m=me(); Object.assign(m,{ticks:{},ratings:{},quiz:{},votes:{}}); saveMe(m); return; }
+  if(act==='resetme'){ if(!confirm('Clear your ticks, scores and trivia results for this tour?'))return; const m=me(); Object.assign(m,{ticks:{},ratings:{},quiz:{},votes:{}}); saveMe(m,['ticks','ratings','quiz','votes']); return; }
   if(act==='addbak'){ const name=val('xname'); if(!name){ dlgError('Add the bakery\u2019s name.'); return; } const town=a.dataset.town;
     if([...bakeriesIn(town),...rideExtrasIn(town)].some(b=>b.name.toLowerCase()===name.toLowerCase())){ dlgError(`${name} is already on the list.`); return; }
     return save(()=>FB.set(tp('extras',FB.newId(tp('extras'))),{town,name,must:val('xmust'),why:val('xwhy'),uid:myUid(),by:myName(),at:FB.now()}),'Bakery added for the crew'); }
 });
 document.addEventListener('change',e=>{
-  const vs=e.target.closest('[data-votesel]'); if(vs){ const m=me(), id=vs.dataset.votesel; if(vs.value)m.votes[id]=vs.value; else delete m.votes[id]; saveMe(m); return; }
+  const vs=e.target.closest('[data-votesel]'); if(vs){ const m=me(), id=vs.dataset.votesel; if(vs.value)m.votes[id]=vs.value; else delete m.votes[id]; saveMe(m,['votes']); return; }
   const f=e.target.closest('[data-ph]'); if(f){ const file=f.files[0], spec=f.dataset.ph; f.value=''; addPhoto(file,spec); return; }
   const k=e.target.closest('[data-kcf]'); if(k){ R.kcForm[k.dataset.kcf]=k.value; if(k.dataset.kcf==='off')render(); }
 });
@@ -826,7 +831,9 @@ function markSeen(id){
   if(seenFor===id||S.tourId!==id||!S.user||!S.tour)return;
   const onCrew=(S.tour.memberEmails||[]).includes(S.user.email), mine=R.riders[myUid()];
   if(!onCrew)return; seenFor=id; // check again later if they're added to the crew after opening
-  if(!mine||!mine.email||mine.name!==me().name) saveMe(me());
+  if(R.ridersFor!==id){ seenFor=null; return; } // wait for the real records
+  if(!mine||!mine.email||mine.name!==me().name){ const nm=me().name; R.riders[myUid()]={...(mine||blankMe()),name:nm,email:S.user.email};
+    FB.set(tp('riders',myUid()),{name:nm,email:S.user.email,at:FB.now()},true).catch(()=>{}); }
 }
 
 /* Plan > Brief: the pre-ride checklist riders tick on the Today screen in the final week, and who's ready */
