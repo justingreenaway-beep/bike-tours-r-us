@@ -779,3 +779,9 @@ details.featcard>summary small{margin-left:auto;font-size:13px;color:var(--muted
 .delacct{color:var(--warn);font-size:14px}
 .aulinks{text-align:center;font-size:13.5px;margin:8px 0 0}
 .aulinks a{color:#C9D1D8}
+/* v4.19 simpler bakery rules */
+.bkrules{background:var(--surface);border:1px solid var(--rule);border-left:5px solid var(--vis);border-radius:12px;padding:10px 14px;margin:12px 0 0;font-size:14.5px}
+.bkrules .bkh{display:block;font:700 16px/1.2 var(--display);text-transform:uppercase;letter-spacing:.03em}
+.bkrules p{margin:4px 0 0}
+.awards.one{grid-template-columns:1fr}
+.qchamp{margin:0 0 10px;font-size:15px}
