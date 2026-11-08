@@ -726,3 +726,24 @@ details.bakmap .map{height:min(48vh,300px)}
 .ownline{font-size:13px;margin:3px 0 0}
 .ownline .linkb{font-size:13px}
 .vnote .planbar{margin-top:8px}
+/* v4.15 tour features and type */
+details.featcard>summary{list-style:none;cursor:pointer;display:flex;align-items:baseline;gap:8px}
+details.featcard>summary::-webkit-details-marker{display:none}
+details.featcard>summary::before{content:"▸";font-size:13px;color:var(--muted);transition:transform .15s}
+details.featcard[open]>summary::before{transform:rotate(90deg)}
+details.featcard>summary b{font:700 19px/1.1 var(--display);text-transform:uppercase}
+details.featcard>summary small{margin-left:auto;font-size:13px;color:var(--muted)}
+.featlist{display:grid;gap:0}
+.feat{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--rule);cursor:pointer;position:relative}
+.feat span{flex:1;min-width:0}
+.feat b{display:block;font:700 16px/1.2 var(--body)}
+.feat small{display:block;color:var(--muted);font-size:12.5px}
+.feat input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.feat i{flex:0 0 auto;width:46px;height:28px;border-radius:999px;background:var(--rule);position:relative;transition:background .15s}
+.feat i::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
+.feat input:checked+i{background:var(--green)}
+.feat input:checked+i::after{transform:translateX(18px)}
+.feat input:focus-visible+i{outline:2px solid var(--vis);outline-offset:2px}
+.feat input:disabled+i{opacity:.5}
+.tkind{margin-bottom:10px}
+.prow .pmain .ownline b{display:inline;font:700 13px var(--body)}
