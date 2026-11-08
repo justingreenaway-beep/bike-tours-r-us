@@ -747,3 +747,9 @@ details.featcard>summary small{margin-left:auto;font-size:13px;color:var(--muted
 .feat input:disabled+i{opacity:.5}
 .tkind{margin-bottom:10px}
 .prow .pmain .ownline b{display:inline;font:700 13px var(--body)}
+/* v4.16 logo: the cruiser in yellow */
+.brand{display:flex;align-items:center;gap:6px}
+.brandbike{width:38px;height:auto;display:block;flex:0 0 auto}
+.bootbike{width:min(220px,60vw);height:auto;display:block;margin:0 auto 12px}
+.authbike{width:min(230px,62vw);height:auto;display:block;margin:0 0 10px}
+@media (max-width:360px){.brandbike{width:30px}}
