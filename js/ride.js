@@ -21,13 +21,13 @@ const hm2min=hm=>{ if(!hm)return null; const [h,m]=String(hm).split(':').map(Num
 const min2hm=m=>m==null?'':`${pad(Math.floor(m/60)%24)}:${pad(Math.round(m%60))}`;
 
 /* ---------- data ---------- */
-function rideReset(){ R.ridersFor=null; R.riders={}; R.live=null; R.wall=[]; R.extras=[]; R.wallAll=[]; R.extrasAll=[]; R.kcNight=null; R.quiz=null; }
+function rideReset(){ R.ridersFor=null; R.riders={}; R.live=null; R.livePos={}; R.wall=[]; R.extras=[]; R.wallAll=[]; R.extrasAll=[]; R.kcNight=null; R.quiz=null; }
 function rideWatch(id){
   rideReset();
   const quiet=()=>{};
   return [
     FB.watchCol(`tours/${id}/riders`,docs=>{ R.riders={}; docs.forEach(d=>{ if(d.exists)R.riders[d.id]=d.data; }); R.ridersFor=id; applyBlocks(); markSeen(id); render(); if(typeof PV!=='undefined'&&PV.el&&!PV.el.hidden)pvActions(); },quiet),
-    FB.watchDoc(`tours/${id}/live/pos`,d=>{ R.live=d.exists?d.data:null; render(); },quiet),
+    FB.watchCol(`tours/${id}/live`,docs=>{ R.live=null; R.livePos={}; docs.forEach(d=>{ if(!d.exists)return; if(d.id==='pos')R.live=d.data; else if(d.id.startsWith('pos-'))R.livePos[d.id]=d.data; }); render(); },quiet),
     FB.watchCol(`tours/${id}/wall`,docs=>{ R.wallAll=docs.filter(d=>d.exists).map(d=>({id:d.id,...d.data})); applyBlocks(); render(); },quiet),
     FB.watchCol(`tours/${id}/extras`,docs=>{ R.extrasAll=docs.filter(d=>d.exists).map(d=>({id:'x:'+d.id,docId:d.id,extra:true,...d.data})); applyBlocks(); render(); },quiet)
   ];
@@ -60,8 +60,9 @@ function crewAvg(){ const sum={},cnt={}; riders().forEach(v=>Object.entries(v.ra
 const isPie=b=>b&&/\bpie\b|pasties?|pastie/i.test(b.must||'')&&!/meringue|cherry|apple|lemon/i.test(b.must||'');
 
 /* ---------- times along a day (anchors from arrive/depart, the rest estimated by km or position) ---------- */
-function dayTimes(day,opt){
-  const st=stopsOf(day.id,opt), out=st.map((s,i)=>({s,i,km:s.km!=null&&s.km!==''?+s.km:null,arr:hm2min(s.arrive),dep:hm2min(s.depart),est:false}));
+function dayTimes(day,opt,grp){ // grp: a group id (v4.27), null = the shared stops, undefined = all stops
+  const key=pathKey(grp,opt), st=stopsOf(day.id,opt,grp), out=st.map((s,i)=>{ const k=kmFor(s,key); return {s,i,km:k!=null&&k!==''?+k:null,arr:hm2min(s.arrive),dep:hm2min(s.depart),est:false}; });
+  if(grp&&out[0]&&out[0].arr==null&&out[0].dep==null&&typeof suggestLeave==='function'){ const L=suggestLeave(day,grp,opt); if(L){ out[0].dep=L.t; out[0].est=true; } }
   const anchor=x=>x.arr!=null||x.dep!=null;
   out.forEach((x,i)=>{ if(anchor(x))return;
     let p=i-1; while(p>=0&&!anchor(out[p]))p--; let n=i+1; while(n<out.length&&!anchor(out[n]))n++;
@@ -72,8 +73,10 @@ function dayTimes(day,opt){
   return out;
 }
 const etaOf=x=>x?(x.arr??x.dep):null;
-function liveOn(day){ return R.live&&R.live.dayId===day.id?R.live:null; }
-function optFor(day){ const L=liveOn(day); return day.alt?(L&&L.opt)||S.opt[day.id]||1:null; }
+// "We're here": live/pos for the whole crew; on a day with groups, live/pos-{groupId} for each group (v4.27)
+function liveOn(day,grp){ const g=grp!==undefined?grp:viewGrp(day), G=g&&R.livePos&&R.livePos['pos-'+g];
+  if(G&&G.dayId===day.id)return G; return R.live&&R.live.dayId===day.id?R.live:null; }
+function optFor(day){ const L=liveOn(day), o=dayOpts(day); if(!o.length)return null; return S.opt[day.id]==null&&L&&o.some(x=>x.id===L.opt)?L.opt:viewOpt(day); }
 
 /* ---------- weather (Open-Meteo, cached per tour on this phone) ---------- */
 const WXC={0:['Clear','\u2600\ufe0f'],1:['Mostly clear','\ud83c\udf24\ufe0f'],2:['Partly cloudy','\u26c5'],3:['Overcast','\u2601\ufe0f'],45:['Fog','\ud83c\udf2b\ufe0f'],48:['Icy fog','\ud83c\udf2b\ufe0f'],51:['Light drizzle','\ud83c\udf26\ufe0f'],53:['Drizzle','\ud83c\udf26\ufe0f'],55:['Heavy drizzle','\ud83c\udf27\ufe0f'],56:['Freezing drizzle','\ud83c\udf27\ufe0f'],57:['Freezing drizzle','\ud83c\udf27\ufe0f'],61:['Light rain','\ud83c\udf26\ufe0f'],63:['Rain','\ud83c\udf27\ufe0f'],65:['Heavy rain','\ud83c\udf27\ufe0f'],66:['Freezing rain','\ud83c\udf27\ufe0f'],67:['Freezing rain','\ud83c\udf27\ufe0f'],71:['Light snow','\ud83c\udf28\ufe0f'],73:['Snow','\ud83c\udf28\ufe0f'],75:['Heavy snow','\ud83c\udf28\ufe0f'],77:['Snow grains','\ud83c\udf28\ufe0f'],80:['Showers','\ud83c\udf26\ufe0f'],81:['Showers','\ud83c\udf27\ufe0f'],82:['Heavy showers','\ud83c\udf27\ufe0f'],85:['Snow showers','\ud83c\udf28\ufe0f'],86:['Snow showers','\ud83c\udf28\ufe0f'],95:['Thunderstorm','\u26c8\ufe0f'],96:['Storm with hail','\u26c8\ufe0f'],99:['Storm with hail','\u26c8\ufe0f']};
@@ -133,7 +136,7 @@ function dayWx(day){
   const ds=iso(date); if(ds<todayIso())return '';
   if(!wxWanted())return '';
   if(!WX||WX.tour!==S.tourId){ if(!wxBusy&&!wxErr)setTimeout(()=>wxFetch(false),0); return '<p class="wxmuted">Loading the forecast\u2026</p>'; }
-  const times=dayTimes(day,optFor(day)); let lo=99,hi=-99,pp=0,gu=0,codes=[],n=0;
+  const times=dayTimes(day,optFor(day),viewGrp(day)); let lo=99,hi=-99,pp=0,gu=0,codes=[],n=0;
   times.forEach(x=>{ const W=wxOf(x.s); if(!W)return; const H=hourAt(W,date,etaOf(x));
     if(H){n++;lo=Math.min(lo,H[1]);hi=Math.max(hi,H[0]);pp=Math.max(pp,H[2]||0);gu=Math.max(gu,H[5]);codes.push(H[3]);}
     else if(W.D[ds]){n++;const D=W.D[ds];lo=Math.min(lo,D[2]);hi=Math.max(hi,D[1]);pp=Math.max(pp,D[3]||0);gu=Math.max(gu,D[4]);codes.push(D[0]);} });
@@ -160,11 +163,11 @@ function rideAuditBits(s){
   return `<div class="aud-actions">${list.length>1?`<button type="button" class="mini" data-pick>Can\u2019t decide? Pick for me</button>`:''}${c?`<span class="townprog">${c} of ${list.length} tried</span>`:''}<button type="button" class="mini" data-addbak="${esc(s.town)}">+ Add a bakery</button></div>`;
 }
 function rideStopClass(s,day){ const L=liveOn(day); if(!L||!L.stopId)return '';
-  const st=stopsOf(day.id,optFor(day)), i=st.findIndex(x=>x.id===L.stopId), k=st.findIndex(x=>x.id===s.id);
+  const st=stopsOf(day.id,optFor(day),viewGrp(day)), i=st.findIndex(x=>x.id===L.stopId), k=st.findIndex(x=>x.id===s.id);
   if(i<0||k<0)return ''; return k===i?' is-here':k<i&&iso(new Date())===iso(dateFor(day)||new Date(0))?' passed':''; }
 function rideStopBits(s,day){
   if(!day)return '';
-  const times=dayTimes(day,optFor(day)), x=times.find(t=>t.s.id===s.id), L=liveOn(day);
+  const times=dayTimes(day,optFor(day),viewGrp(day)), x=times.find(t=>t.s.id===s.id), L=liveOn(day);
   const here=L&&L.stopId===s.id;
   const ph=R.wall.filter(p=>p.stopId===s.id).sort((a,b)=>tsMs(a.at)-tsMs(b.at));
   const bf=s.breakfast&&(s.breakfast.items||[]).length?`<details class="brekkie" data-k="bf-${esc(s.id)}"><summary>Coffee and breakfast</summary>${s.breakfast.note?`<p class="bknote">${esc(s.breakfast.note)}</p>`:''}<ul class="bklist">${s.breakfast.items.map(i=>`<li><a href="${mapsUrl({name:i.name,town:s.town,placeId:i.placeId})}" target="_blank" rel="noopener">${esc(i.name)}</a> <span class="bkmeta">${i.hours?esc(i.hours):''}</span>${i.why?`<div class="bkwhy">${esc(i.why)}</div>`:''}${i.must?`<div class="must">Order: ${esc(i.must)}</div>`:''}</li>`).join('')}</ul></details>`:'';
@@ -174,7 +177,7 @@ function rideStopBits(s,day){
 }
 function rideVote(day){
   if(!canRide()||!day.best||!day.best.title||day.kind==='solo')return '';
-  const st=stopsOf(day.id,optFor(day)), legs=[]; for(let i=0;i<st.length-1;i++)legs.push(`${st[i].town} to ${st[i+1].town}`);
+  const st=stopsOf(day.id,optFor(day),viewGrp(day)), legs=[]; for(let i=0;i<st.length-1;i++)legs.push(`${st[i].town} to ${st[i+1].town}`);
   const best=day.best.title, tally={}; riders().forEach(v=>{ const x=v.votes&&v.votes[day.id]; if(x)tally[x]=(tally[x]||0)+1; });
   const mine=me().votes[day.id], agree=tally[best]||0, others=Object.entries(tally).filter(([k])=>k!==best).sort((a,b)=>b[1]-a[1]);
   return `<div class="vote"><div class="vhead">Crew verdict</div><div class="vrow"><button type="button" class="mini" data-vote="${esc(day.id)}" aria-pressed="${mine===best}">Agree, best leg</button>
@@ -241,7 +244,7 @@ function youCard(st){
     ${a?`<div class="unread"><span class="dot"></span><span><b>${esc(a.by||'Update')}:</b> ${esc(a.text)} <button type="button" class="linkb" data-anndismiss="${esc(a.id)}">Got it</button></span></div>`:''}</div>`;
 }
 const ordinal=n=>n+(n%100>=11&&n%100<=13?'th':['th','st','nd','rd'][n%10]||'th');
-function routeList(){ return `<div class="days">${daysSorted().map(d=>`<div style="--c:var(--${esc(d.colour||'blue')})"><i></i><span>${esc(d.label)} \u00b7 ${esc(d.title||'')}</span><b>${d.km?esc(d.km)+' km':'\u2014'}</b></div>`).join('')}</div>`; }
+function routeList(){ return `<div class="days">${daysSorted().map(d=>`<div style="--c:var(--${esc(d.colour||'blue')})"><i></i><span>${esc(d.label)} \u00b7 ${esc(d.title||'')}</span><b>${dayKm(d)?esc(Math.round(dayKm(d)))+' km':'\u2014'}</b></div>`).join('')}</div>`; }
 function whosComing(){
   const seen=new Set(Object.values(R.riders).map(v=>String(v.email||'').toLowerCase()).filter(Boolean)), names=new Set(Object.values(R.riders).map(v=>v.name));
   const crew=(S.tour.crew||[]).slice().sort((a,b)=>String(a.name).localeCompare(b.name));
@@ -269,7 +272,7 @@ function rideToday(){
   if(st.stage==='nodates') return `<p class="hi">G\u2019day ${esc(firstName())}</p>${youCard({stage:'before'})}<div class="tdhead"><span class="tdday">${esc(T.name)}</span><h2>Dates to be set</h2><p class="muted">${S.editor?'Set the start date in the Plan tab.':'Check back once the organisers set the dates.'}</p></div>${whosComing()}`;
   const fcol=`var(--${esc(st.firstG.d.colour||'blue')})`;
   if(st.stage==='before'){
-    const gd=groupDays(), km=gd.reduce((a,d)=>a+(parseFloat(String(d.km||'').replace(/[^\d.]/g,''))||0),0);
+    const gd=groupDays(), km=gd.reduce((a,d)=>a+dayKm(d),0);
     return `<p class="hi">G\u2019day ${esc(firstName())}</p><p class="hisub">${esc(T.name)} is taking shape.</p>${youCard(st)}
       <div class="tdmain" style="--c:${fcol}"><span class="tag">${T.kind==='day'?'Next ride':'Next tour'}</span><h2>${st.days} days to go</h2><p class="muted" style="margin:0">${esc(longDate(st.firstG.date))}${T.meet?' \u00b7 '+esc(T.meet):''}</p>
         <div class="stats"><div>${gd.length}<small>riding days</small></div><div>${km?Math.round(km).toLocaleString():'\u2014'}<small>km</small></div>${feat('bakeries')?`<div>${tourBakIds().length}<small>bakeries</small></div>`:''}</div></div>
@@ -300,8 +303,19 @@ function rideToday(){
 }
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-check]'); if(!b)return; const m=me(); m.check=Object.assign({},m.check); const k=b.dataset.check; if(m.check[k])delete m.check[k]; else m.check[k]=true; saveMe(m,['check']); });
 
+/* Home on a day with groups (v4.27): your group, the meet-up, and where the other groups are */
+function meetCard(d,times,i,grp,opt){
+  const G=dayGroups(d); if(!G.length)return ''; const g=groupOf(d,grp);
+  const mi=times.findIndex(x=>(x.s.tags||[]).includes('Meet up')), m=mi>=0?times[mi]:null, before=m&&i<mi;
+  const others=G.filter(x=>x.id!==grp).map(x=>{ const L=liveOn(d,x.id), at=L&&S.stops.find(s=>s.id===L.stopId);
+    return `<p><span class="gdot" style="--g:var(--${esc(x.colour||'blue')})"></span><b>${esc(x.name)}</b>: ${at?`at ${esc(at.town)}${L.at?`, ${esc(ago(L.at))}`:''}`:'no position yet'}</p>`; }).join('');
+  return `<div class="tdcard meetcard" style="--c:var(--${esc((g&&g.colour)||d.colour||'blue')})"><small>${g?'Your group':'Groups today'}</small><h3>${g?esc(g.name):esc(andList(G.map(x=>x.name)))}</h3>
+    ${g&&(g.who||[]).length?`<p class="tdmeta">${esc(g.who.join(', '))}</p>`:''}
+    ${m?`<p class="meetline">${before?'Meet-up':'Met up at'} <b>${esc(m.s.town)}</b>${etaOf(m)!=null?`, ${m.est?'about ':''}${esc(t12(min2hm(etaOf(m))))}`:''}</p>`:''}
+    ${before||!m?others:''}</div>`;
+}
 function todayDay(d){
-  const col=`var(--${esc(d.colour||'blue')})`, opt=optFor(d), times=dayTimes(d,opt), L=liveOn(d);
+  const col=`var(--${esc(d.colour||'blue')})`, opt=optFor(d), grp=viewGrp(d), times=dayTimes(d,opt,grp), L=liveOn(d);
   let i=L?times.findIndex(x=>x.s.id===L.stopId):-1; const started=i>=0; if(i<0)i=0;
   const cur=times[i], nx=times[i+1], rule=Number(S.tour.fuelRangeKm)||0, myR=typeof myProfile==='function'?Number(myProfile().fuelRange)||0:0, mine=myR&&(!rule||myR<rule), range=mine?myR:rule;
   if(!cur) return `<div class="tdhead" style="--c:${col}"><span class="tdday">${esc(d.label)}</span><h2>${esc(d.title)}</h2></div><p class="muted">No stops yet.</p>`;
@@ -315,6 +329,7 @@ function todayDay(d){
   const bf=!started&&cur.s.breakfast&&(cur.s.breakfast.items||[]).length?`<div class="tdcard"><h3 class="tdh">Coffee and breakfast</h3>${cur.s.breakfast.note?`<p style="margin:0 0 6px">${esc(cur.s.breakfast.note)}</p>`:''}<ul class="bklist">${cur.s.breakfast.items.map(x=>`<li><b>${esc(x.name)}</b>${x.hours?` <span class="bkmeta">${esc(x.hours)}</span>`:''}</li>`).join('')}</ul></div>`:'';
   const night=nightsOf(d.id);
   return `<div class="tdhead" style="--c:${col}"><span class="tdday">${esc(d.label)}${d.who?`, ${esc(d.who)}`:''}, ${esc(longDate(dateFor(d)))}</span><h2>${esc(d.title)}</h2></div>
+    ${meetCard(d,times,i,grp,opt)}
     <div class="tdcard tdnow" style="--c:${col}">${started?`<small>The group is at</small><h3>${esc(cur.s.town)}</h3>`:`<small>Starting from</small><h3>${esc(cur.s.town)}</h3>${cur.dep!=null?`<p>Depart ${esc(t12(min2hm(cur.dep)))}</p>`:''}`}</div>
     ${nx?`<div class="tdcard tdnext" style="--c:${col}"><small>Next stop</small><h3>${esc(nx.s.town)}</h3><p class="tdmeta">${etaOf(nx)!=null?`${nx.est?'About':'ETA'} ${esc(t12(min2hm(etaOf(nx))))}`:''}${nx.km!=null&&cur.km!=null?`, ${nx.km-cur.km} km`:''}</p>${stopWx(nx.s,d,etaOf(nx))}
         ${canRide()&&d.kind!=='solo'&&feat('live')?`<button type="button" class="tdgo" data-here="${esc(d.id)}|${esc(nx.s.id)}">We\u2019re here: ${esc(nx.s.town)}</button>`:''}</div>
@@ -326,7 +341,7 @@ function todayDay(d){
     <div class="tdwx" style="--c:${col}">${dayWx(d)}</div>
     ${feat('bakeries')&&ahead.length?`<div class="tdcard"><h3 class="tdh">Bakeries open ahead</h3><ul class="tdlist2">${ahead.join('')}</ul></div>`:''}
     <div style="--c:${col}">${restOfDayNav(d)}${mapBlock(d)}</div>
-    <p class="tdfoot"><button type="button" class="linkb" data-tab-go="roadbook">Open ${esc(d.label)} in the roadbook</button>${started&&canRide()?` <button type="button" class="linkb" data-here="">Reset position</button>`:''}</p>`;
+    <p class="tdfoot"><button type="button" class="linkb" data-tab-go="roadbook">Open ${esc(d.label)} in the roadbook</button>${started&&canRide()?` <button type="button" class="linkb" data-here="-|${esc(d.id)}">Reset position</button>`:''}</p>`;
 }
 
 /* ---------- Bakeries tab: passport, board, awards ---------- */
@@ -654,7 +669,7 @@ async function wrDraw(kind){ // v4.20: Ride Together brand, follows Plan > Featu
   let head=428; // bottom of the heading block
   if(kind!=='me'){ const names=[...new Set((S.tour.crew||[]).map(c2=>c2.name).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
     if(names.length){ x.fillStyle=WR.mut; x.font=Bf(500,26); const lines=wrText(x,names.join(' · '),72,468,936,34,2); head=468+(lines-1)*34; } }
-  const km=gd.reduce((a,d)=>a+(parseFloat(String(d.km||'').replace(/[^\d.]/g,''))||0),0), ids=tourBakIds(), {t:ct}=courtTotals();
+  const km=gd.reduce((a,d)=>a+dayKm(d),0), ids=tourBakIds(), {t:ct}=courtTotals();
   const BAK=feat('bakeries')&&tourBakIds().length>0, COURT=feat('court'), TRIV=feat('trivia'), PHOTOS=feat('photos'), lk=likeCounts();
   const stops=gd.flatMap(d=>stopsOf(d.id)).filter(s=>s.town&&!s.ref), route=stops.length?{t:stops.length>1?(stops[0].town===stops[stops.length-1].town?`Loop from ${stops[0].town}`:`${stops[0].town} to ${stops[stops.length-1].town}`):stops[0].town,s:`${pl(new Set(stops.map(s=>s.town)).size,'town')}${km?' · '+Math.round(km).toLocaleString()+' km':''}`}:null;
   if(S.tour.kind==='day'&&stops.length>1){ // the route as dots and towns
@@ -729,9 +744,13 @@ document.addEventListener('click',async e=>{
   const rt=t.closest('[data-rate]'); if(rt){ const [id,v]=rt.dataset.rate.split('|'), m=me(); if(m.ratings[id]===+v)delete m.ratings[id]; else m.ratings[id]=+v; saveMe(m,['ratings']); return; }
   const pk=t.closest('[data-pick]'); if(pk){ const items=$$('ol.bk > li',pk.closest('details')); if(!items.length)return; items.forEach(li=>li.classList.remove('picked'));
     let i=0; const spins=8+Math.floor(Math.random()*items.length); const iv=setInterval(()=>{ items.forEach(li=>li.classList.remove('picked')); items[i%items.length].classList.add('picked'); i++; if(i>spins){ clearInterval(iv); items[(i-1)%items.length].scrollIntoView({block:'nearest',behavior:'smooth'}); } },110); return; }
-  const hr=t.closest('[data-here]'); if(hr){ const v=hr.dataset.here; if(!v){ if(!confirm('Clear the group\u2019s position?'))return; FB.del(tp('live','pos')).catch(()=>{}); return; }
-    const [dayId,stopId]=v.split('|'), s=S.stops.find(x=>x.id===stopId), d=S.days.find(x=>x.id===dayId);
-    FB.set(tp('live','pos'),{dayId,stopId,opt:d&&d.alt?(S.opt[d.id]||1):null,at:FB.now(),by:myName()}).then(()=>toast(`Crew position set: ${s?s.town:''}`)).catch(()=>toast('Couldn\u2019t set the position.')); return; }
+  const hr=t.closest('[data-here]'); if(hr){ const v=hr.dataset.here; if(!v||v.startsWith('-|')){ if(!confirm('Clear the group\u2019s position?'))return; const dd=v?S.days.find(x=>x.id===v.slice(2)):null, g=dd?viewGrp(dd):null;
+      FB.batch([{op:'del',path:tp('live','pos')},...(g?[{op:'del',path:tp('live','pos-'+g)}]:[])]).catch(()=>{}); return; }
+    const [dayId,stopId]=v.split('|'), s=S.stops.find(x=>x.id===stopId), d=S.days.find(x=>x.id===dayId), G=d?dayGroups(d):[];
+    const data={dayId,stopId,opt:d?optFor(d):null,at:FB.now(),by:myName()};
+    // a group's own stop moves just that group; a shared stop moves everyone (each group's marker too)
+    const paths=G.length?(s&&s.group?['pos-'+s.group]:['pos',...G.map(g=>'pos-'+g.id)]):['pos'];
+    FB.batch(paths.map(p=>({op:'set',path:tp('live',p),data:{...data,...(p!=='pos'?{grp:p.slice(4)}:{})}}))).then(()=>toast(`${s&&s.group&&groupOf(d,s.group)?groupOf(d,s.group).name:'Crew'} position set: ${s?s.town:''}`)).catch(()=>toast('Couldn\u2019t set the position.')); return; }
   const vt=t.closest('[data-vote]'); if(vt){ const id=vt.dataset.vote, d=S.days.find(x=>x.id===id), m=me(); if(m.votes[id]===d.best.title)delete m.votes[id]; else m.votes[id]=d.best.title; saveMe(m,['votes']); return; }
   const dop=t.closest('[data-dayopen]'); if(dop){ const id=dop.dataset.dayopen; S.dayOpen.has(id)?S.dayOpen.delete(id):S.dayOpen.add(id); render(); return; }
   const ph=t.closest('[data-photo]'); if(ph){ openViewer(ph.dataset.photo,ph.closest('.wgrid')?wallList():null); return; }
@@ -883,9 +902,9 @@ function routeButtons(stops,what){
   return `<div class="navroute"><span class="navlbl">${esc(what)} in Google Maps</span>${parts.map((p,i)=>`<a class="mini" href="${gmapsRoute(p.map(x=>x.t))}" target="_blank" rel="noopener">${one?`${esc(p[0].s.town)} to ${esc(p[p.length-1].s.town)}`:`Part ${i+1}: stops ${idx(p[0].s)}–${idx(p[p.length-1].s)}`}</a>`).join('')}
     <small>${one?'':'Google allows 9 stops between start and finish, so this day is in parts. '}Google picks its own roads between stops; follow the roadbook where it differs.</small></div>`;
 }
-function dayNavBlock(day){ return routeButtons(stopsOf(day.id,optFor(day)),`${day.label} route`); }
+function dayNavBlock(day){ return routeButtons(stopsOf(day.id,optFor(day),viewGrp(day)),`${day.label} route`); }
 function restOfDayNav(day){
-  const st=stopsOf(day.id,optFor(day)), L=liveOn(day), i=L?st.findIndex(s=>s.id===L.stopId):0;
+  const st=stopsOf(day.id,optFor(day),viewGrp(day)), L=liveOn(day), i=L?st.findIndex(s=>s.id===L.stopId):0;
   const rest=st.slice(Math.max(0,i)); if(rest.length<2)return '';
   return routeButtons(rest,i>0?'Rest of today':'Today’s route');
 }

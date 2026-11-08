@@ -2,11 +2,11 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='4.26';
+const APP_VERSION='4.27';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
-const TAGS=['Start','Coffee','Breakfast','Fuel','Bakery stop','Lunch','Shake a leg','Look around','Ride through','Overnight','Finish'];
+const TAGS=['Start','Coffee','Breakfast','Fuel','Bakery stop','Lunch','Shake a leg','Look around','Ride through','Overnight','Finish','Meet up','Split'];
 const CFG=window.TOUR_CONFIG||{};
 const cfgOk=!!(window.FB&&CFG.firebase&&CFG.firebase.apiKey&&!/^PASTE/.test(CFG.firebase.apiKey));
 
@@ -15,7 +15,7 @@ const ROOM_TYPES=['Queen','Double','Twin','Single','Bunk room','Cabin','Other'];
 const DAYN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], WEEK=[1,2,3,4,5,6,0];
 
 const S={user:null,editor:false,editors:[],tours:[],tourId:null,tour:null,days:[],stops:[],bakeries:[],nights:[],anns:[],unsub:[],
-  tab:sessionStorage.getItem('tru-tab')||'today',planDay:null,planSec:sessionStorage.getItem('tru-psec')||'route',bakTown:null,opt:{}};
+  tab:sessionStorage.getItem('tru-tab')||'today',planDay:null,planSec:sessionStorage.getItem('tru-psec')||'route',bakTown:null,opt:{},grp:{},planOpt:{}};
 
 /* ---------- helpers ---------- */
 let toastT; function toast(t){const el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,2800)}
@@ -38,7 +38,29 @@ const daysSorted=()=>{ const d=S.days.slice().sort((a,b)=>a.order-b.order); retu
 const FEATURES=[['bakeries','Bakeries','Bakery lists, passport, leaderboard and awards'],['court','Koala Court','The Court tab, charges and rulings'],['nights','Nights','Beds, rooms and dinners'],['trivia','Trivia','A quiz from the stops’ “Did you know?” facts'],['photos','Photo wall','Riders’ photos on stops and the wall'],['live','“We’re here” tracker','The live position on the roadbook and Today'],['weather','Weather','Forecasts on stops and Home'],['checklist','Pre-ride checklist','Ticks on Home in the week before'],['wrapped','Wrapped','Picture cards when the tour’s over']];
 function feat(k){ const f=S.tour&&S.tour.features; return !f||f[k]!==false; }
 const DAY_RIDE_OFF={nights:false,court:false,wrapped:false};
-const stopsOf=(dayId,opt)=>S.stops.filter(s=>s.dayId===dayId&&(opt==null||!s.option||s.option===opt)).sort((a,b)=>a.order-b.order);
+// stops of a day; opt = a route option (null = all), grp = a group id (undefined = every stop, null = only the stops everyone shares)
+const stopsOf=(dayId,opt,grp)=>S.stops.filter(s=>s.dayId===dayId&&(opt==null||!s.option||s.option===opt)&&(grp===undefined||!s.group||s.group===grp)).sort((a,b)=>a.order-b.order);
+/* groups that meet up, and route options (v4.27).
+   day.groups [{id,name,colour,who:[names]}]: riders who start or finish somewhere else; stop.group = a group id (missing = everyone).
+   day.options [{id,label}] (two or more), day.planned = the option riders see first; stop.option = an option id (missing = every option).
+   Older days with day.alt read as Main + the alt option (id 2). Each group x option is a "path": day.paths[key] {km,ride,total,line,lineKey,toMeet,meetId},
+   stop.kmBy[key] = km into the day on that path. */
+const dayGroups=day=>(day&&day.groups||[]).filter(g=>g&&g.id);
+const dayOpts=day=>{ if(!day)return[]; if(day.options&&day.options.length>1)return day.options; return day.alt?[{id:1,label:'Main'},{id:2,label:day.alt.label||'Option 2'}]:[]; };
+const optLabel=(day,id)=>{ const o=dayOpts(day).find(x=>x.id===id); return o?o.label:`Option ${id}`; };
+const plannedOpt=day=>{ const o=dayOpts(day); return o.length?(o.find(x=>x.id===day.planned)||o[0]).id:null; };
+const groupOf=(day,id)=>dayGroups(day).find(g=>g.id===id)||null;
+const myGroup=day=>{ const me=S.user?myName():''; return dayGroups(day).find(g=>(g.who||[]).includes(me))||null; };
+function viewGrp(day){ const G=dayGroups(day); if(!G.length)return undefined; const k=S.grp[day.id]; if(k===null||G.some(g=>g.id===k))return k; const m=myGroup(day); return m?m.id:null; }
+function viewOpt(day){ const o=dayOpts(day); if(!o.length)return null; const v=S.opt[day.id]; return o.some(x=>x.id===v)?v:plannedOpt(day); }
+const pathKey=(grp,opt)=>`${grp||'all'}|${opt||0}`;
+const kmFor=(s,key)=>s&&s.kmBy&&s.kmBy[key]!=null?s.kmBy[key]:s&&s.km;
+const dayPaths=day=>{ const G=dayGroups(day), O=dayOpts(day), gs=G.length?[...G.map(g=>g.id),null]:[undefined], os=O.length?O.map(o=>o.id):[null];
+  return gs.flatMap(grp=>os.map(opt=>({grp,opt,key:pathKey(grp,opt)}))); };
+function pathFig(day,grp,opt){ const P=day.paths&&day.paths[pathKey(grp,opt)]; if(P&&!(day.fixedFigures&&!dayGroups(day).length&&opt!==2))return P; return opt===2&&day.alt?day.alt:day; }
+function pathLine(day,grp,opt){ const P=day.paths&&day.paths[pathKey(grp,opt)]; if(P&&P.line)return {line:P.line,key:P.lineKey}; return opt===2&&day.alt?{line:day.altLine,key:day.altLineKey}:{line:day.line,key:day.lineKey}; }
+const pathStops=day=>stopsOf(day.id,viewOpt(day),viewGrp(day));
+const dayKm=day=>parseFloat(String(pathFig(day,viewGrp(day),viewOpt(day)).km||'').replace(/[^\d.]/g,''))||0;
 const locked=()=>S.tour&&S.tour.status==='locked';
 const tp=(...p)=>['tours',S.tourId,...p].join('/');
 const crewNames=()=>(S.tour&&S.tour.crew||[]).map(c=>c.name).filter(Boolean);
@@ -204,11 +226,14 @@ function noTour(){
 
 /* Roadbook */
 function dayHead(day){
-  const d=dateFor(day), stops=stopsOf(day.id);
-  const altOn=day.alt&&S.opt[day.id]===2, A=altOn?day.alt:day;
+  const d=dateFor(day), G=dayGroups(day), O=dayOpts(day), grp=viewGrp(day), opt=viewOpt(day), stops=stopsOf(day.id,opt,grp);
+  const altOn=opt===2&&day.alt, A0=pathFig(day,grp,opt), A={...A0,feel:altOn?day.alt.feel:day.feel,roads:altOn?day.alt.roads:day.roads}, g=groupOf(day,grp);
+  const route=stops.length>1?(stops[0].town===stops[stops.length-1].town?`Loop from ${stops[0].town}`:`${stops[0].town} to ${stops[stops.length-1].town}`):'';
   return `<div class="dhead"><span class="dlabel">${esc(day.label||'Day')}${day.who?`, ${esc(day.who)}`:''}</span>${d?`<span class="ddate">${esc(longDate(d))}</span>`:''}
     <h2>${esc(day.title||'Untitled day')}</h2>
-    ${day.alt?`<div class="optseg" role="group" aria-label="Route option"><button type="button" data-opt="${esc(day.id)}|1" aria-pressed="${!altOn}">Option 1</button><button type="button" data-opt="${esc(day.id)}|2" aria-pressed="${altOn}">${esc(day.alt.label||'Option 2')}</button></div>`:''}
+    ${G.length?`<div class="optseg grpseg" role="group" aria-label="Group">${G.map(x=>`<button type="button" data-grp="${esc(day.id)}|${esc(x.id)}" aria-pressed="${grp===x.id}" style="--g:var(--${esc(x.colour||'blue')})">${esc(x.name)}</button>`).join('')}<button type="button" data-grp="${esc(day.id)}|" aria-pressed="${grp===null}">Everyone</button></div>`:''}
+    ${G.length?`<p class="grpline">${g?`<b>${esc(g.name)}</b>${(g.who||[]).length?': '+esc(g.who.join(', ')):''}${route?` · ${esc(route)}`:''}`:`The part everyone rides together. Pick a group to see its start and finish.`}</p>`:''}
+    ${O.length?`<div class="optseg" role="group" aria-label="Route option">${O.map(o=>`<button type="button" data-opt="${esc(day.id)}|${o.id}" aria-pressed="${opt===o.id}">${esc(o.label)}</button>`).join('')}</div>`:''}
     <div class="stats">${A.km?`<div>${esc(A.km)} km<small>distance</small></div>`:''}${A.ride?`<div>${esc(A.ride)}<small>riding</small></div>`:''}${A.total?`<div>${esc(A.total)}<small>with stops</small></div>`:''}${!A.km&&!A.ride?`<div>${stops.length}<small>stops</small></div>`:''}</div>
     ${day.leader||day.sweep?`<p class="leads">${day.leader?`Leader <b>${esc(day.leader)}</b>`:''}${day.leader&&day.sweep?' • ':''}${day.sweep?`Sweep <b>${esc(day.sweep)}</b>`:''}</p>`:''}
     ${A.feel?`<p class="feel">${esc(A.feel)}</p>`:''}${A.roads?`<p class="roads">${esc(A.roads)}</p>`:''}
@@ -247,14 +272,14 @@ function annBanner(){
   return `<div class="ann" role="status"><span class="nlbl">${annLabel(a)}, ${ago(a.at)}</span><p>${esc(a.text)}</p><button type="button" class="btn small" data-anndismiss="${esc(a.id)}">Got it</button></div>`;
 }
 document.addEventListener('click',e=>{ const d=e.target.closest('[data-anndismiss]'); if(d){ try{localStorage.setItem(annSeenKey(),d.dataset.anndismiss)}catch(x){} render(); } });
-function stopCard(s,k,day){
+function stopCard(s,k,day,extra){
   const big=(s.tags||[]).some(t=>/Start|Overnight|Finish/.test(t));
-  const tags=(s.tags||[]).map(t=>`<span class="tag${t==='Fuel'?' fuel':''}">${t==='Fuel'&&s.fuelKm?'Fuel '+esc(s.fuelKm):esc(t)}</span>`).join('')+(s.option?`<span class="tag opt">Option ${s.option}</span>`:'');
+  const tags=(s.tags||[]).map(t=>`<span class="tag${t==='Fuel'?' fuel':''}">${t==='Fuel'&&s.fuelKm?'Fuel '+esc(s.fuelKm):esc(t)}</span>`).join('')+(s.option&&day?`<span class="tag opt">${esc(optLabel(day,s.option))} only</span>`:'');
   const bl=s.ref||!feat('bakeries')?'':bakeryList(s.town,{date:day&&dateFor(day),t:s.arrive||s.depart});
   const R_=RIDE()&&day;
   return `<li class="stop${big?' big':''}${R_?rideStopClass(s,day):''}" id="stop-${esc(s.id)}"><span class="node">${k}</span><div class="card">
     <div class="town">${esc(s.town)}</div>${timeText(s)?`<div class="time">${esc(timeText(s))}</div>`:''}
-    ${s.road?`<div class="road">${esc(s.road)}</div>`:''}${tags?`<div class="tags">${tags}</div>`:''}
+    ${s.road?`<div class="road">${esc(s.road)}</div>`:''}${tags?`<div class="tags">${tags}</div>`:''}${extra||''}
     ${s.note?`<p class="note">${esc(s.note)}</p>`:''}${s.stay?`<div class="stay">${esc(s.stay)}</div>`:''}${s.ref?`<p class="ref">${esc(s.ref)}</p>`:''}
     ${s.fact?`<details class="fact" data-k="f-${esc(s.id)}"><summary>Did you know?</summary><p>${esc(s.fact)}</p></details>`:''}
     ${bl||s.audit||(R_&&!s.ref)?`<details class="audit" data-k="a-${esc(s.id)}"><summary>Bakery audit${bl?` (${(bl.match(/<li>/g)||[]).length})`:''}</summary>${s.audit?`<p class="verdict">${esc(s.audit)}</p>`:''}${R_?rideAuditBits(s):''}${bl?`<ol class="bk">${bl}</ol>`:''}</details>`:''}
@@ -264,22 +289,22 @@ function stopCard(s,k,day){
 function viewRoadbook(){
   const T=S.tour, days=daysSorted();
   const first=days.find(d=>d.kind!=='solo'), last=days.slice().reverse().find(d=>d.kind!=='solo');
-  const totalKm=days.filter(d=>d.kind!=='solo').reduce((a,d)=>a+(parseFloat(String(d.km||'').replace(/[^\d.]/g,''))||0),0);
+  const totalKm=days.filter(d=>d.kind!=='solo').reduce((a,d)=>a+dayKm(d),0);
   const range=first&&last&&dateFor(first)?`${shortDate(dateFor(first))} to ${shortDate(dateFor(last))}`:'Dates to be set';
   let h=annBanner()+`<section class="hero"><h1>${esc(T.name||T.id)}</h1>${T.status==='draft'?' <span class="pill draft">Draft: only editors can see this</span>':''}${T.status==='locked'?' <span class="pill locked">Locked</span>':''}
     <p class="sub">${esc(T.subtitle||'')}</p><div class="stats"><div>${totalKm?totalKm.toLocaleString():'\u2014'} km<small>group route</small></div><div>${days.filter(d=>d.kind!=='solo').length}<small>days</small></div><div>${esc(range)}<small>dates</small></div></div></section>`;
   if(!days.length) h+=`<div class="empty">No days planned yet.${S.editor?' Add them in the Plan tab.':''}</div>`;
   days.forEach(day=>{
-    const opt=day.alt?(S.opt[day.id]||1):null;
-    const st=stopsOf(day.id,opt);
+    const st=pathStops(day);
     const dn=RIDE()?rideDayDone(day):{cls:'',bar:''};
-    h+=`<section class="day${dn.cls}" style="--c:var(--${esc(day.colour||'blue')})" id="day-${esc(day.id)}">${dn.bar}${dayHead(day)}<ol class="stops">${st.map((s,i)=>stopCard(s,i+1,day)).join('')||'<li class="muted" style="padding-left:46px">No stops yet.</li>'}</ol>${RIDE()?dayNavBlock(day):''}${mapBlock(day)}${nightBlock(day.id)}</section>`;
+    h+=`<section class="day${dn.cls}" style="--c:var(--${esc(day.colour||'blue')})" id="day-${esc(day.id)}">${dn.bar}${dayHead(day)}<ol class="stops">${st.map((s,i)=>stopCard(s,i+1,day,groupBits(s,day,st,i))).join('')||'<li class="muted" style="padding-left:46px">No stops yet.</li>'}</ol>${RIDE()?dayNavBlock(day):''}${mapBlock(day)}${nightBlock(day.id)}</section>`;
   });
   if(T.brief&&T.brief.length) h+=`<section class="sec"><h2>Tour brief</h2><div class="brief">${T.brief.map(c=>`<div class="card"><h3>${esc(c.h)}</h3>${(c.p||[]).map(p=>`<p>${esc(p)}</p>`).join('')}${c.li&&c.li.length?`<ul>${c.li.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}</div>`).join('')}</div></section>`;
   if(T.roles&&T.roles.length) h+=`<section class="sec"><h2>The crew</h2><div class="roles">${T.roles.map(r=>`<div><span>${esc(r.role)}</span><span>${typeof personBtn==='function'&&r.name?personBtn(r.name):esc(r.name)}</span></div>`).join('')}</div>${T.crew&&T.crew.length?`<p class="muted">Riders: ${T.crew.map(c=>c.name).filter(Boolean).map(n=>typeof personBtn==='function'?personBtn(n):esc(n)).join(', ')}.</p>`:''}</section>`;
   return h;
 }
-document.addEventListener('click',e=>{ const o=e.target.closest('[data-opt]'); if(o){const [id,v]=o.dataset.opt.split('|');S.opt[id]=+v;render();} });
+document.addEventListener('click',e=>{ const o=e.target.closest('[data-opt]'); if(o){const [id,v]=o.dataset.opt.split('|');S.opt[id]=+v;render();}
+  const g=e.target.closest('[data-grp]'); if(g){const [id,v]=g.dataset.grp.split('|');S.grp[id]=v||null;render();} });
 
 /* Today */
 function viewToday(){ return RIDE()?rideToday():annBanner()+todayBody(); }
@@ -292,7 +317,7 @@ function todayBody(){
   const group=dated.filter(x=>x.d.kind!=='solo');
   if(now.length){
     return now.map(({d,date})=>{
-      const st=stopsOf(d.id,d.alt?(S.opt[d.id]||1):null);
+      const st=pathStops(d);
       return `<div class="tdhead" style="--c:var(--${esc(d.colour||'blue')})"><span class="tdday">${esc(d.label)}${d.who?`, ${esc(d.who)}`:''}, ${esc(longDate(date))}</span><h2>${esc(d.title)}</h2></div>
         <ul class="tdlist">${st.map(s=>`<li><span class="t">${esc(t12(s.depart&&!s.arrive?s.depart:s.arrive)||'')}</span><div><b>${esc(s.town)}</b>${(s.tags||[]).length?`<div class="muted" style="font-size:14px">${esc(s.tags.join(', '))}</div>`:''}</div></li>`).join('')}</ul><div style="--c:var(--${esc(d.colour||'blue')})">${mapBlock(d)}</div>${nightsOf(d.id).map(nightCard).join('')}`;
     }).join('')+`<p style="margin-top:14px"><button type="button" class="btn" data-tab-go="roadbook">Open the full roadbook</button></p>`;
@@ -734,31 +759,54 @@ function loadLeaflet(){
 }
 S.mapOpen=new Set(); const MAPS={};
 function mapBlock(day){
-  const opt=day.alt?(S.opt[day.id]||1):null, st=stopsOf(day.id,opt);
+  const st=dayGroups(day).length?stopsOf(day.id):pathStops(day);
   if(st.filter(hasLL).length<1)return S.editor?`<p class="muted maphint">No map yet: add locations to the stops in Plan.</p>`:'';
   return `<details class="daymap" data-map="${esc(day.id)}"${S.mapOpen.has(day.id)?' open':''}><summary>Map of the day</summary><div class="map"></div><p class="mapnote"></p></details>`;
 }
 document.addEventListener('toggle',e=>{ const d=e.target; if(!d.matches||!d.matches('details.daymap'))return;
   const id=d.dataset.map; if(d.open){ S.mapOpen.add(id); drawMap(d); } else S.mapOpen.delete(id); },true);
 function drawMaps(){ Object.keys(MAPS).forEach(k=>{ if(!document.body.contains(MAPS[k].getContainer())){ MAPS[k].remove(); delete MAPS[k]; } }); $$('details.daymap[open]').forEach(drawMap); }
+/* roadbook extras for a day with groups (v4.27): leave time worked back from the meet-up, who you meet, where the others go after the split */
+const andList=a=>a.length>1?a.slice(0,-1).join(', ')+' and '+a[a.length-1]:(a[0]||'');
+function groupBits(s,day,st,i){
+  const G=dayGroups(day); if(!G.length)return '';
+  const grp=viewGrp(day), opt=viewOpt(day), t=s.tags||[], others=G.filter(g=>g.id!==grp), out=[];
+  if(i===0&&grp&&!s.arrive&&!s.depart&&typeof suggestLeave==='function'){ const L=suggestLeave(day,grp,opt);
+    if(L)out.push(`<p class="grpnote">Leave about <b>${esc(t12(toHM(L.t)))}</b> to meet at ${esc(L.meet.town)} by ${esc(t12(L.meet.arrive))}.</p>`); }
+  const startOf=g=>{ const own=stopsOf(day.id,opt,g.id).filter(x=>x.group===g.id&&x.order<s.order); if(!own.length)return '';
+    const L=!own[0].depart&&!own[0].arrive&&typeof suggestLeave==='function'?suggestLeave(day,g.id,opt):null, tm=own[0].depart||own[0].arrive||(L?toHM(L.t):'');
+    return ` · from ${esc(own[0].town)}${tm?' '+esc(t12(tm)):''}${own.length>1?' via '+esc(andList(own.slice(1).map(x=>x.town))):''}`; };
+  if(t.includes('Meet up')&&others.length) out.push(`<div class="meetbox"><b>${grp?`Meet the ${esc(andList(others.map(g=>g.name)))} here`:'The groups meet here'}</b>${others.map(g=>`<p><span class="gdot" style="--g:var(--${esc(g.colour||'blue')})"></span>${esc(g.name)}${(g.who||[]).length?': '+esc(g.who.join(', ')):''}${startOf(g)}</p>`).join('')}</div>`);
+  if(t.includes('Split')&&others.length) out.push(`<div class="meetbox split"><b>${grp?'The groups split here':'The groups go their own way from here'}</b>${others.map(g=>{ const after=stopsOf(day.id,opt,g.id).filter(x=>x.group===g.id&&x.order>s.order); if(!after.length)return '';
+    const last=after[after.length-1]; return `<p><span class="gdot" style="--g:var(--${esc(g.colour||'blue')})"></span>${esc(g.name)} heads to ${esc(last.town)}${after.length>1?' via '+esc(andList(after.slice(0,-1).map(x=>x.town))):''}</p>`; }).join('')}</div>`);
+  return out.join('');
+}
 async function drawMap(det){
   const el=$('.map',det), note=$('.mapnote',det); if(!el||el._drawn)return; el._drawn=true;
   try{ await loadLeaflet(); }catch(e){ note.textContent='The map couldn’t load. Check your signal.'; el._drawn=false; return }
   const day=S.days.find(d=>d.id===det.dataset.map); if(!day||!document.body.contains(el))return;
-  const opt=day.alt?(S.opt[day.id]||1):null, alt=opt===2, st=stopsOf(day.id,opt), pts=st.filter(hasLL);
-  const colour=getComputedStyle(det).getPropertyValue('--c').trim()||getComputedStyle(document.documentElement).getPropertyValue('--blue').trim()||'#2387E0';
+  // v4.27: a day with groups draws each group's route in its colour; the viewer's own group (or, in Plan, the first) gets the numbers
+  const G=dayGroups(day), inPlan=S.tab==='plan', opt=inPlan&&typeof planOptOf==='function'?planOptOf(day):viewOpt(day);
+  const cssv=c=>getComputedStyle(document.documentElement).getPropertyValue('--'+c).trim()||'#2387E0';
+  const colour=getComputedStyle(det).getPropertyValue('--c').trim()||cssv('blue');
+  const mineG=G.length?(inPlan?G[0].id:viewGrp(day)):undefined;
+  const runs=G.length?[...G.map(g=>({grp:g.id,col:cssv(g.colour||'blue'),name:g.name})),...(mineG===null?[{grp:null,col:colour,name:'Everyone'}]:[])]:[{grp:undefined,col:colour}];
   const m=L.map(el,{scrollWheelZoom:false,tap:true}); MAPS[det.dataset.map+Math.random()]=m;
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(m);
-  const line=alt?day.altLine:day.line, key=alt?day.altLineKey:day.lineKey, fresh=line&&key===lineKey(st);
-  const path=fresh?decodeLine(line):pts.map(s=>[+s.lat,+s.lon]);
-  const pl=L.polyline(path,{color:colour,weight:5,opacity:.85,dashArray:fresh?null:'8 8'}).addTo(m);
-  st.forEach((s,i)=>{ if(!hasLL(s))return; const big=(s.tags||[]).some(t=>/Start|Overnight|Finish/.test(t));
-    L.marker([+s.lat,+s.lon],{icon:L.divIcon({className:'mk',html:`<span style="--c:${colour}" class="${big?'big':''}">${i+1}</span>`,iconSize:[28,28],iconAnchor:[14,14]})})
-      .bindPopup(`<b>${esc(s.town)}</b>${timeText(s)?'<br>'+esc(timeText(s)):''}${s.km!=null&&s.km!==''?`<br>${esc(s.km)} km into the day`:''}`).addTo(m); });
-  const towns=new Set(st.map(s=>s.town));
+  let allPts=[], anyFresh=false, anyPts=0; const seen=new Set(), main=runs.find(r=>r.grp===mineG)||runs[0];
+  runs.forEach(r=>{ const st=stopsOf(day.id,opt,r.grp), pts=st.filter(hasLL), Ln=pathLine(day,r.grp,opt), fresh=Ln.line&&Ln.key===lineKey(st), isMain=r===main;
+    const path=fresh?decodeLine(Ln.line):pts.map(s=>[+s.lat,+s.lon]); if(fresh)anyFresh=true; anyPts=Math.max(anyPts,pts.length); allPts=allPts.concat(path);
+    if(path.length>1)L.polyline(path,{color:r.col,weight:isMain?5:4,opacity:isMain||inPlan?.85:.55,dashArray:fresh?null:'8 8'}).addTo(m);
+    if(isMain) st.forEach((s,i)=>{ if(!hasLL(s))return; seen.add(s.id); const big=(s.tags||[]).some(t=>/Start|Overnight|Finish|Meet up|Split/.test(t)); const k=kmFor(s,pathKey(r.grp,opt));
+      L.marker([+s.lat,+s.lon],{icon:L.divIcon({className:'mk',html:`<span style="--c:${r.col}" class="${big?'big':''}">${i+1}</span>`,iconSize:[28,28],iconAnchor:[14,14]})})
+        .bindPopup(`<b>${esc(s.town)}</b>${timeText(s)?'<br>'+esc(timeText(s)):''}${k!=null&&k!==''?`<br>${esc(k)} km into the day`:''}`).addTo(m); });
+    else st.forEach(s=>{ if(!hasLL(s)||seen.has(s.id))return; seen.add(s.id); L.circleMarker([+s.lat,+s.lon],{radius:7,color:'#fff',weight:2,fillColor:r.col,fillOpacity:1}).bindPopup(`<b>${esc(s.town)}</b><br>${esc(r.name||'')}${timeText(s)?' · '+esc(timeText(s)):''}`).addTo(m); });
+  });
+  const towns=new Set(stopsOf(day.id,opt).map(s=>s.town));
   if(feat('bakeries'))S.bakeries.filter(b=>towns.has(b.town)&&hasLL(b)).forEach(b=>L.circleMarker([+b.lat,+b.lon],{radius:6,color:'#fff',weight:2,fillColor:'#B4441B',fillOpacity:1}).bindPopup(`<b>${esc(b.name)}</b><br>${esc(b.hours||fmtHours(b.hoursSpec)||'')}`).addTo(m));
-  if(path.length>1) m.fitBounds(pl.getBounds(),{padding:[24,24]}); else if(path.length) m.setView(path[0],12);
-  note.textContent=fresh?'Route from OpenStreetMap routing. Tap a number for details; red dots are bakeries.':(pts.length>1?'Straight lines between stops for now; the road route appears once distances are estimated in Plan.':'');
+  if(allPts.length>1) m.fitBounds(L.latLngBounds(allPts),{padding:[24,24]}); else if(allPts.length) m.setView(allPts[0],12);
+  const legend=G.length?`<span class="maplegend">${runs.map(r=>`<span><i style="background:${esc(r.col)}"></i>${esc(r.name)}</span>`).join('')}</span>`:'';
+  note.innerHTML=legend+(anyFresh?'Route from OpenStreetMap routing. Tap a number for details; red dots are bakeries.':(anyPts>1?'Straight lines between stops for now; the road route appears once distances are worked out in Plan.':''));
 }
 
 function crewDialog(c){
@@ -922,6 +970,7 @@ async function doSave(btn){
       tags:$$('#dlg input[name="tag"]:checked').map(x=>x.value),option:val('option')?Number(val('option')):null,note:val('note'),fact:val('fact'),stay:val('stay'),
       lat:num(val('lat')),lon:num(val('lon')),...stamp()};
     if($('#dlg [name="timeNote"]')) data.timeNote=val('timeNote');
+    if($('#dlg [name="sgroup"]')) data.group=val('sgroup')||null; // v4.27: the group this stop is for (empty = everyone)
     const dayId=existing?existing.dayId:S.planDay, after=btn.dataset.after||null, next=btn.dataset.next==='1';
     if(!existing){ data.dayId=dayId; const st=stopsOf(dayId); data.order=st.length?Math.max(...st.map(s=>s.order||0))+1:0; }
     let reorder=null; if(!existing&&after){ reorder=stopsOf(dayId).map(s=>s.id); reorder.splice(after==='__first'?0:reorder.indexOf(after)+1,0,id); }
