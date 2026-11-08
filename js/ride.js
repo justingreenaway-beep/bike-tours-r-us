@@ -626,43 +626,74 @@ const WR={W:1080,H:1350,bg:'#1B2530',ink:'#F4F5F2',mut:'#9AA6B0',vis:'#F2C200',r
 function wrText(x,t,X,Y,maxW,lh,maxLines=2){ const words=String(t||'').split(' '); let line='',n=0;
   for(let i=0;i<words.length;i++){ const test=line?line+' '+words[i]:words[i]; if(x.measureText(test).width>maxW&&line){ x.fillText(n===maxLines-1?line+'\u2026':line,X,Y+n*lh); n++; line=words[i]; if(n>=maxLines)return n; } else line=test; }
   if(line){ x.fillText(line,X,Y+n*lh); n++; } return n; }
-async function wrDraw(kind){
+async function wrDraw(kind){ // v4.20: Ride Together brand, follows Plan > Features, no empty boxes, balanced layout
   try{ await Promise.all(['800 40px "Barlow Condensed"','700 40px "Barlow Condensed"','500 20px "Barlow"','600 20px "Barlow"'].map(f=>document.fonts.load(f))); }catch(e){}
+  const logo=await new Promise(r=>{ const i=new Image(); i.onload=()=>r(i); i.onerror=()=>r(null); i.src='icons/logo-bike.png'; });
   const c=document.createElement('canvas'); c.width=WR.W; c.height=WR.H; const x=c.getContext('2d');
   const C=(w,s)=>`${w} ${s}px "Barlow Condensed", "Arial Narrow", sans-serif`, Bf=(w,s)=>`${w} ${s}px "Barlow", system-ui, sans-serif`;
+  const pl=(n,one,many)=>`${n} ${n===1?one:(many||one+'s')}`;
   x.fillStyle=WR.bg; x.fillRect(0,0,WR.W,WR.H);
-  const gd=groupDays(); gd.forEach((d,i)=>{ x.fillStyle=WR.d[COLOURS.indexOf(d.colour)]||WR.d[i%4]; x.fillRect(i*WR.W/gd.length,0,WR.W/gd.length,14); });
-  x.fillStyle=WR.vis; x.font=C(800,34); x.fillText('BIKE TOURS R US',72,100);
+  const gd=groupDays(), ds=daysSorted(); gd.forEach((d,i)=>{ x.fillStyle=WR.d[COLOURS.indexOf(d.colour)]||WR.d[i%4]; x.fillRect(i*WR.W/gd.length,0,WR.W/gd.length,14); });
+  // brand
+  if(logo){ const lw=96, lh=Math.round(lw*logo.height/logo.width); x.drawImage(logo,72,104-lh+6,lw,lh); }
+  x.fillStyle=WR.vis; x.font=C(800,34); x.fillText('RIDE TOGETHER',logo?184:72,100);
   x.fillStyle=WR.ink; x.font=C(800,110); wrText(x,String(S.tour.name||S.tourId).toUpperCase(),68,210,940,100,1);
-  x.fillStyle=WR.vis; x.fillText('WRAPPED',68,318);
-  const stat=(X,Y,big,small,col)=>{ x.fillStyle=col||WR.ink; x.font=C(800,96); x.fillText(big,X,Y); x.fillStyle=WR.mut; x.font=Bf(500,26); x.fillText(small,X,Y+40); };
-  const card=(X,Y,w,h,label,title,sub,col)=>{ x.fillStyle='rgba(255,255,255,.07)'; x.beginPath(); x.roundRect?x.roundRect(X,Y,w,h,22):x.rect(X,Y,w,h); x.fill();
-    x.fillStyle=col||WR.vis; x.font=Bf(600,24); x.fillText(label,X+26,Y+44); x.fillStyle=WR.ink; x.font=C(700,46); const n=wrText(x,title||'Still being judged',X+26,Y+98,w-52,48,2);
-    if(sub){ x.fillStyle=WR.mut; x.font=Bf(500,24); wrText(x,sub,X+26,Y+98+n*48,w-52,30,2); } };
+  x.fillStyle=WR.vis; x.fillText(S.tour.kind==='day'?'THE RIDE · WRAPPED':'WRAPPED',68,318);
+  // when and where
+  const dated=(gd.length?gd:ds).map(d=>dateFor(d)).filter(Boolean), f=dated[0], l=dated[dated.length-1]; // group riding days, like the day count
+  const when=f?(S.tour.kind==='day'||iso(f)===iso(l)?f.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
+    :`${f.toLocaleDateString('en-AU',{day:'numeric',month:'short'})} – ${l.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})}`):'';
+  const ctx=[when,S.tour.kind==='day'?'':pl(gd.length,'riding day'),S.tour.subtitle||''].filter(Boolean).join(' · ');
+  x.fillStyle=WR.mut; x.font=Bf(500,28); wrText(x,ctx,72,370,936,34,1);
+  x.fillStyle=WR.ink; x.font=Bf(600,36); x.fillText(kind==='me'?`${me().name}’s ${S.tour.kind==='day'?'ride':'tour'}`:'The crew',72,428);
   const km=gd.reduce((a,d)=>a+(parseFloat(String(d.km||'').replace(/[^\d.]/g,''))||0),0), ids=tourBakIds(), {t:ct}=courtTotals();
+  const BAK=feat('bakeries'), COURT=feat('court'), TRIV=feat('trivia'), PHOTOS=feat('photos'), lk=likeCounts();
+  const stops=gd.flatMap(d=>stopsOf(d.id)).filter(s=>s.town&&!s.ref), route=stops.length?{t:stops.length>1?`${stops[0].town} to ${stops[stops.length-1].town}`:stops[0].town,s:`${pl(new Set(stops.map(s=>s.town)).size,'town')}${km?' · '+Math.round(km).toLocaleString()+' km':''}`}:null;
+  const stats=[], boxes=[]; // stats: [big, label, colour]; boxes: [label, title, sub, colour]
   if(kind==='me'){
     const m=me(), mine=ids.filter(id=>m.ticks[id]), rated=Object.entries(m.ratings||{}).filter(([id])=>bakById(id)).sort((a,b)=>b[1]-a[1]);
-    const q=Object.values(m.quiz||{}).reduce((a,v)=>a+(v&&v.s||0),0), kp=ct[m.name]?ct[m.name].tot:0, laid=(m.kc||[]).reduce((a,c)=>a+c.pts,0);
-    const tc={}; mine.forEach(id=>{ const b=bakById(id); tc[b.town]=(tc[b.town]||0)+1; }); const town=Object.entries(tc).sort((a,b)=>b[1]-a[1])[0];
-    x.fillStyle=WR.ink; x.font=Bf(600,36); x.fillText(`${m.name}\u2019s tour`,72,384);
-    stat(72,520,Math.round(km).toLocaleString(),'km on the group route'); stat(420,520,String(mine.length),`of ${ids.length} bakeries`,WR.vis); stat(760,520,String(q),'trivia points');
-    const top=rated[0], low=rated.length>1?rated[rated.length-1]:null, B=r=>bakById(r[0]);
-    card(72,600,456,210,'Best thing I ate',top?B(top).must||B(top).name:null,top?`${B(top).name}, ${top[1]}/10`:'Score a bakery to crown one');
-    card(552,600,456,210,'Biggest letdown',low?B(low).must||B(low).name:null,low?`${B(low).name}, ${low[1]}/10`:'Needs two scores',WR.red);
-    card(72,834,456,190,'Koala Court',`${kp} point${kp===1?'':'s'} against me`,`${laid} point${laid===1?'':'s'} laid on others`,WR.red);
-    card(552,834,456,190,'Bakery capital',town?town[0]:null,town?`${town[1]} ${town[1]===1?'bakery':'bakeries'} tried there`:'');
+    const q=Object.values(m.quiz||{}).reduce((a,v)=>a+(v&&v.s||0),0), myPh=R.wall.filter(p=>p.uid===myUid());
+    if(km)stats.push([Math.round(km).toLocaleString(),'km ridden']); else stats.push([String(gd.length),gd.length===1?'riding day':'riding days']);
+    if(BAK)stats.push([String(mine.length),`of ${pl(ids.length,'bakery','bakeries')}`,WR.vis]);
+    if(TRIV&&q)stats.push([String(q),q===1?'trivia point':'trivia points']);
+    if(PHOTOS&&myPh.length&&stats.length<3)stats.push([String(myPh.length),myPh.length===1?'photo':'photos']);
+    if(BAK){ const top=rated[0], B=r=>bakById(r[0]);
+      if(top)boxes.push(['Best thing I ate',B(top).must||B(top).name,`${B(top).name}, ${top[1]}/10`]);
+      const per=gd.map(d=>({d,n:dayBakIds(d).filter(id=>m.ticks[id]).length})).sort((a,b)=>b.n-a.n)[0];
+      if(per&&per.n)boxes.push(['Best day',per.d.label,`${per.d.title?per.d.title+' · ':''}${pl(per.n,'bakery','bakeries')} ticked`]);
+      const tc={}; mine.forEach(id=>{ const b=bakById(id); tc[b.town]=(tc[b.town]||0)+1; }); const town=Object.entries(tc).sort((a,b)=>b[1]-a[1])[0];
+      if(town&&town[1]>1)boxes.push(['Bakery capital',town[0],`${town[1]} bakeries tried there`]); }
+    if(COURT){ const kp=ct[m.name]?ct[m.name].tot:0, laid=(m.kc||[]).reduce((a,c2)=>a+c2.pts,0);
+      boxes.push(['Koala Court',kp?`${pl(kp,'point')} against me`:'A clean record',laid?`${pl(laid,'point')} laid on others`:'No charges laid',WR.red]); }
   } else {
-    const A=awards(), B=A.B, tc={}; riders().forEach(v=>Object.keys(v.ticks||{}).forEach(n=>{ if(bakById(n))tc[n]=(tc[n]||0)+1; }));
-    const wanted=Object.entries(ct).filter(([,v])=>v.tot>0).sort((a,b)=>b[1].tot-a[1].tot)[0];
-    x.fillStyle=WR.ink; x.font=Bf(600,36); x.fillText('The crew awards',72,384);
-    stat(72,520,String(Object.keys(tc).length),'bakeries visited',WR.vis); stat(420,520,String(Object.values(tc).reduce((a,b)=>a+b,0)),'bakery ticks'); stat(760,520,String(R.wall.length),'photos');
-    card(72,600,936,210,'Best bakery',A.bo&&B(A.bo).name,A.bo?`${B(A.bo).town}, crew average ${A.bo[1].a.toFixed(1)}/10 from ${A.bo[1].c} riders`:'');
-    if(feat('court'))card(72,834,936,190,'Koala Court: most wanted',wanted&&wanted[0],wanted?`${wanted[1].tot} points`:'',WR.red);
+    const tc={}; riders().forEach(v=>Object.keys(v.ticks||{}).forEach(n=>{ if(bakById(n))tc[n]=1; }));
+    const crewN=(S.tour.crew||[]).length||riders().length;
+    stats.push([String(crewN),crewN===1?'rider':'riders']);
+    if(km)stats.push([Math.round(km).toLocaleString(),'km']);
+    if(BAK)stats.push([String(Object.keys(tc).length),Object.keys(tc).length===1?'bakery':'bakeries',WR.vis]);
+    if(PHOTOS&&R.wall.length)stats.push([String(R.wall.length),R.wall.length===1?'photo':'photos']);
+    if(BAK){ const A=awards(), B=A.B; boxes.push(['Best bakery',A.bo?B(A.bo).name:(A.near?B(A.near).name:null),A.bo?`${B(A.bo).town}, crew average ${A.bo[1].a.toFixed(1)}/10 from ${A.bo[1].c} riders`:(A.near?`Crew favourite so far (${pl(A.near[1].c,'score')})`:'No bakeries scored')]); }
+    if(COURT){ const wanted=Object.entries(ct).filter(([,v])=>v.tot>0).sort((a,b)=>b[1].tot-a[1].tot)[0];
+      boxes.push(['Koala Court: most wanted',wanted?wanted[0]:'A clean tour',wanted?pl(wanted[1].tot,'point'):'No charges laid',WR.red]); }
   }
-  const lk=likeCounts(), ph=kind==='me'?R.wall.filter(p=>p.uid===myUid()).sort(tripOrder).slice(-4):R.wall.slice().sort((a,b)=>(lk[b.id]||0)-(lk[a.id]||0)||tsMs(b.at)-tsMs(a.at)).slice(0,4); // crew card: the most-loved photos
+  if(boxes.length<2&&route)boxes.push(['The route',route.t,route.s]);
+  boxes.splice(4);
+  // photos: the most-liked (mine on My Wrapped)
+  const ph=!PHOTOS?[]:(kind==='me'?R.wall.filter(p=>p.uid===myUid()):R.wall.slice()).sort((a,b)=>(lk[b.id]||0)-(lk[a.id]||0)||tsMs(b.at)-tsMs(a.at)).slice(0,4);
+  // layout: stats and boxes centred in the space between the heading and the photos (or the footer)
+  const top=470, bottom=ph.length?1040:1270, rows=boxes.length<=2?1:2, rowH=boxes.length?Math.min(230,Math.max(190,Math.floor((bottom-top-150-24*(rows-1))/rows))):0;
+  const blockH=(stats.length?150:0)+(rows*rowH+(rows-1)*24); let y=top+Math.max(0,Math.floor((bottom-top-blockH)/2));
+  if(stats.length){ const n=stats.length, w=936/n, big=n>3?78:96;
+    stats.forEach(([b,s,col],i)=>{ const X=72+i*w; x.fillStyle=col||WR.ink; x.font=C(800,big); wrText(x,b,X,y+86,w-16,big,1); x.fillStyle=WR.mut; x.font=Bf(500,26); wrText(x,s,X,y+126,w-16,30,1); });
+    y+=150; }
+  const card=(X,Y,w,h,label,title,sub,col)=>{ x.fillStyle='rgba(255,255,255,.07)'; x.beginPath(); x.roundRect?x.roundRect(X,Y,w,h,22):x.rect(X,Y,w,h); x.fill();
+    x.fillStyle=col||WR.vis; x.font=Bf(600,24); x.fillText(label,X+26,Y+44); x.fillStyle=WR.ink; x.font=C(700,46); const n=wrText(x,title||'',X+26,Y+98,w-52,48,h>=230?2:1);
+    if(sub){ x.fillStyle=WR.mut; x.font=Bf(500,24); wrText(x,sub,X+26,Y+98+n*48,w-52,30,2); } };
+  boxes.forEach((b,i)=>{ const n=boxes.length, full=n===1||(n===3&&i===2), r=n<=2?0:Math.floor(i/2), col=full?0:i%2;
+    const w=n===2||(!full&&n>2)?456:936; card(72+(n===2?i*480:col*480),y+r*(rowH+24),w,rowH,...b); });
   for(let i=0;i<ph.length;i++){ const im=await new Promise(r=>{ const k=new Image(); k.onload=()=>r(k); k.onerror=()=>r(null); k.src=ph[i].thumb; }); if(!im)continue;
-    const X=72+i*240, Y=1060, s=216, sc=Math.max(s/im.width,s/im.height); x.save(); x.beginPath(); x.rect(X,Y,s,s); x.clip(); x.drawImage(im,X+(s-im.width*sc)/2,Y+(s-im.height*sc)/2,im.width*sc,im.height*sc); x.restore(); }
-  x.fillStyle=WR.mut; x.font=Bf(500,22); x.fillText('Bike Tours R Us',72,WR.H-40);
+    const X=72+i*240, Y=1064, s=216, sc=Math.max(s/im.width,s/im.height); x.save(); x.beginPath(); x.roundRect?x.roundRect(X,Y,s,s,14):x.rect(X,Y,s,s); x.clip(); x.drawImage(im,X+(s-im.width*sc)/2,Y+(s-im.height*sc)/2,im.width*sc,im.height*sc); x.restore(); }
+  x.fillStyle=WR.mut; x.font=Bf(500,22); x.fillText('Made with Ride Together',72,WR.H-34);
   return c;
 }
 async function showWrapped(kind){
