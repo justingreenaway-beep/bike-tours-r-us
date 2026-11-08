@@ -45,7 +45,7 @@ function saveMe(m,keys){ // v4.23: writes only the fields this action changed (w
   ks.forEach(k=>{ data[k]=JSON.parse(JSON.stringify(m[k]??(Array.isArray(blankMe()[k])?[]:{}))); });
   R.pend=Object.assign(R.pend||{},data); const path=tp('riders',uid);
   clearTimeout(R.saveT);
-  R.saveT=setTimeout(()=>{ const d=R.pend; R.pend=null; FB.update(path,d).catch(e=>{ if(e&&e.code==='not-found')return FB.set(path,d,true); throw e; }).catch(e=>toast(e&&e.code==='permission-denied'?'Your account can\u2019t save to this tour yet. Ask Justin to check the rules.':'Saved on this phone. It will sync when you have signal.')); },400);
+  R.saveT=setTimeout(()=>{ const d=R.pend; R.pend=null; FB.update(path,d).catch(e=>{ if(e&&e.code==='not-found')return FB.set(path,d,true); throw e; }).catch(e=>toast(e&&e.code==='permission-denied'?'Your account can\u2019t save to this tour yet. Ask the tour\u2019s organiser for help.':'Saved on this phone. It will sync when you have signal.')); },400);
 }
 const canRide=()=>!!(S.tour&&(S.tour.memberEmails||[]).includes(S.user.email))||S.editor;
 const riders=()=>Object.entries(R.riders).map(([id,v])=>({id,...v})).filter(v=>v.name);
@@ -361,7 +361,7 @@ function rideBakeries(){
     <section class="sec"><h2>What I\u2019ve tried</h2><ul class="tried">${tried.length?tried.map(x=>`<li>${esc(x.name)}${m.ratings[x.id]?` <b>${m.ratings[x.id]}/10</b>`:''} <span class="muted">${esc(x.town)}</span></li>`).join(''):'<li class="muted" style="list-style:none;margin-left:-18px">Nothing ticked yet.</li>'}</ul>
       <div class="planbar"><button type="button" class="btn" data-wrapped="me">My Wrapped</button><button type="button" class="btn" data-wrapped="crew">Crew Wrapped</button>${tried.length||Object.keys(m.quiz).length?'<button type="button" class="btn small danger" data-ride="resetme">Clear my ticks and scores</button>':''}</div></section>`;
 }
-function notRiding(){ return `<div class="empty"><h2 style="font-size:28px;text-transform:uppercase;margin-bottom:8px">Not on this tour</h2><p>Ask Justin or Tony to add <b>${esc(S.user.email)}</b> to this tour\u2019s crew list.</p></div>`; }
+function notRiding(){ return `<div class="empty"><h2 style="font-size:28px;text-transform:uppercase;margin-bottom:8px">Not on this tour</h2><p>Ask the tour\u2019s organiser to add <b>${esc(S.user.email)}</b> to this tour\u2019s crew list.</p></div>`; }
 
 /* ---------- Koala Court ---------- */
 function courtNights(){ // group days that end with an overnight stop or a booked bed

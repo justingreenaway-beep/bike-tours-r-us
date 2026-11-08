@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='4.23';
+const APP_VERSION='4.24';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -287,7 +287,7 @@ function todayBody(){
   const days=daysSorted(), today=iso(new Date());
   const dated=days.map(d=>({d,date:dateFor(d)})).filter(x=>x.date);
   const T=S.tour;
-  if(!T.startDate||!dated.length) return `<div class="tdhead"><span class="tdday">${esc(T.name)}</span><h2>Dates to be set</h2><p class="muted">${S.editor?'Set the start date in the Plan tab.':'Check back once Justin and Tony set the dates.'}</p></div>`;
+  if(!T.startDate||!dated.length) return `<div class="tdhead"><span class="tdday">${esc(T.name)}</span><h2>Dates to be set</h2><p class="muted">${S.editor?'Set the start date in the Plan tab.':'Check back once the organisers set the dates.'}</p></div>`;
   const now=dated.filter(x=>iso(x.date)===today);
   const group=dated.filter(x=>x.d.kind!=='solo');
   if(now.length){
@@ -633,7 +633,7 @@ async function save(fn,okMsg){ try{ await fn(); closeDlg(); if(okMsg)toast(okMsg
 function editTourDialog(){
   const T=S.tour;
   const many=S.days.length>1;
-  dlg(`<h3>Tour details</h3>${tourKindSeg(T.kind||'multi')}<p class="muted" id="kindnote" style="font-size:13px;margin:-2px 0 10px"${T.kind==='day'&&many?'':' hidden'}>A day ride shows only its first day. The other ${S.days.length-1} ${S.days.length===2?'day is':'days are'} kept, hidden, and come back if you switch to multi-day.</p><div class="frow">${field('Tour name','name',T.name,{ph:'e.g. Bike Tour 27'})}${field('Year','year',T.year,{type:'number'})}</div>${field('Short description','subtitle',T.subtitle,{ph:'Where it goes'})}
+  dlg(`<h3>Tour details</h3>${tourKindSeg(T.kind||'multi')}<p class="muted" id="kindnote" style="font-size:13px;margin:-2px 0 10px"${T.kind==='day'&&many?'':' hidden'}>A day ride shows only its first day. The other ${S.days.length-1} ${S.days.length===2?'day is':'days are'} kept, hidden, and come back if you switch to multi-day.</p><div class="frow">${field('Tour name','name',T.name,{ph:'e.g. High Country Run'})}${field('Year','year',T.year,{type:'number'})}</div>${field('Short description','subtitle',T.subtitle,{ph:'Where it goes'})}
    <div class="frow">${field(T.kind==='day'?'Date':'Day 1 date','startDate',T.startDate,{type:'date'})}${field('Fuel range rule (km)','fuelRangeKm',T.fuelRangeKm,{type:'number'})}</div>
    ${field('Meeting point','meet',T.meet,{ph:'e.g. Lanyon Shops, 8:30 am coffee'})}
    <div class="dbtns"><button type="button" class="btn primary" data-save="tour">Save</button><button type="button" class="btn" data-close>Cancel</button></div>`);
@@ -770,7 +770,7 @@ function crewDialog(c){
 }
 function newTourDialog(){
   const yr=new Date().getFullYear()+1, same=S.tours.filter(t=>Number(t.year)===yr);
-  dlg(`<h3>Plan a tour</h3>${tourKindSeg('multi')}<div class="frow">${field('Year','year',yr,{type:'number'})}${field('Name','name',same.length?'':`Bike Tour ${String(yr).slice(2)}`,{ph:'e.g. High Country run'})}</div>
+  dlg(`<h3>Plan a tour</h3>${tourKindSeg('multi')}<div class="frow">${field('Year','year',yr,{type:'number'})}${field('Name','name','',{ph:'e.g. High Country Run'})}</div>
    <p class="muted" id="sameyear" style="font-size:13.5px;margin:-4px 0 10px">${sameYearNote(yr)}</p>
    <div class="frow">${field('Start date (optional)','startDate','',{type:'date'})}<label class="fl" id="ndayswrap">How many days<input name="ndays" type="number" min="2" max="21" value="3"></label></div>
    <label class="fl">Start from<select name="copyFrom"><option value="">A blank tour</option>${S.tours.filter(canEditTour).map(t=>`<option value="${esc(t.id)}">A copy of ${esc(t.name||t.id)}</option>`).join('')}</select></label>

@@ -131,7 +131,7 @@ function profileView(){
 /* ---------- edit forms ---------- */
 function profileDialog(which){
   const pr=myProfile(), b=pr.bike||{}, em=pr.emergency||{};
-  if(which==='about') return dlg(`<h3>Name, photo and colour</h3><p class="muted" style="margin:0 0 8px">Your name comes from the crew list (Justin and Tony set it). You can add a nickname.</p>
+  if(which==='about') return dlg(`<h3>Name, photo and colour</h3><p class="muted" style="margin:0 0 8px">Your name comes from the crew list (the tour\u2019s organisers set it). You can add a nickname.</p>
     ${field('Nickname (optional)','nickname',pr.nickname,{ph:'e.g. The Honourable Judge',max:40})}
     <div class="fl">Colour for your initial<div class="colours">${AV_COLOURS.map(c=>`<label><input type="radio" name="colour" value="${c}"${(pr.colour||'')===c?' checked':''}><span style="background:var(--${c})"></span></label>`).join('')}</div></div>
     <div class="fl">Photo<div class="planbar" style="margin-top:4px"><label class="btn small">Choose a photo<input type="file" accept="image/*" data-prof-photo hidden></label>${pr.photo?'<button type="button" class="btn small danger" data-prof="nophoto">Remove photo</button>':''}</div></div>
