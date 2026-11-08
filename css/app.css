@@ -766,3 +766,16 @@ details.featcard>summary small{margin-left:auto;font-size:13px;color:var(--muted
 .nflinks a{color:var(--blue);font-weight:600}
 .osmfind{margin:-4px 0 10px}
 .osmnote{font-size:13.5px;margin:0 0 10px}
+/* v4.18 reports, blocking, account */
+.rwhy{display:grid;gap:6px;margin-top:6px}
+.rwhy label{display:block;cursor:pointer}
+.rwhy input{position:absolute;opacity:0;pointer-events:none}
+.rwhy span{display:block;padding:10px 12px;border:1.5px solid var(--rule);border-radius:10px;font:600 14.5px var(--body);color:var(--ink);background:var(--surface)}
+.rwhy input:checked+span{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.rwhy input:focus-visible+span{outline:2px solid var(--vis)}
+.mini.rep{opacity:.7}
+.reports .rrow{align-items:flex-start}
+.reports .pact{flex-wrap:wrap;justify-content:flex-end;max-width:46%}
+.delacct{color:var(--warn);font-size:14px}
+.aulinks{text-align:center;font-size:13.5px;margin:8px 0 0}
+.aulinks a{color:#C9D1D8}
