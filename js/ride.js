@@ -80,7 +80,7 @@ function wxPlaces(){ const m=new Map(); S.stops.filter(hasLL).forEach(s=>m.set(w
 function tourSpan(){ const ds=daysSorted().map(d=>dateFor(d)).filter(Boolean); if(!ds.length)return null; return {first:iso(ds.reduce((a,b)=>a<b?a:b)),last:iso(ds.reduce((a,b)=>a>b?a:b))}; }
 function wxWanted(){ const sp=tourSpan(); if(!sp)return false; const t=todayIso(), soon=iso(new Date(Date.now()+16*864e5)); return sp.last>=t&&sp.first<=soon; }
 async function wxFetch(force){
-  if(!S.tourId||wxBusy||!navigator.onLine)return;
+  if(!S.tourId||wxBusy||!navigator.onLine||!feat('weather'))return;
   if(!WX||WX.tour!==S.tourId){ try{WX=JSON.parse(localStorage.getItem(wxKey())||'null')}catch(e){WX=null} }
   if(!wxWanted())return;
   if(!force&&WX&&Date.now()-WX.at<45*60e3)return;
@@ -111,6 +111,7 @@ const flagHtml=f=>f.map(([n,k])=>`<span class="wxflag ${k}">${n}</span>`).join('
 const wxOf=s=>WX&&WX.tour===S.tourId&&hasLL(s)?WX.places[wxPlace(s)]:null;
 function hourAt(W,date,min){ if(!W||!date||min==null)return null; const h=Math.min(23,Math.round(min/60)); return W.H[`${iso(date)}T${pad(h)}:00`]||null; }
 function stopWx(s,day,eta){
+  if(!feat('weather'))return '';
   const W=wxOf(s); if(!W)return '';
   const date=dateFor(day); if(!date)return '';
   const ds=iso(date), t=todayIso(); if(ds<t)return '';
@@ -122,6 +123,7 @@ function stopWx(s,day,eta){
   return '';
 }
 function dayWx(day){
+  if(!feat('weather'))return '';
   const date=dateFor(day); if(!date)return '';
   const ds=iso(date); if(ds<todayIso())return '';
   if(!wxWanted())return '';
@@ -162,8 +164,8 @@ function rideStopBits(s,day){
   const ph=R.wall.filter(p=>p.stopId===s.id).sort((a,b)=>tsMs(a.at)-tsMs(b.at));
   const bf=s.breakfast&&(s.breakfast.items||[]).length?`<details class="brekkie" data-k="bf-${esc(s.id)}"><summary>Coffee and breakfast</summary>${s.breakfast.note?`<p class="bknote">${esc(s.breakfast.note)}</p>`:''}<ul class="bklist">${s.breakfast.items.map(i=>`<li><a href="${mapsUrl({name:i.name,town:s.town,placeId:i.placeId})}" target="_blank" rel="noopener">${esc(i.name)}</a> <span class="bkmeta">${i.hours?esc(i.hours):''}</span>${i.why?`<div class="bkwhy">${esc(i.why)}</div>`:''}${i.must?`<div class="must">Order: ${esc(i.must)}</div>`:''}</li>`).join('')}</ul></details>`:'';
   return `${here?'<div class="here-flag">We\u2019re here</div>':''}${stopWx(s,day,etaOf(x))}${bf}
-    ${ph.length?`<div class="pstrip">${ph.map(p=>`<button type="button" class="thumb" data-photo="${esc(p.id)}"><img src="${p.thumb}" alt="Photo at ${esc(p.town)} by ${esc(p.rider||'')}"></button>`).join('')}</div>`:''}
-    <div class="stop-actions">${navMenu(stopTarget(s))}${canRide()?`${day.kind!=='solo'?`<button type="button" class="mini here" data-here="${esc(day.id)}|${esc(s.id)}" aria-pressed="${!!here}">We\u2019re here</button>`:''}<label class="mini addph">Add photo<input type="file" accept="image/*" data-ph="${esc(day.id)}|${esc(s.id)}" hidden></label>`:''}</div>`;
+    ${ph.length&&feat('photos')?`<div class="pstrip">${ph.map(p=>`<button type="button" class="thumb" data-photo="${esc(p.id)}"><img src="${p.thumb}" alt="Photo at ${esc(p.town)} by ${esc(p.rider||'')}"></button>`).join('')}</div>`:''}
+    <div class="stop-actions">${navMenu(stopTarget(s))}${canRide()?`${day.kind!=='solo'&&feat('live')?`<button type="button" class="mini here" data-here="${esc(day.id)}|${esc(s.id)}" aria-pressed="${!!here}">We\u2019re here</button>`:''}${feat('photos')?`<label class="mini addph">Add photo<input type="file" accept="image/*" data-ph="${esc(day.id)}|${esc(s.id)}" hidden></label>`:''}`:''}</div>`;
 }
 function rideVote(day){
   if(!canRide()||!day.best||!day.best.title||day.kind==='solo')return '';
@@ -179,7 +181,7 @@ S.dayOpen=new Set();
 function rideDayDone(day){
   if(!dayDone(day))return {cls:'',bar:''};
   const ids=dayBakIds(day), m=me(), t=ids.filter(id=>m.ticks[id]).length, ph=R.wall.filter(p=>p.dayId===day.id).length, open=S.dayOpen.has(day.id);
-  return {cls:open?' done open':' done',bar:`<div class="donebar"><span class="dbtick" aria-hidden="true">\u2713</span><span><b>Done.</b> ${t} of ${ids.length} bakeries ticked${ph?`, ${ph} photo${ph===1?'':'s'}`:''}</span><button type="button" class="mini" data-dayopen="${esc(day.id)}" aria-expanded="${open}">${open?'Hide':'Show day'}</button></div>`};
+  return {cls:open?' done open':' done',bar:`<div class="donebar"><span class="dbtick" aria-hidden="true">\u2713</span><span><b>Done.</b> ${feat('bakeries')?`${t} of ${ids.length} bakeries ticked`:'All ridden'}${ph&&feat('photos')?`, ${ph} photo${ph===1?'':'s'}`:''}</span><button type="button" class="mini" data-dayopen="${esc(day.id)}" aria-expanded="${open}">${open?'Hide':'Show day'}</button></div>`};
 }
 
 /* ---------- Today ---------- */
@@ -211,23 +213,24 @@ function youCard(st){
   const m=me(), ids=tourBakIds(), mine=ids.filter(id=>m.ticks[id]).length, items=[];
   const it=(b,s)=>items.push(`<div><b>${b}</b>${s}</div>`);
   if(st.stage==='ride'&&st.todays.length){
-    const d=st.todays[0], room=myRoom([d.id]); it(room?esc(room.title):'No room listed',room?'Tonight, '+esc(room.where.split(', ').pop()):'Check the roadbook for tonight');
-    const today=dayBakIds(d).filter(id=>m.ticks[id]).length; it(`${mine} ${mine===1?'bakery':'bakeries'}`,`${today} ticked today`);
+    const d=st.todays[0], room=myRoom([d.id]); if(feat('nights'))it(room?esc(room.title):'No room listed',room?'Tonight, '+esc(room.where.split(', ').pop()):'Check the roadbook for tonight');
+    const today=dayBakIds(d).filter(id=>m.ticks[id]).length; if(feat('bakeries'))it(`${mine} ${mine===1?'bakery':'bakeries'}`,`${today} ticked today`);
     const night=courtNights().find(n=>n.dayId===d.id);
     if(night){ const used=(m.kc||[]).filter(c=>c.night===d.id).reduce((a,c)=>a+c.pts,0); it(`${Math.max(0,5-used)} of 5 points`,'left for Koala Court tonight'); }
-    const against=kcAll().filter(c=>c.to===m.name).length; it(`${against} charge${against===1?'':'s'}`,'against you so far');
+    const against=kcAll().filter(c=>c.to===m.name).length; if(feat('court'))it(`${against} charge${against===1?'':'s'}`,'against you so far');
   } else if(st.stage==='after'){
     const rows=boardRows(), pos=rows.findIndex(r=>r.id===myUid());
-    it(`${mine} ${mine===1?'bakery':'bakeries'}`,pos>=0&&mine?`${ordinal(pos+1)} on the board`:'on the board');
+    if(feat('bakeries'))it(`${mine} ${mine===1?'bakery':'bakeries'}`,pos>=0&&mine?`${ordinal(pos+1)} on the board`:'on the board');
     const {t}=courtTotals(), ct=Object.entries(t).sort((a,b)=>b[1].tot-a[1].tot), cp=ct.findIndex(([n])=>n===m.name);
-    it(`${cp>=0?ct[cp][1].tot:0} points`,cp>=0?`Koala Court, ${ordinal(cp+1)} most wanted`:'Koala Court: a clean record');
-    const q=Object.values(m.quiz||{}).reduce((a,x)=>a+(x&&x.s||0),0), qn=Object.values(m.quiz||{}).reduce((a,x)=>a+(x&&x.n||0),0); it(qn?`${q} of ${qn}`:'No trivia','trivia');
-    const ph=R.wall.filter(p=>p.uid===myUid()).length; it(`${ph} photo${ph===1?'':'s'}`,'on the wall');
+    if(feat('court'))it(`${cp>=0?ct[cp][1].tot:0} points`,cp>=0?`Koala Court, ${ordinal(cp+1)} most wanted`:'Koala Court: a clean record');
+    const q=Object.values(m.quiz||{}).reduce((a,x)=>a+(x&&x.s||0),0), qn=Object.values(m.quiz||{}).reduce((a,x)=>a+(x&&x.n||0),0); if(feat('trivia'))it(qn?`${q} of ${qn}`:'No trivia','trivia');
+    const ph=R.wall.filter(p=>p.uid===myUid()).length; if(feat('photos'))it(`${ph} photo${ph===1?'':'s'}`,'on the wall');
   } else {
-    const room=myRoom(groupDays().map(d=>d.id)); it(room?esc(room.title):'No room yet',room?esc(room.where):'Beds still being booked');
-    if(st.stage==='week'){ const n=checkItems().length, k=checkDone(m); it(`${k} of ${n} ready`,'your pre-ride checklist'); }
+    const room=myRoom(groupDays().map(d=>d.id)); if(feat('nights'))it(room?esc(room.title):'No room yet',room?esc(room.where):'Beds still being booked');
+    if(st.stage==='week'&&feat('checklist')){ const n=checkItems().length, k=checkDone(m); it(`${k} of ${n} ready`,'your pre-ride checklist'); }
     else it(canRide()?'On the crew':'Not on the crew list',esc(S.tour.name||''));
   }
+  if(!items.length)it(canRide()?'On the crew':'Not on the crew list',esc(S.tour.name||''));
   const a=unreadAnn();
   return `<div class="you"><div class="lbl">${st.stage==='after'?'Your tour':'You'}</div><div class="ygrid">${items.join('')}</div>
     ${a?`<div class="unread"><span class="dot"></span><span><b>${esc(a.by||'Update')}:</b> ${esc(a.text)} <button type="button" class="linkb" data-anndismiss="${esc(a.id)}">Got it</button></span></div>`:''}</div>`;
@@ -242,6 +245,7 @@ function whosComing(){
     return `<button type="button" data-person="${esc(c.name)}" class="${on?'':'no'}" title="${on?'Has opened the app':'Hasn\u2019t opened the app yet'}">${esc(c.name)}${on?'':'?'}</button>`; }).join('')}</div><p class="muted" style="font-size:12.5px;margin:6px 0 0">Faded names haven\u2019t opened this tour in the app yet.</p></div>`;
 }
 function miniOutlook(){ // one tile per riding day, from the first stop's daily forecast
+  if(!feat('weather'))return '';
   if(!WX||WX.tour!==S.tourId){ if(wxWanted()&&!wxBusy&&!wxErr)setTimeout(()=>wxFetch(false),0); return '<p class="wxmuted">The forecast appears about 16 days out.</p>'; }
   const tiles=groupDays().map(d=>{ const date=dateFor(d), s=stopsOf(d.id).find(hasLL), W=s&&wxOf(s), D=W&&date&&W.D[iso(date)];
     const wd=date?date.toLocaleDateString('en-AU',{weekday:'short'}):d.label;
@@ -257,21 +261,21 @@ function checklistCard(){
 function rideToday(){
   markSeen(S.tourId);
   const T=S.tour, st=tourStage();
-  if(st.stage==='nodates') return `<p class="hi">G\u2019day ${esc(firstName())}</p>${youCard({stage:'before'})}<div class="tdhead"><span class="tdday">${esc(T.name)}</span><h2>Dates to be set</h2><p class="muted">${S.editor?'Set the start date in the Plan tab.':'Check back once Justin and Tony set the dates.'}</p></div>${whosComing()}`;
+  if(st.stage==='nodates') return `<p class="hi">G\u2019day ${esc(firstName())}</p>${youCard({stage:'before'})}<div class="tdhead"><span class="tdday">${esc(T.name)}</span><h2>Dates to be set</h2><p class="muted">${S.editor?'Set the start date in the Plan tab.':'Check back once the organisers set the dates.'}</p></div>${whosComing()}`;
   const fcol=`var(--${esc(st.firstG.d.colour||'blue')})`;
   if(st.stage==='before'){
     const gd=groupDays(), km=gd.reduce((a,d)=>a+(parseFloat(String(d.km||'').replace(/[^\d.]/g,''))||0),0);
     return `<p class="hi">G\u2019day ${esc(firstName())}</p><p class="hisub">${esc(T.name)} is taking shape.</p>${youCard(st)}
-      <div class="tdmain" style="--c:${fcol}"><span class="tag">Next tour</span><h2>${st.days} days to go</h2><p class="muted" style="margin:0">${esc(longDate(st.firstG.date))}${T.meet?' \u00b7 '+esc(T.meet):''}</p>
-        <div class="stats"><div>${gd.length}<small>riding days</small></div><div>${km?Math.round(km).toLocaleString():'\u2014'}<small>km</small></div><div>${tourBakIds().length}<small>bakeries</small></div></div></div>
+      <div class="tdmain" style="--c:${fcol}"><span class="tag">${T.kind==='day'?'Next ride':'Next tour'}</span><h2>${st.days} days to go</h2><p class="muted" style="margin:0">${esc(longDate(st.firstG.date))}${T.meet?' \u00b7 '+esc(T.meet):''}</p>
+        <div class="stats"><div>${gd.length}<small>riding days</small></div><div>${km?Math.round(km).toLocaleString():'\u2014'}<small>km</small></div>${feat('bakeries')?`<div>${tourBakIds().length}<small>bakeries</small></div>`:''}</div></div>
       <div class="tdcard"><h3 class="tdh">The route so far</h3>${routeList()}<p style="margin:8px 0 0"><button type="button" class="linkb" data-tab-go="roadbook">Open the roadbook</button></p></div>
       ${whosComing()}`;
   }
   if(st.stage==='week'){
-    return `<p class="hi">G\u2019day ${esc(firstName())}</p><p class="hisub">${st.days===1?'Tour starts tomorrow.':`${st.days} sleeps. Time to get the bike ready.`}</p>${youCard(st)}
+    return `<p class="hi">G\u2019day ${esc(firstName())}</p><p class="hisub">${st.days===1?(T.kind==='day'?'The ride’s tomorrow.':'Tour starts tomorrow.'):`${st.days} sleeps. Time to get the bike ready.`}</p>${youCard(st)}
       <div class="tdmain" style="--c:${fcol}"><span class="tag">${esc(st.firstG.d.label)}, ${esc(longDate(st.firstG.date))}</span><h2>${st.days===1?'Tomorrow':`${st.days} days to go`}</h2><p class="muted" style="margin:0">${esc(T.meet||st.firstG.d.title||'')}</p></div>
-      <div class="tdcard"><h3 class="tdh">Ride-day outlook</h3>${miniOutlook()}</div>
-      ${checklistCard()}
+      ${feat('weather')?`<div class="tdcard"><h3 class="tdh">Ride-day outlook</h3>${miniOutlook()}</div>`:''}
+      ${feat('checklist')?checklistCard():''}
       <p class="tdfoot"><button type="button" class="linkb" data-tab-go="roadbook">Read the tour brief in the roadbook</button></p>`;
   }
   if(st.stage==='ride'){
@@ -282,13 +286,13 @@ function rideToday(){
   const rows=boardRows(), A=awards(), b=A.B, {t}=courtTotals(), wanted=Object.entries(t).filter(([,v])=>v.tot>0).sort((x,y)=>y[1].tot-x[1].tot)[0];
   const ph=R.wall.slice().sort((x,y)=>tsMs(y.at)-tsMs(x.at)).slice(0,4);
   return `<p class="hi">What a ride, ${esc(firstName())}</p><p class="hisub">${esc(T.name)} is in the books.</p>${youCard(st)}
-    <div class="tdmain" style="--c:var(--purple)"><span class="tag">That\u2019s a wrap</span><h2>Your Wrapped is ready</h2><p class="muted" style="margin:0">A picture card of your tour to save or share.</p>
-      <div class="planbar"><button class="btn primary" type="button" data-wrapped="me">My Wrapped</button><button class="btn" type="button" data-wrapped="crew">Crew Wrapped</button></div></div>
-    <div class="tdcard"><h3 class="tdh">The awards</h3><div class="awmini">
+    ${feat('wrapped')?`    <div class="tdmain" style="--c:var(--purple)"><span class="tag">That\u2019s a wrap</span><h2>Your Wrapped is ready</h2><p class="muted" style="margin:0">A picture card of your tour to save or share.</p>
+      <div class="planbar"><button class="btn primary" type="button" data-wrapped="me">My Wrapped</button><button class="btn" type="button" data-wrapped="crew">Crew Wrapped</button></div></div>`:''}
+    ${feat('bakeries')?`    <div class="tdcard"><h3 class="tdh">The awards</h3><div class="awmini">
       <div>Best bakery<b>${A.bo?esc(b(A.bo).name):'Not judged'}</b></div><div>Best pie<b>${A.bp?esc(b(A.bp).name):'Not judged'}</b></div>
-      <div>Pie champion<b>${rows[0]&&rows[0].t?esc(rows[0].name):'Nobody'}</b></div><div>Most wanted<b>${wanted?esc(wanted[0]):'Nobody'}</b></div></div>
-      <p style="margin:8px 0 0"><button type="button" class="linkb" data-tab-go="bakeries">See the full board</button></p></div>
-    ${R.wall.length?`<div class="tdcard"><h3 class="tdh">Photo wall</h3><span class="muted" style="font-size:13px">${R.wall.length} photos from the crew</span><div class="phmini">${ph.map(p=>`<button type="button" class="thumb" data-photo="${esc(p.id)}"><img src="${p.thumb}" alt=""></button>`).join('')}</div><p style="margin:8px 0 0"><button type="button" class="linkb" data-tab-go="crew">Open the photo wall</button></p></div>`:''}`;
+      <div>Pie champion<b>${rows[0]&&rows[0].t?esc(rows[0].name):'Nobody'}</b></div>${feat('court')?`<div>Most wanted<b>${wanted?esc(wanted[0]):'Nobody'}</b></div>`:''}</div>
+      <p style="margin:8px 0 0"><button type="button" class="linkb" data-tab-go="bakeries">See the full board</button></p></div>`:''}
+    ${feat('photos')&&R.wall.length?`<div class="tdcard"><h3 class="tdh">Photo wall</h3><span class="muted" style="font-size:13px">${R.wall.length} photos from the crew</span><div class="phmini">${ph.map(p=>`<button type="button" class="thumb" data-photo="${esc(p.id)}"><img src="${p.thumb}" alt=""></button>`).join('')}</div><p style="margin:8px 0 0"><button type="button" class="linkb" data-tab-go="crew">Open the photo wall</button></p></div>`:''}`;
 }
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-check]'); if(!b)return; const m=me(); m.check=Object.assign({},m.check); const k=b.dataset.check; if(m.check[k])delete m.check[k]; else m.check[k]=true; saveMe(m); });
 
@@ -309,14 +313,14 @@ function todayDay(d){
   return `<div class="tdhead" style="--c:${col}"><span class="tdday">${esc(d.label)}${d.who?`, ${esc(d.who)}`:''}, ${esc(longDate(dateFor(d)))}</span><h2>${esc(d.title)}</h2></div>
     <div class="tdcard tdnow" style="--c:${col}">${started?`<small>The group is at</small><h3>${esc(cur.s.town)}</h3>`:`<small>Starting from</small><h3>${esc(cur.s.town)}</h3>${cur.dep!=null?`<p>Depart ${esc(t12(min2hm(cur.dep)))}</p>`:''}`}</div>
     ${nx?`<div class="tdcard tdnext" style="--c:${col}"><small>Next stop</small><h3>${esc(nx.s.town)}</h3><p class="tdmeta">${etaOf(nx)!=null?`${nx.est?'About':'ETA'} ${esc(t12(min2hm(etaOf(nx))))}`:''}${nx.km!=null&&cur.km!=null?`, ${nx.km-cur.km} km`:''}</p>${stopWx(nx.s,d,etaOf(nx))}
-        ${canRide()&&d.kind!=='solo'?`<button type="button" class="tdgo" data-here="${esc(d.id)}|${esc(nx.s.id)}">We\u2019re here: ${esc(nx.s.town)}</button>`:''}</div>
+        ${canRide()&&d.kind!=='solo'&&feat('live')?`<button type="button" class="tdgo" data-here="${esc(d.id)}|${esc(nx.s.id)}">We\u2019re here: ${esc(nx.s.town)}</button>`:''}</div>
       <div class="tdfuel"><div><small>Since fuel</small><b>${since!=null?since+' km':'\u2014'}</b></div><div><small>Next fuel</small><b>${nf>0?esc(times[nf].s.town)+(toF!=null?', '+toF+' km':''):'End of day'}</b></div></div>
       ${low?`<p class="warn tdwarn">More than ${mine?`your bike\u2019s ${range} km range`:`the ${range} km range`} to the next fuel stop. Top up here if you can.</p>`:''}`
     :`<div class="tdcard tdnext" style="--c:${col}"><small>End of the day</small><h3>Made it to ${esc(cur.s.town)}</h3>${night.length?'':''}${courtNights().some(n=>n.dayId===d.id)?`<button type="button" class="btn primary tdgo" data-tab-go="court">Koala Court tonight</button>`:''}</div>`}
     ${nightBlock(d.id)}
     ${bf}
     <div class="tdwx" style="--c:${col}">${dayWx(d)}</div>
-    ${ahead.length?`<div class="tdcard"><h3 class="tdh">Bakeries open ahead</h3><ul class="tdlist2">${ahead.join('')}</ul></div>`:''}
+    ${feat('bakeries')&&ahead.length?`<div class="tdcard"><h3 class="tdh">Bakeries open ahead</h3><ul class="tdlist2">${ahead.join('')}</ul></div>`:''}
     <div style="--c:${col}">${restOfDayNav(d)}${mapBlock(d)}</div>
     <p class="tdfoot"><button type="button" class="linkb" data-tab-go="roadbook">Open ${esc(d.label)} in the roadbook</button>${started&&canRide()?` <button type="button" class="linkb" data-here="">Reset position</button>`:''}</p>`;
 }
@@ -362,6 +366,7 @@ function notRiding(){ return `<div class="empty"><h2 style="font-size:28px;text-
 
 /* ---------- Koala Court ---------- */
 function courtNights(){ // group days that end with an overnight stop or a booked bed
+  if(!feat('court'))return [];
   return groupDays().filter(d=>stopsOf(d.id).some(s=>(s.tags||[]).includes('Overnight'))||nightsOf(d.id).length).map((d,i)=>{
     const st=stopsOf(d.id), ov=st.filter(s=>(s.tags||[]).includes('Overnight')).pop()||st[st.length-1];
     return {n:i+1,dayId:d.id,place:ov?ov.town:'',colour:d.colour}; });
@@ -495,9 +500,9 @@ document.addEventListener('toggle',e=>{ const d=e.target; if(d.matches&&d.matche
 function rideCrew(){
   if(!canRide())return notRiding();
   return `<section class="sec" style="margin-top:14px"><h2>Updates</h2>${S.anns.length?`<div class="updates">${S.anns.slice(0,8).map(a=>`<div class="card"><small class="muted">${a.kind==='publish'?'Tour published':'Update'}${a.by?` from ${esc(a.by)}`:''}, ${ago(a.at)}</small><p style="margin:4px 0 0;white-space:pre-line">${esc(a.text)}</p></div>`).join('')}</div>`:'<p class="muted">No updates from Justin and Tony yet.</p>'}</section>
-    <section class="sec"><h2>Trivia</h2>${quizHtml()}</section>
-    <section class="sec"><h2>Photo wall</h2>${wallHtml()}</section>
-    <section class="sec"><h2>Wrapped</h2><p class="muted" style="margin:0 0 8px">A picture card of your tour to save or share.</p><div class="planbar"><button type="button" class="btn primary" data-wrapped="me">My Wrapped</button><button type="button" class="btn" data-wrapped="crew">Crew Wrapped</button></div></section>`;
+    ${feat('trivia')?`<section class="sec"><h2>Trivia</h2>${quizHtml()}</section>`:''}
+    ${feat('photos')?`<section class="sec"><h2>Photo wall</h2>${wallHtml()}</section>`:''}
+    ${feat('wrapped')?`    <section class="sec"><h2>Wrapped</h2><p class="muted" style="margin:0 0 8px">A picture card of your tour to save or share.</p><div class="planbar"><button type="button" class="btn primary" data-wrapped="me">My Wrapped</button><button type="button" class="btn" data-wrapped="crew">Crew Wrapped</button></div></section>`:''}`;
 }
 function rideView(tab){ const h=typeof crew2026Hint==='function'?crew2026Hint():''; if(tab==='bakeries')return h+rideBakeries(); if(tab==='court')return h+rideCourt(); if(tab==='crew')return h+rideCrew(); return ''; }
 

@@ -56,7 +56,7 @@ function planRoute(days,L){
     return `<div class="rrow${d.id===S.planDay?' sel':''}" data-rid="${esc(d.id)}" style="--c:var(--${esc(d.colour||'blue')})">${selOn('day')||L?'':`<span class="grip" data-grip="day" aria-label="Drag to reorder">≡</span>`}<span class="dot"></span>
       <div class="rmain" data-pickday="${esc(d.id)}"><b>${esc(d.label)}: ${esc(d.title||'Untitled')}</b><small>${dt?esc(shortDate(dt))+' · ':''}${n} stop${n===1?'':'s'}${d.km?' · '+esc(d.km)+' km':''}${d.who?' · '+esc(d.who):''}</small></div>
       ${pact('day',d.id,`<button type="button" class="ib" data-rowmenu="day|${esc(d.id)}" aria-label="More for ${esc(d.label)}">⋯</button>`)}</div>`; }).join('')||'<p class="muted">No days yet.</p>'}
-    ${selBar('day',days.map(d=>d.id),`<button type="button" class="btn primary small" data-act="addday"${L?' disabled':''}>+ Add day</button>`,L)}</div>`;
+    ${S.tour.kind==='day'?`<p class="muted" style="font-size:13px;margin:6px 0 4px">Day ride: one day. To add more days, switch to a multi-day tour in Tour details.${S.days.length>1?` ${S.days.length-1} more ${S.days.length===2?'day is':'days are'} kept but hidden.`:''}</p>`:selBar('day',days.map(d=>d.id),`<button type="button" class="btn primary small" data-act="addday"${L?' disabled':''}>+ Add day</button>`,L)}</div>`;
   const day=days.find(d=>d.id===S.planDay); if(!day)return h;
   const st=stopsOf(day.id), W=stopWarnings(day), col=esc(day.colour||'blue'), dt=dateFor(day);
   if(!S.mapClosed||!S.mapClosed.has(day.id))S.mapOpen.add(day.id);

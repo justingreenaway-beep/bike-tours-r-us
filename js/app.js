@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='4.14';
+const APP_VERSION='4.15';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -33,7 +33,11 @@ const slug=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-
 const mapsUrl=b=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(b.name+' '+b.town+' NSW')+(b.placeId?'&query_place_id='+b.placeId:'');
 function myName(){ const t=S.tour; const c=t&&(t.crew||[]).find(x=>x.email&&x.email.toLowerCase()===S.user.email); return c?c.name:(S.user.email||'').split('@')[0]; }
 const stamp=()=>({updatedBy:myName(),updatedAt:FB.now()});
-const daysSorted=()=>S.days.slice().sort((a,b)=>a.order-b.order);
+const daysSorted=()=>{ const d=S.days.slice().sort((a,b)=>a.order-b.order); return S.tour&&S.tour.kind==='day'?d.slice(0,1):d; }; // a day ride shows only its first day (others are kept, hidden)
+/* tour features (v4.15): tours/{t}.features {key:false} turns one off; missing = on */
+const FEATURES=[['bakeries','Bakeries','Bakery lists, passport, leaderboard and awards'],['court','Koala Court','The Court tab, charges and rulings'],['nights','Nights','Beds, rooms and dinners'],['trivia','Trivia','A quiz from the stops’ “Did you know?” facts'],['photos','Photo wall','Riders’ photos on stops and the wall'],['live','“We’re here” tracker','The live position on the roadbook and Today'],['weather','Weather','Forecasts on stops and Home'],['checklist','Pre-ride checklist','Ticks on Home in the week before'],['wrapped','Wrapped','Picture cards when the tour’s over']];
+function feat(k){ const f=S.tour&&S.tour.features; return !f||f[k]!==false; }
+const DAY_RIDE_OFF={nights:false,court:false,wrapped:false};
 const stopsOf=(dayId,opt)=>S.stops.filter(s=>s.dayId===dayId&&(opt==null||!s.option||s.option===opt)).sort((a,b)=>a.order-b.order);
 const locked=()=>S.tour&&S.tour.status==='locked';
 const tp=(...p)=>['tours',S.tourId,...p].join('/');
@@ -171,7 +175,7 @@ function doRender(){
   const ae=document.activeElement;
   if(S.dragging){ renderHeld=true; return; } // finish the drag first
   if(ae&&ae.closest&&ae.closest('#view')&&ae.matches('input:not([type=checkbox]):not([type=file]):not([type=radio]),textarea,select')){ renderHeld=true; return; }
-  const tabs=[['today','Today'],['roadbook','Roadbook']].concat(RIDE()&&S.tour?RIDE_TABS:[]).concat(S.editor||!S.tour?[['plan','Plan']]:[]);
+  const tabs=[['today','Today'],['roadbook','Roadbook']].concat(RIDE()&&S.tour?RIDE_TABS.filter(([k])=>k==='crew'||feat(k)):[]).concat(S.editor||!S.tour?[['plan','Plan']]:[]);
   const PROF=S.tab==='profile'&&typeof profileView==='function';
   if(!PROF&&!tabs.some(t=>t[0]===S.tab))S.tab='today';
   if(typeof updateMeBtn==='function')updateMeBtn();
@@ -232,7 +236,7 @@ const dinnerFor=dayId=>{ const D=(S.dinners||[]).find(x=>x.dayId===dayId); if(D)
 function dinnerCard(D){ if(!D||!D.place)return '';
   return `<div class="night card dincard"><span class="nlbl">Dinner</span><h3>${esc(D.place)}</h3><p class="nmeta">${D.time?esc(t12(D.time)):'Time to be confirmed'}${D.booked?' <span class="pill ok">Booked</span>':' <span class="pill">Not booked yet</span>'}</p>
     ${D.address?`<a class="addr" href="${appleMaps(D.place+', '+D.address)}" target="_blank" rel="noopener">${esc(D.address)}</a>`:''}${RIDE()?navMenu({q:[D.place,D.address].filter(Boolean).join(', ')},'Navigate to dinner'):''}${D.note?`<p class="note">${esc(D.note)}</p>`:''}</div>`; }
-const nightBlock=dayId=>nightsOf(dayId).map(nightCard).join('')+dinnerCard(dinnerFor(dayId));
+const nightBlock=dayId=>!feat('nights')?'':nightsOf(dayId).map(nightCard).join('')+dinnerCard(dinnerFor(dayId));
 const annSeenKey=()=>'tru-ann-'+S.tourId;
 function annBanner(){
   const a=S.anns[0]; if(!a)return'';
@@ -244,7 +248,7 @@ document.addEventListener('click',e=>{ const d=e.target.closest('[data-anndismis
 function stopCard(s,k,day){
   const big=(s.tags||[]).some(t=>/Start|Overnight|Finish/.test(t));
   const tags=(s.tags||[]).map(t=>`<span class="tag${t==='Fuel'?' fuel':''}">${t==='Fuel'&&s.fuelKm?'Fuel '+esc(s.fuelKm):esc(t)}</span>`).join('')+(s.option?`<span class="tag opt">Option ${s.option}</span>`:'');
-  const bl=s.ref?'':bakeryList(s.town,{date:day&&dateFor(day),t:s.arrive||s.depart});
+  const bl=s.ref||!feat('bakeries')?'':bakeryList(s.town,{date:day&&dateFor(day),t:s.arrive||s.depart});
   const R_=RIDE()&&day;
   return `<li class="stop${big?' big':''}${R_?rideStopClass(s,day):''}" id="stop-${esc(s.id)}"><span class="node">${k}</span><div class="card">
     <div class="town">${esc(s.town)}</div>${timeText(s)?`<div class="time">${esc(timeText(s))}</div>`:''}
@@ -314,12 +318,13 @@ function viewPlan(){
   ensureVerifyCheck();
   let h=`<div class="plan">${verifyNotice()}${S.tourId==='2026'&&empty?'<div class="notice"><b>The 2026 route didn’t come through.</b> The days, stops and bakeries are missing. <div class="planbar"><button type="button" class="btn small primary" data-act="import2026">Reload 2026 details</button></div></div>':''}
    ${S.tourId!=='2026'&&empty&&others.length?'<div class="notice">This tour has no days or bakeries yet. Start from an earlier tour’s route? <div class="planbar"><button type="button" class="btn small primary" data-act="copyroute">Copy route and bakeries</button></div></div>':''}${L?'<p class="notice">This tour is locked, so its route can\u2019t be changed. Unlock it below to edit.</p>':''}
-   <h2>Tour</h2><div class="card"><div class="prow" style="border:0;padding-top:0"><div class="pmain"><b>${esc(T.name||T.id)}</b><small>${T.startDate?`Day 1: ${esc(longDate(dateFor({offset:0})))}`:'No start date yet'}${T.subtitle?` \u2022 ${esc(T.subtitle)}`:''}</small>${ownerLine(T)}</div><div class="pact"><button type="button" class="btn small" data-act="edittour"${L?' disabled':''}>Edit</button></div></div>
+   <h2>Tour</h2><div class="card"><div class="prow" style="border:0;padding-top:0"><div class="pmain"><b>${esc(T.name||T.id)}</b><small>${T.startDate?`${T.kind==='day'?'Day ride: ':'Day 1: '}${esc(longDate(dateFor({offset:0})))}`:'No start date yet'}${T.subtitle?` \u2022 ${esc(T.subtitle)}`:''}</small>${ownerLine(T)}</div><div class="pact"><button type="button" class="btn small" data-act="edittour"${L?' disabled':''}>Edit</button></div></div>
      <div class="statusrow" role="group" aria-label="Who can see it">${[['draft','Draft'],['published','Published'],['locked','Locked']].map(([k,l])=>`<button type="button" class="btn small" data-status="${k}" aria-pressed="${T.status===k}">${l}</button>`).join('')}</div>
-     <p class="muted" style="font-size:13.5px;margin:4px 0 0">${T.status==='draft'?'Draft: only you and the other editor can see it.':T.status==='published'?'Published: everyone on the crew list can see it.':'Locked: visible to the crew, route frozen.'}</p>${edited(T)}
+     <p class="muted" style="font-size:13.5px;margin:4px 0 0">${T.status==='draft'?'Draft: only this tour’s editors can see it.':T.status==='published'?'Published: everyone on the crew list can see it.':'Locked: visible to the crew, route frozen.'}</p>${edited(T)}
      <div class="planbar"><button type="button" class="btn small" data-act="newtour">New tour</button>${has2026||!S.admin?'':'<button type="button" class="btn small" data-act="import2026">Bring in the 2026 tour</button>'}<button type="button" class="btn small" data-act="announce">Send the crew an update</button>${canDeleteTour(T)?'<button type="button" class="btn small danger" data-act="deltour">Delete tour</button>':''}${S.tourId==='2026'&&RIDE()&&S.admin?'<button type="button" class="btn small" data-ride="import26crew">Bring in 2026 crew results</button>':''}</div>
      ${S.anns.length?`<details class="sent"><summary>Updates sent (${S.anns.length})</summary>${S.anns.map(a=>`<div class="prow"><div class="pmain"><small>${a.kind==='publish'?'Published':'Update'} by ${esc(a.by||'?')}, ${ago(a.at)}</small>${esc(a.text)}</div><div class="pact"><button type="button" class="ib" data-del="ann|${esc(a.id)}" aria-label="Delete update">✕</button></div></div>`).join('')}</details>`:''}</div>`;
-  const secs=[['route','Route'],['bakeries','Bakeries'],['nights','Nights'],['crew','Crew'],['brief','Brief']];
+  h+=featuresCard();
+  const secs=[['route','Route'],['bakeries','Bakeries'],['nights','Nights'],['crew','Crew'],['brief','Brief']].filter(([k])=>!['bakeries','nights'].includes(k)||feat(k));
   if(!secs.some(s=>s[0]===S.planSec))S.planSec='route';
   h+=`<div class="psec" role="tablist" aria-label="Plan sections">${secs.map(([k,l])=>`<button type="button" role="tab" data-psec="${k}" aria-selected="${S.planSec===k}">${l}</button>`).join('')}</div>`;
   if(S.planSec==='bakeries') return h+planBakeries()+'</div>';
@@ -586,7 +591,7 @@ function planBrief(){
     <div class="rlist flush" data-rlist="brief">${B.map((c,i)=>{ const txt=[...(c.p||[]),...(c.li||[])].join(' ');
       return rrowHtml({kind:'brief',rid:i,grip:true,title:esc(c.h||'Untitled'),sub:esc(txt.length>90?txt.slice(0,90)+'…':txt),
         warns:txt?[]:['No text yet'],open:`data-editbrief="${i}"`,menu:`brief|${i}`}); }).join('')||'<p class="muted">No brief yet.</p>'}</div>
-    <div class="planbar"><button type="button" class="btn primary small" data-act="addbrief">+ Add card</button>${!B.length&&S.tours.some(t=>t.id!==S.tourId&&(t.brief||[]).length)?'<button type="button" class="btn small" data-act="copybrief">Copy from another tour</button>':''}</div></div>`+(RIDE()?planChecklist():'');
+    <div class="planbar"><button type="button" class="btn primary small" data-act="addbrief">+ Add card</button>${!B.length&&S.tours.some(t=>t.id!==S.tourId&&(t.brief||[]).length)?'<button type="button" class="btn small" data-act="copybrief">Copy from another tour</button>':''}</div></div>`+(RIDE()&&feat('checklist')?planChecklist():'');
 }
 function briefDialog(i){
   const isNew=i==null, c=isNew?{}:(S.tour.brief||[])[i]||{};
@@ -622,8 +627,9 @@ async function save(fn,okMsg){ try{ await fn(); closeDlg(); if(okMsg)toast(okMsg
 
 function editTourDialog(){
   const T=S.tour;
-  dlg(`<h3>Tour details</h3><div class="frow">${field('Tour name','name',T.name,{ph:'e.g. Bike Tour 27'})}${field('Year','year',T.year,{type:'number'})}</div>${field('Short description','subtitle',T.subtitle,{ph:'Where it goes'})}
-   <div class="frow">${field('Day 1 date','startDate',T.startDate,{type:'date'})}${field('Fuel range rule (km)','fuelRangeKm',T.fuelRangeKm,{type:'number'})}</div>
+  const many=S.days.length>1;
+  dlg(`<h3>Tour details</h3>${tourKindSeg(T.kind||'multi')}<p class="muted" id="kindnote" style="font-size:13px;margin:-2px 0 10px"${T.kind==='day'&&many?'':' hidden'}>A day ride shows only its first day. The other ${S.days.length-1} ${S.days.length===2?'day is':'days are'} kept, hidden, and come back if you switch to multi-day.</p><div class="frow">${field('Tour name','name',T.name,{ph:'e.g. Bike Tour 27'})}${field('Year','year',T.year,{type:'number'})}</div>${field('Short description','subtitle',T.subtitle,{ph:'Where it goes'})}
+   <div class="frow">${field(T.kind==='day'?'Date':'Day 1 date','startDate',T.startDate,{type:'date'})}${field('Fuel range rule (km)','fuelRangeKm',T.fuelRangeKm,{type:'number'})}</div>
    ${field('Meeting point','meet',T.meet,{ph:'e.g. Lanyon Shops, 8:30 am coffee'})}
    <div class="dbtns"><button type="button" class="btn primary" data-save="tour">Save</button><button type="button" class="btn" data-close>Cancel</button></div>`);
 }
@@ -745,7 +751,7 @@ async function drawMap(det){
     L.marker([+s.lat,+s.lon],{icon:L.divIcon({className:'mk',html:`<span style="--c:${colour}" class="${big?'big':''}">${i+1}</span>`,iconSize:[28,28],iconAnchor:[14,14]})})
       .bindPopup(`<b>${esc(s.town)}</b>${timeText(s)?'<br>'+esc(timeText(s)):''}${s.km!=null&&s.km!==''?`<br>${esc(s.km)} km into the day`:''}`).addTo(m); });
   const towns=new Set(st.map(s=>s.town));
-  S.bakeries.filter(b=>towns.has(b.town)&&hasLL(b)).forEach(b=>L.circleMarker([+b.lat,+b.lon],{radius:6,color:'#fff',weight:2,fillColor:'#B4441B',fillOpacity:1}).bindPopup(`<b>${esc(b.name)}</b><br>${esc(b.hours||fmtHours(b.hoursSpec)||'')}`).addTo(m));
+  if(feat('bakeries'))S.bakeries.filter(b=>towns.has(b.town)&&hasLL(b)).forEach(b=>L.circleMarker([+b.lat,+b.lon],{radius:6,color:'#fff',weight:2,fillColor:'#B4441B',fillOpacity:1}).bindPopup(`<b>${esc(b.name)}</b><br>${esc(b.hours||fmtHours(b.hoursSpec)||'')}`).addTo(m));
   if(path.length>1) m.fitBounds(pl.getBounds(),{padding:[24,24]}); else if(path.length) m.setView(path[0],12);
   note.textContent=fresh?'Route from OpenStreetMap routing. Tap a number for details; red dots are bakeries.':(pts.length>1?'Straight lines between stops for now; the road route appears once distances are estimated in Plan.':'');
 }
@@ -759,8 +765,9 @@ function crewDialog(c){
 }
 function newTourDialog(){
   const yr=new Date().getFullYear()+1, same=S.tours.filter(t=>Number(t.year)===yr);
-  dlg(`<h3>New tour</h3><div class="frow">${field('Year','year',yr,{type:'number'})}${field('Name','name',same.length?'':`Bike Tour ${String(yr).slice(2)}`,{ph:'e.g. High Country run'})}</div>
+  dlg(`<h3>Plan a tour</h3>${tourKindSeg('multi')}<div class="frow">${field('Year','year',yr,{type:'number'})}${field('Name','name',same.length?'':`Bike Tour ${String(yr).slice(2)}`,{ph:'e.g. High Country run'})}</div>
    <p class="muted" id="sameyear" style="font-size:13.5px;margin:-4px 0 10px">${sameYearNote(yr)}</p>
+   <div class="frow">${field('Start date (optional)','startDate','',{type:'date'})}<label class="fl" id="ndayswrap">How many days<input name="ndays" type="number" min="2" max="21" value="3"></label></div>
    <label class="fl">Start from<select name="copyFrom"><option value="">A blank tour</option>${S.tours.filter(canEditTour).map(t=>`<option value="${esc(t.id)}">A copy of ${esc(t.name||t.id)}</option>`).join('')}</select></label>
    <p class="muted" style="font-size:13.5px;margin:0 0 6px">A copy brings across the days, stops, bakeries, brief and crew list, ready to edit. Dates are left blank and it starts as a draft.</p>
    <div class="dbtns"><button type="button" class="btn primary" data-save="newtour">Create</button><button type="button" class="btn" data-close>Cancel</button></div>`);
@@ -887,7 +894,7 @@ async function doSave(btn){
   }
   if(k==='tour'){ const y=Number(val('year'))||S.tour.year||null, nm=val('name')||S.tour.name;
     if(S.tours.some(t=>t.id!==S.tourId&&Number(t.year)===Number(y)&&String(t.name||'').trim().toLowerCase()===String(nm).toLowerCase())){dlgError(`There\u2019s already a tour called ${nm} in ${y}.`);return}
-    return save(()=>FB.update(`tours/${S.tourId}`,{name:nm,year:y,subtitle:val('subtitle'),startDate:val('startDate'),fuelRangeKm:Number(val('fuelRangeKm'))||null,meet:val('meet'),...stamp()}),'Tour saved'); }
+    return save(()=>FB.update(`tours/${S.tourId}`,{name:nm,year:y,subtitle:val('subtitle'),startDate:val('startDate'),fuelRangeKm:Number(val('fuelRangeKm'))||null,meet:val('meet'),kind:($('#dlg input[name="tkind"]:checked')||{}).value||S.tour.kind||'multi',...stamp()}),'Tour saved'); }
   if(k==='day'){
     if(typeof dayFormSync==='function')dayFormSync();
     const id=btn.dataset.id||FB.newId(tp('days'));
@@ -945,7 +952,9 @@ async function doSave(btn){
     const id=newTourId(year,name);
     const from=val('copyFrom');
     if(!S.admin&&await checkVerified()===false){ dlgError('Check your email first: editors need a verified email.'); const b=$('#dlg .dbtns'); if(b&&!$('#dlg [data-act="vsend"]'))b.insertAdjacentHTML('beforebegin','<div class="planbar"><button type="button" class="btn small primary" data-act="vsend">Send me the link</button><button type="button" class="btn small" data-act="vcheck">I’ve tapped the link</button></div>'); return; }
-    return save(async()=>{ await createTour(id,{name,year},from||null); },'Tour created');
+    const kind=($('#dlg input[name="tkind"]:checked')||{}).value||'multi', ndays=kind==='day'?1:Math.max(2,Math.min(21,Number(val('ndays'))||2)), sd=val('startDate');
+    if(sd&&Number(sd.slice(0,4))!==year){dlgError(`The start date isn’t in ${year}.`);return}
+    return save(async()=>{ await createTour(id,{name,year,kind,ndays,startDate:sd},from||null); },kind==='day'?'Day ride created':'Tour created');
   }
 }
 async function doDelete(spec){
@@ -965,7 +974,7 @@ async function doDelete(spec){
 async function createTour(id,base,fromId){
   const ops=[]; const now=stamp();
   const meC={name:myCrewName(),email:S.user.email};
-  let tour={name:base.name,year:base.year,subtitle:'',startDate:'',status:'draft',crew:[meC],memberEmails:[S.user.email],roles:[],brief:[],meet:'',fuelRangeKm:183,ownerUid:S.user.uid,ownerEmail:S.user.email,editors:[S.user.email],createdAt:FB.now(),...now};
+  let tour={name:base.name,year:base.year,kind:base.kind||'multi',...(base.kind==='day'?{features:{...DAY_RIDE_OFF}}:{}),subtitle:'',startDate:base.startDate||'',status:'draft',crew:[meC],memberEmails:[S.user.email],roles:[],brief:[],meet:'',fuelRangeKm:183,ownerUid:S.user.uid,ownerEmail:S.user.email,editors:[S.user.email],createdAt:FB.now(),...now};
   if(fromId){
     const src=S.tours.find(t=>t.id===fromId)||{};
     const sc=(src.crew||[]).slice(); if(!sc.some(c=>lc(c.email)===S.user.email))sc.push(meC);
@@ -975,6 +984,8 @@ async function createTour(id,base,fromId){
     stops.forEach(d=>ops.push({op:'set',path:`tours/${id}/stops/${d.id}`,data:{...d.data,...now}}));
     baks.forEach(d=>ops.push({op:'set',path:`tours/${id}/bakeries/${d.id}`,data:{...d.data}}));
   }
+  if(!fromId){ const cols=['blue','orange','green','purple'], n=base.kind==='day'?1:(base.ndays||1);
+    for(let i=0;i<n;i++)ops.push({op:'set',path:`tours/${id}/days/${FB.newId(`tours/${id}/days`)}`,data:{order:i,offset:i,label:base.kind==='day'?'The ride':`Day ${i+1}`,title:'',kind:'group',colour:cols[i%cols.length],...now}}); }
   await FB.set(`tours/${id}`,tour);
   if(ops.length) await FB.batch(ops);
   await loadTours(); openTour(id); S.tab='plan';
@@ -1088,3 +1099,20 @@ function ownerLine(T){
   const own=T.ownerEmail?nm(lc(T.ownerEmail)):'';
   return `<p class="muted ownline">${own?`Owner: <b>${esc(own)}</b>`:'No owner yet (admins look after it)'}${eds.filter(e=>e!==lc(T.ownerEmail)).length?` · Editors: ${eds.filter(e=>e!==lc(T.ownerEmail)).map(e=>esc(nm(e))).join(', ')}`:''}${!T.ownerUid&&S.admin?' <button type="button" class="linkb" data-act="claimowner">Make me the owner</button>':''}</p>`;
 }
+
+/* ---------- tour features and type (v4.15) ---------- */
+function tourKindSeg(kind){
+  return `<div class="fl">Type of tour<div class="seg2r tkind"><label><input type="radio" name="tkind" value="day"${kind==='day'?' checked':''}><span>Day ride</span></label><label><input type="radio" name="tkind" value="multi"${kind!=='day'?' checked':''}><span>Multi-day tour</span></label></div></div>`; }
+document.addEventListener('change',e=>{ const r=e.target.closest('#dlg input[name="tkind"]'); if(!r)return; const day=r.value==='day';
+  const w=$('#ndayswrap'); if(w)w.hidden=day; const n=$('#kindnote'); if(n)n.hidden=!(day&&S.days.length>1&&!$('#ndayswrap'));
+  const lab=$('#dlg [name="startDate"]'); if(lab&&lab.closest('label')&&lab.closest('label').firstChild.nodeType===3)lab.closest('label').firstChild.textContent=$('#ndayswrap')?'Start date (optional)':(day?'Date':'Day 1 date'); });
+function featuresCard(){
+  const on=FEATURES.filter(([k])=>feat(k)).length;
+  return `<details class="card featcard" data-k="feat"><summary><b>Features</b><small>${on===FEATURES.length?'All on':`${on} of ${FEATURES.length} on`}${S.tour.kind==='day'?' · day ride':''}</small></summary>
+    <p class="muted" style="font-size:13.5px;margin:2px 0 8px">Turn off what this tour doesn’t need. Nothing is deleted: turning a feature back on brings it all back.</p>
+    <div class="featlist">${FEATURES.map(([k,l,d])=>`<label class="feat"><span><b>${l}</b><small>${d}</small></span><input type="checkbox" role="switch" data-feat="${k}"${feat(k)?' checked':''}${S.editor?'':' disabled'}><i aria-hidden="true"></i></label>`).join('')}</div></details>`;
+}
+document.addEventListener('change',async e=>{ const c=e.target.closest('[data-feat]'); if(!c||!S.tour)return;
+  const f={...(S.tour.features||{})}; if(c.checked)delete f[c.dataset.feat]; else f[c.dataset.feat]=false;
+  try{ await FB.update(`tours/${S.tourId}`,{features:f,...stamp()}); const n=FEATURES.find(x=>x[0]===c.dataset.feat); toast(`${n?n[1]:'Feature'} ${c.checked?'on':'off'}`); }
+  catch(x){ c.checked=!c.checked; toast(x&&x.code==='permission-denied'?'Only editors can change features.':'Couldn’t change that.'); } });
