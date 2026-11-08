@@ -720,3 +720,9 @@ details.bakmap .map{height:min(48vh,300px)}
 .dchips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
 .dchips i{font-style:normal;font:600 12px var(--body);padding:4px 8px;border-radius:999px;background:var(--surface);border:1px solid var(--rule)}
 .dincard{border-left-style:dashed}
+/* v4.14 per-tour roles */
+.pill.role{font:700 11px/1 var(--body);padding:3px 7px;border-radius:999px;background:var(--soft);border:1px solid var(--rule);color:var(--ink);vertical-align:3px}
+.pill.role.own{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.ownline{font-size:13px;margin:3px 0 0}
+.ownline .linkb{font-size:13px}
+.vnote .planbar{margin-top:8px}
