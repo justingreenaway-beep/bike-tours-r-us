@@ -1,7 +1,7 @@
 // Bike Tours R Us: settings.
 // Paste the same Firebase web config you used for the 2026 crew app
 // (Firebase console > Project settings > General > Your apps > SDK setup and configuration > Config).
-// No emails go in this file: editors are set once in Firestore (admins/editors), riders are added in the app's Plan tab.
+// No emails go in this file: admins are set once in Firestore (admins/editors); each tour's editors and riders are added in the app (Plan > Crew).
 window.TOUR_CONFIG = {
   firebase: {
    apiKey: "AIzaSyC2L-aEPgEshZ9uHCKM9VNgr1SwWzNi02s",

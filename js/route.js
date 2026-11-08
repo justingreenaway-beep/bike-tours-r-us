@@ -149,8 +149,10 @@ function rowMenu(spec){
     items=B(`data-editrole="${i}"`,'✎ Edit')+arrMoves('roles',i,arr.length)+B(`data-del="role|${i}"`,'Delete','del'); }
   if(kind==='dinner'){ const D=dinnerFor(key), d=S.days.find(x=>x.id===key); if(!D)return; title=D.place||'Dinner';
     items=B(`data-editdinner="${esc(key)}"`,'✎ Edit dinner')+B(`data-dinbook="${esc(key)}"`,D.booked?'✗ Mark as not booked':'✓ Mark as booked')+B(`data-dincopy="${esc(key)}"`,'📋 Copy booking details')+B(`data-dinsame="${esc(key)}"`,'⎘ Same venue another night…')+B(`data-del="dinner|${esc(key)}"`,'Delete dinner','del'); }
-  if(kind==='crew'){ title=key;
-    items=B(`data-editcrew="${esc(key)}|${esc(extra||'')}"`,'✎ Edit')+B(`data-del="crew|${esc(key)}|${esc(extra||'')}"`,'Remove from the crew list','del'); }
+  if(kind==='crew'){ title=key; const role=roleOf(extra);
+    items=B(`data-editcrew="${esc(key)}|${esc(extra||'')}"`,'✎ Edit')
+      +(role==='owner'||!extra?'':role==='editor'?B(`data-crewrole="rider|${esc(extra)}"`,'Make a rider (can’t edit)'):B(`data-crewrole="editor|${esc(extra)}"`,'Make an editor (can change this tour)'))
+      +(role==='owner'?'':B(`data-del="crew|${esc(key)}|${esc(extra||'')}"`,'Remove from the crew list','del')); }
   if(L&&FROZEN_LISTS.includes(kind))items=items.replace(/<button type="button"( class="del")? data-(?!pickday)/g,m=>m.replace('<button','<button disabled'));
   dlg(`<h3>${esc(title)}</h3><div class="smenu">${items}</div><div class="dbtns"><button type="button" class="btn" data-close>Close</button></div>`);
 }

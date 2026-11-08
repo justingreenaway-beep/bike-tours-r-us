@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='4.13';
+const APP_VERSION='4.14';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -105,7 +105,7 @@ async function enter(u){
     S.editors=(Array.isArray(em)?em:[]).map(x=>String(x).trim().toLowerCase()).filter(Boolean);
     S.editorCheck=!ed.exists?'missing':!S.editors.length?'empty':'ok';
   }catch(e){ S.editors=[]; S.editorCheck=(e&&e.code)||'error'; }
-  S.editor=S.editors.includes(u.email);
+  S.admin=S.editors.includes(u.email); S.editor=S.admin; S.verified=S.admin?true:null; S.verifySent=false;
   await loadTours();
   $('#auth').hidden=true; $('#boot').hidden=true; $('#app').hidden=false;
   $('#mebtn').textContent=(u.email||'?')[0].toUpperCase();
@@ -116,9 +116,10 @@ async function enter(u){
 async function loadTours(){
   let list=[];
   try{
-    list=S.editor?await FB.list('tours'):await FB.list('tours',{where:['memberEmails','array-contains',S.user.email]});
+    if(S.admin)list=await FB.list('tours');
+    else { const q=k=>FB.list('tours',{where:[k,'array-contains',S.user.email]}).catch(()=>[]); const [a,b]=await Promise.all([q('memberEmails'),q('editors')]); const seen=new Set(); list=[...a,...b].filter(d=>!seen.has(d.id)&&seen.add(d.id)); }
   }catch(e){ list=[]; }
-  S.tours=list.filter(d=>d.exists).map(d=>({id:d.id,...d.data})).filter(t=>S.editor||t.status!=='draft').sort((a,b)=>(b.year||0)-(a.year||0)||String(a.startDate||'9999').localeCompare(String(b.startDate||'9999'))||String(a.name||'').localeCompare(String(b.name||'')));
+  S.tours=list.filter(d=>d.exists).map(d=>({id:d.id,...d.data})).filter(t=>canEditTour(t)||t.status!=='draft').sort((a,b)=>(b.year||0)-(a.year||0)||String(a.startDate||'9999').localeCompare(String(b.startDate||'9999'))||String(a.name||'').localeCompare(String(b.name||'')));
   renderTourSelect();
 }
 function pickDefaultTour(){ // the upcoming or current tour, otherwise the most recent
@@ -128,17 +129,17 @@ function pickDefaultTour(){ // the upcoming or current tour, otherwise the most 
 }
 function renderTourSelect(){
   const sel=$('#toursel');
-  sel.innerHTML=S.tours.map(t=>`<option value="${esc(t.id)}"${t.id===S.tourId?' selected':''}>${esc(t.name||t.id)}${t.status==='draft'?' (draft)':''}</option>`).join('')+(S.editor?'<option value="__new">+ New tour\u2026</option>':'');
-  sel.hidden=!S.tours.length&&!S.editor;
+  sel.innerHTML=S.tours.map(t=>`<option value="${esc(t.id)}"${t.id===S.tourId?' selected':''}>${esc(t.name||t.id)}${t.status==='draft'?' (draft)':''}</option>`).join('')+'<option value="__new">+ Plan a new tour\u2026</option>';
+  sel.hidden=false;
 }
 $('#toursel').addEventListener('change',e=>{ const v=e.target.value; if(v==='__new'){ e.target.value=S.tourId||''; newTourDialog(); return } openTour(v); });
 
 function openTour(id){
   S.unsub.forEach(f=>{try{f()}catch(e){}}); S.unsub=[];
-  S.tourId=id; localStorage.setItem('tru-tour',id); S.tour=S.tours.find(t=>t.id===id)||null; S.days=[];S.stops=[];S.bakeries=[];S.nights=[];S.dinners=[];S.anns=[]; S.planDay=null; S.bakTown=null; S.selMode=null; S.sel=new Set();
+  S.tourId=id; localStorage.setItem('tru-tour',id); S.tour=S.tours.find(t=>t.id===id)||null; S.editor=canEditTour(S.tour); S.days=[];S.stops=[];S.bakeries=[];S.nights=[];S.dinners=[];S.anns=[]; S.planDay=null; S.bakTown=null; S.selMode=null; S.sel=new Set();
   renderTourSelect(); render();
   const err=e=>{ if(e&&e.code==='permission-denied') toast('You don\u2019t have access to this tour.'); };
-  S.unsub.push(FB.watchDoc(`tours/${id}`,d=>{ if(d.exists){S.tour={id:d.id,...d.data}; const i=S.tours.findIndex(t=>t.id===id); if(i>=0)S.tours[i]=S.tour; renderTourSelect();} render(); },err));
+  S.unsub.push(FB.watchDoc(`tours/${id}`,d=>{ if(d.exists){S.tour={id:d.id,...d.data}; S.editor=canEditTour(S.tour); const i=S.tours.findIndex(t=>t.id===id); if(i>=0)S.tours[i]=S.tour; renderTourSelect();} render(); },err));
   S.unsub.push(FB.watchCol(`tours/${id}/days`,docs=>{S.days=docs.map(d=>({id:d.id,...d.data}));render();},err));
   S.unsub.push(FB.watchCol(`tours/${id}/stops`,docs=>{S.stops=docs.map(d=>({id:d.id,...d.data}));render();},err));
   S.unsub.push(FB.watchCol(`tours/${id}/bakeries`,docs=>{S.bakeries=docs.map(d=>({id:d.id,...d.data}));render();},err));
@@ -156,7 +157,7 @@ $('#mebtn').addEventListener('click',()=>{
   if(typeof openProfile==='function'&&S.user)return openProfile();
   const why=editorWhy();
   dlg(`<h3>Your account</h3><p class="muted" style="margin:0 0 8px">Signed in as <b>${esc(S.user.email)}</b></p>
-    <p class="notice" style="margin:0 0 12px">${S.editor?'You\u2019re a tour editor, so you can see the Plan tab.':'Not an editor: '+why}</p>
+    <p class="notice" style="margin:0 0 12px">${S.admin?'You\u2019re an admin, so you can edit every tour.':S.editor?'You can edit this tour, so you can see the Plan tab.':'You\u2019re a rider on this tour.'}</p>
     <div class="dbtns"><button type="button" class="btn danger" data-act="signout">Sign out</button><button type="button" class="btn" data-close>Close</button></div>`);
 });
 
@@ -170,7 +171,7 @@ function doRender(){
   const ae=document.activeElement;
   if(S.dragging){ renderHeld=true; return; } // finish the drag first
   if(ae&&ae.closest&&ae.closest('#view')&&ae.matches('input:not([type=checkbox]):not([type=file]):not([type=radio]),textarea,select')){ renderHeld=true; return; }
-  const tabs=[['today','Today'],['roadbook','Roadbook']].concat(RIDE()&&S.tour?RIDE_TABS:[]).concat(S.editor?[['plan','Plan']]:[]);
+  const tabs=[['today','Today'],['roadbook','Roadbook']].concat(RIDE()&&S.tour?RIDE_TABS:[]).concat(S.editor||!S.tour?[['plan','Plan']]:[]);
   const PROF=S.tab==='profile'&&typeof profileView==='function';
   if(!PROF&&!tabs.some(t=>t[0]===S.tab))S.tab='today';
   if(typeof updateMeBtn==='function')updateMeBtn();
@@ -189,9 +190,9 @@ function doRender(){
 document.addEventListener('click',e=>{ const t=e.target.closest('.tabbar [data-tab]'); if(t){S.tab=t.dataset.tab;sessionStorage.setItem('tru-tab',S.tab);window.scrollTo(0,0);render();} });
 
 function noTour(){
-  if(S.editor) return `<div class="empty"><h2 style="font-size:30px;text-transform:uppercase;margin-bottom:8px">No tours yet</h2><p>Head to the Plan tab to create the 2027 tour or bring in 2026.</p></div>`;
-  return `<div class="empty"><h2 style="font-size:30px;text-transform:uppercase;margin-bottom:8px">You\u2019re not on a tour yet</h2><p>Ask Justin or Tony to add <b>${esc(S.user.email)}</b> to the crew list, then reopen the app.</p></div>
-    <div class="card" style="font-size:14px"><b>Editor check</b><p style="margin:4px 0 8px">${editorWhy()}</p>
+  if(S.admin) return `<div class="empty"><h2 style="font-size:30px;text-transform:uppercase;margin-bottom:8px">No tours yet</h2><p>Head to the Plan tab to create a tour or bring in 2026.</p></div>`;
+  return `<div class="empty"><h2 style="font-size:30px;text-transform:uppercase;margin-bottom:8px">You\u2019re not on a tour yet</h2><p>When an organiser adds <b>${esc(S.user.email)}</b> to a tour’s crew list, it shows up here. Or plan your own and invite your mates.</p><div class="planbar" style="justify-content:center"><button type="button" class="btn primary" data-act="newtour">Plan a tour</button></div></div>
+    <div class="card" style="font-size:14px">
       <p class="muted" style="margin:0">Signed in as ${esc(S.user.email)}<br>Firebase project: ${esc((CFG.firebase&&CFG.firebase.projectId)||'?')}<br>App version ${APP_VERSION}</p>
       <div class="planbar"><button type="button" class="btn small" data-act="recheck">Check again</button><button type="button" class="btn small" data-act="signout">Sign out</button></div></div>`;
 }
@@ -302,20 +303,21 @@ document.addEventListener('click',e=>{ const g=e.target.closest('[data-tab-go]')
 
 /* ---------- Plan (editors) ---------- */
 function planNoTour(){
-  return `<div class="plan"><h2>Plan</h2><div class="card"><h3>Start a tour</h3><p class="muted" style="margin:0 0 10px">Create the 2027 tour from scratch or as a copy of an earlier one. You can also bring the 2026 tour in from the old app.</p>
-    <div class="planbar"><button type="button" class="btn primary" data-act="newtour">Create a tour</button><button type="button" class="btn" data-act="import2026">Bring in the 2026 tour</button></div></div></div>`;
+  return `<div class="plan"><h2>Plan</h2><div class="card"><h3>Plan a tour</h3><p class="muted" style="margin:0 0 10px">Start from scratch or copy one of your earlier tours. You’ll be its owner, and you can invite others to help as editors from the crew list.</p>
+    <div class="planbar"><button type="button" class="btn primary" data-act="newtour">Plan a tour</button>${S.admin?'<button type="button" class="btn" data-act="import2026">Bring in the 2026 tour</button>':''}</div></div></div>`;
 }
 function viewPlan(){
   const T=S.tour, L=locked(), days=daysSorted();
   if(!S.planDay||!days.some(d=>d.id===S.planDay)) S.planDay=days[0]?days[0].id:null;
   const has2026=S.tours.some(t=>t.id==='2026');
   const empty=!days.length&&!S.bakeries.length, others=S.tours.filter(t=>t.id!==S.tourId);
-  let h=`<div class="plan">${S.tourId==='2026'&&empty?'<div class="notice"><b>The 2026 route didn’t come through.</b> The days, stops and bakeries are missing. <div class="planbar"><button type="button" class="btn small primary" data-act="import2026">Reload 2026 details</button></div></div>':''}
+  ensureVerifyCheck();
+  let h=`<div class="plan">${verifyNotice()}${S.tourId==='2026'&&empty?'<div class="notice"><b>The 2026 route didn’t come through.</b> The days, stops and bakeries are missing. <div class="planbar"><button type="button" class="btn small primary" data-act="import2026">Reload 2026 details</button></div></div>':''}
    ${S.tourId!=='2026'&&empty&&others.length?'<div class="notice">This tour has no days or bakeries yet. Start from an earlier tour’s route? <div class="planbar"><button type="button" class="btn small primary" data-act="copyroute">Copy route and bakeries</button></div></div>':''}${L?'<p class="notice">This tour is locked, so its route can\u2019t be changed. Unlock it below to edit.</p>':''}
-   <h2>Tour</h2><div class="card"><div class="prow" style="border:0;padding-top:0"><div class="pmain"><b>${esc(T.name||T.id)}</b><small>${T.startDate?`Day 1: ${esc(longDate(dateFor({offset:0})))}`:'No start date yet'}${T.subtitle?` \u2022 ${esc(T.subtitle)}`:''}</small></div><div class="pact"><button type="button" class="btn small" data-act="edittour"${L?' disabled':''}>Edit</button></div></div>
+   <h2>Tour</h2><div class="card"><div class="prow" style="border:0;padding-top:0"><div class="pmain"><b>${esc(T.name||T.id)}</b><small>${T.startDate?`Day 1: ${esc(longDate(dateFor({offset:0})))}`:'No start date yet'}${T.subtitle?` \u2022 ${esc(T.subtitle)}`:''}</small>${ownerLine(T)}</div><div class="pact"><button type="button" class="btn small" data-act="edittour"${L?' disabled':''}>Edit</button></div></div>
      <div class="statusrow" role="group" aria-label="Who can see it">${[['draft','Draft'],['published','Published'],['locked','Locked']].map(([k,l])=>`<button type="button" class="btn small" data-status="${k}" aria-pressed="${T.status===k}">${l}</button>`).join('')}</div>
      <p class="muted" style="font-size:13.5px;margin:4px 0 0">${T.status==='draft'?'Draft: only you and the other editor can see it.':T.status==='published'?'Published: everyone on the crew list can see it.':'Locked: visible to the crew, route frozen.'}</p>${edited(T)}
-     <div class="planbar"><button type="button" class="btn small" data-act="newtour">New tour</button>${has2026?'':'<button type="button" class="btn small" data-act="import2026">Bring in the 2026 tour</button>'}<button type="button" class="btn small" data-act="announce">Send the crew an update</button><button type="button" class="btn small danger" data-act="deltour">Delete tour</button>${S.tourId==='2026'&&RIDE()?'<button type="button" class="btn small" data-ride="import26crew">Bring in 2026 crew results</button>':''}</div>
+     <div class="planbar"><button type="button" class="btn small" data-act="newtour">New tour</button>${has2026||!S.admin?'':'<button type="button" class="btn small" data-act="import2026">Bring in the 2026 tour</button>'}<button type="button" class="btn small" data-act="announce">Send the crew an update</button>${canDeleteTour(T)?'<button type="button" class="btn small danger" data-act="deltour">Delete tour</button>':''}${S.tourId==='2026'&&RIDE()&&S.admin?'<button type="button" class="btn small" data-ride="import26crew">Bring in 2026 crew results</button>':''}</div>
      ${S.anns.length?`<details class="sent"><summary>Updates sent (${S.anns.length})</summary>${S.anns.map(a=>`<div class="prow"><div class="pmain"><small>${a.kind==='publish'?'Published':'Update'} by ${esc(a.by||'?')}, ${ago(a.at)}</small>${esc(a.text)}</div><div class="pact"><button type="button" class="ib" data-del="ann|${esc(a.id)}" aria-label="Delete update">✕</button></div></div>`).join('')}</details>`:''}</div>`;
   const secs=[['route','Route'],['bakeries','Bakeries'],['nights','Nights'],['crew','Crew'],['brief','Brief']];
   if(!secs.some(s=>s[0]===S.planSec))S.planSec='route';
@@ -330,8 +332,9 @@ function viewPlan(){
 function planCrew(){
   const T=S.tour, roles=T.roles||[];
   const crew=(T.crew||[]).slice().sort((a,b)=>String(a.name).localeCompare(b.name));
-  let h=`<h2>Crew list</h2><div class="card"><p class="muted" style="margin:0 0 6px;font-size:14px">Everyone with an email here can see this tour once it\u2019s published. They sign up in the app with that email.</p>
-    <div class="rlist flush">${crew.map(c=>rrowHtml({kind:'crew',rid:c.name,title:esc(c.name||'No name'),sub:c.email?esc(c.email):'',
+  const RP={owner:'<span class="pill role own">Owner</span>',editor:'<span class="pill role">Editor</span>',rider:''};
+  let h=`<h2>Crew list</h2><div class="card"><p class="muted" style="margin:0 0 6px;font-size:14px">Everyone with an email here can see this tour once it\u2019s published. They sign up in the app with that email. <b>Editors</b> can change everything on this tour (and see it while it\u2019s a draft); only the owner can delete it.</p>
+    <div class="rlist flush">${crew.map(c=>rrowHtml({kind:'crew',rid:c.name,title:esc(c.name||'No name')+' '+RP[roleOf(c.email)],sub:c.email?esc(c.email):'',
       warns:c.email?[]:['No email yet, so they can\u2019t see the tour'],open:`data-editcrew="${esc(c.name)}|${esc(c.email||'')}"`,menu:`crew|${c.name}|${c.email||''}`})).join('')||'<p class="muted">Nobody yet.</p>'}</div>
     <p class="muted" style="font-size:13px;margin:6px 0 0">Always in name order.</p>
     <div class="planbar"><button type="button" class="btn primary small" data-act="addcrew">+ Add rider</button>${S.tours.filter(t=>t.id!==S.tourId).length?'<button type="button" class="btn small" data-act="copycrew">Copy crew from another tour</button>':''}</div></div>`;
@@ -615,7 +618,7 @@ const val=n=>{const el=$(`#dlg [name="${n}"]`);return el?el.value.trim():''};
 const field=(label,name,v,opts={})=>opts.area?`<label class="fl">${label}<textarea name="${name}" maxlength="${opts.max||600}" placeholder="${esc(opts.ph||'')}">${esc(v||'')}</textarea></label>`:
   `<label class="fl">${label}<input name="${name}" type="${opts.type||'text'}" value="${esc(v??'')}" maxlength="${opts.max||120}" placeholder="${esc(opts.ph||'')}"${opts.step?` step="${opts.step}"`:''}></label>`;
 function dlgError(t){ let p=$('#dlg .err'); if(!p){ $('#dlg .dbtns').insertAdjacentHTML('beforebegin','<p class="err"></p>'); p=$('#dlg .err'); } p.textContent=t; }
-async function save(fn,okMsg){ try{ await fn(); closeDlg(); if(okMsg)toast(okMsg); }catch(e){ dlgError(e&&e.code==='permission-denied'?'You don\u2019t have permission to change this tour.':'Couldn\u2019t save. Check your signal and try again.'); } }
+async function save(fn,okMsg){ try{ await fn(); closeDlg(); if(okMsg)toast(okMsg); }catch(e){ dlgError(e&&e.code==='permission-denied'?(S.admin||S.verified?'You don\u2019t have permission to change this tour.':'Firebase refused it. Check your email is verified (Plan shows how), then try again.'):'Couldn\u2019t save. Check your signal and try again.'); } }
 
 function editTourDialog(){
   const T=S.tour;
@@ -751,13 +754,14 @@ function crewDialog(c){
   const isNew=!c; c=c||{};
   dlg(`<h3>${isNew?'Add a rider':'Edit rider'}</h3>${field('Name','name',c.name,{ph:'e.g. Tony'})}${field('Email they sign in with','email',c.email,{type:'email',ph:'name@example.com'})}
    <p class="muted" style="font-size:13.5px;margin:0 0 6px">They create their account in the app with this email (or keep the one from 2026).</p>
+   ${roleOf(c.email)==='owner'?'<p class="notice" style="margin:0 0 10px">Owner of this tour: always an editor.</p>':`<div class="fl">On this tour<div class="seg2r"><label><input type="radio" name="crole" value="rider"${roleOf(c.email)==='rider'?' checked':''}><span>Rider</span></label><label><input type="radio" name="crole" value="editor"${roleOf(c.email)==='editor'?' checked':''}><span>Editor</span></label></div><small class="muted" style="font-size:12.5px">Editors can change everything on this tour. Riders see it once it’s published.</small></div>`}
    <div class="dbtns"><button type="button" class="btn primary" data-save="crew" data-orig="${isNew?'':esc((c.name||'')+'|'+(c.email||''))}">Save</button><button type="button" class="btn" data-close>Cancel</button>${isNew?'':`<button type="button" class="btn danger" data-del="crew|${esc((c.name||'')+'|'+(c.email||''))}">Remove</button>`}</div>`);
 }
 function newTourDialog(){
   const yr=new Date().getFullYear()+1, same=S.tours.filter(t=>Number(t.year)===yr);
   dlg(`<h3>New tour</h3><div class="frow">${field('Year','year',yr,{type:'number'})}${field('Name','name',same.length?'':`Bike Tour ${String(yr).slice(2)}`,{ph:'e.g. High Country run'})}</div>
    <p class="muted" id="sameyear" style="font-size:13.5px;margin:-4px 0 10px">${sameYearNote(yr)}</p>
-   <label class="fl">Start from<select name="copyFrom"><option value="">A blank tour</option>${S.tours.map(t=>`<option value="${esc(t.id)}">A copy of ${esc(t.name||t.id)}</option>`).join('')}</select></label>
+   <label class="fl">Start from<select name="copyFrom"><option value="">A blank tour</option>${S.tours.filter(canEditTour).map(t=>`<option value="${esc(t.id)}">A copy of ${esc(t.name||t.id)}</option>`).join('')}</select></label>
    <p class="muted" style="font-size:13.5px;margin:0 0 6px">A copy brings across the days, stops, bakeries, brief and crew list, ready to edit. Dates are left blank and it starts as a draft.</p>
    <div class="dbtns"><button type="button" class="btn primary" data-save="newtour">Create</button><button type="button" class="btn" data-close>Cancel</button></div>`);
 }
@@ -771,7 +775,10 @@ function newTourId(year,name){ // e.g. "2027-high-country"; older tours keep the
 }
 
 /* actions */
-function setCrew(crew){ const emails=[...new Set(crew.map(c=>(c.email||'').trim().toLowerCase()).filter(Boolean))]; return FB.update(`tours/${S.tourId}`,{crew,memberEmails:emails,...stamp()}); }
+function setCrew(crew,editors){ // keeps memberEmails and editors in step with the crew list (the owner always stays an editor)
+  const emails=[...new Set(crew.map(c=>lc(c.email)).filter(Boolean))], own=lc(S.tour.ownerEmail);
+  const ed=[...new Set([...(editors||S.tour.editors||[]).map(lc).filter(e=>emails.includes(e)),...(own?[own]:[])])];
+  return FB.update(`tours/${S.tourId}`,{crew,memberEmails:emails,editors:ed,...stamp()}); }
 document.addEventListener('click',async e=>{
   const a=e.target.closest('[data-act]'); const act=a&&a.dataset.act;
   if(act==='recheck'){ toast('Checking\u2026'); return enter(S.user); }
@@ -919,7 +926,10 @@ async function doSave(btn){
     if(orig){const [n,em]=orig.split('|'); crew=crew.filter(c=>!(c.name===n&&(c.email||'')===em));}
     if(email&&crew.some(c=>(c.email||'').toLowerCase()===email)){dlgError('That email is already on the crew list.');return}
     crew.push({name,email});
-    return save(()=>setCrew(crew),'Crew list saved');
+    const role=($('#dlg input[name="crole"]:checked')||{}).value, origEm=orig?lc(orig.split('|')[1]):'';
+    let ed=(S.tour.editors||[]).map(lc).filter(e=>e!==origEm&&e!==email);
+    if(role==='editor'||(!role&&roleOf(origEm)!=='rider')){ if(!email){dlgError('Editors need an email to sign in with.');return} ed.push(email); }
+    return save(()=>setCrew(crew,ed),'Crew list saved');
   }
   if(k==='copycrew'){
     const from=S.tours.find(t=>t.id===val('from')); if(!from)return;
@@ -934,6 +944,7 @@ async function doSave(btn){
     if(S.tours.some(t=>Number(t.year)===year&&String(t.name||'').trim().toLowerCase()===name.toLowerCase())){dlgError(`There\u2019s already a tour called ${name} in ${year}. Give this one a different name.`);return}
     const id=newTourId(year,name);
     const from=val('copyFrom');
+    if(!S.admin&&await checkVerified()===false){ dlgError('Check your email first: editors need a verified email.'); const b=$('#dlg .dbtns'); if(b&&!$('#dlg [data-act="vsend"]'))b.insertAdjacentHTML('beforebegin','<div class="planbar"><button type="button" class="btn small primary" data-act="vsend">Send me the link</button><button type="button" class="btn small" data-act="vcheck">I’ve tapped the link</button></div>'); return; }
     return save(async()=>{ await createTour(id,{name,year},from||null); },'Tour created');
   }
 }
@@ -948,15 +959,17 @@ async function doDelete(spec){
   if(kind==='brief'||kind==='role'){ const key=kind==='brief'?'brief':'roles'; if(!confirm(kind==='brief'?'Delete this brief card?':'Delete this role?'))return;
     const arr=(S.tour[key]||[]).slice(); arr.splice(+id,1); return save(()=>FB.update(`tours/${S.tourId}`,{[key]:arr,...stamp()}),kind==='brief'?'Card deleted':'Role deleted'); }
   if(kind==='stop'){ if(!confirm('Delete this stop?'))return; const sd=(S.stops.find(s=>s.id===id)||{}).dayId; return save(async()=>{ await FB.del(tp('stops',id)); if(typeof scheduleAutoEstimate==='function')scheduleAutoEstimate(sd,500); },'Stop deleted'); }
-  if(kind==='crew'){ if(!confirm(`Remove ${id} from the crew list? They won\u2019t be able to see this tour.`))return;
+  if(kind==='crew'){ if(roleOf(extra)==='owner'){ toast('The owner can’t be removed.'); return; } if(!confirm(`Remove ${id} from the crew list? They won\u2019t be able to see this tour.`))return;
     const crew=(S.tour.crew||[]).filter(c=>!(c.name===id&&(c.email||'')===(extra||''))); return save(()=>setCrew(crew),'Rider removed'); }
 }
 async function createTour(id,base,fromId){
   const ops=[]; const now=stamp();
-  let tour={name:base.name,year:base.year,subtitle:'',startDate:'',status:'draft',crew:[],memberEmails:[],roles:[],brief:[],meet:'',fuelRangeKm:183,createdAt:FB.now(),...now};
+  const meC={name:myCrewName(),email:S.user.email};
+  let tour={name:base.name,year:base.year,subtitle:'',startDate:'',status:'draft',crew:[meC],memberEmails:[S.user.email],roles:[],brief:[],meet:'',fuelRangeKm:183,ownerUid:S.user.uid,ownerEmail:S.user.email,editors:[S.user.email],createdAt:FB.now(),...now};
   if(fromId){
     const src=S.tours.find(t=>t.id===fromId)||{};
-    tour={...tour,subtitle:src.subtitle||'',crew:src.crew||[],memberEmails:src.memberEmails||[],roles:src.roles||[],brief:src.brief||[],meet:src.meet||'',fuelRangeKm:src.fuelRangeKm||183,copiedFrom:fromId};
+    const sc=(src.crew||[]).slice(); if(!sc.some(c=>lc(c.email)===S.user.email))sc.push(meC);
+    tour={...tour,subtitle:src.subtitle||'',crew:sc,memberEmails:[...new Set([...(src.memberEmails||[]),S.user.email])],roles:src.roles||[],brief:src.brief||[],meet:src.meet||'',fuelRangeKm:src.fuelRangeKm||183,copiedFrom:fromId};
     const [days,stops,baks]=await Promise.all(['days','stops','bakeries'].map(c=>FB.list(`tours/${fromId}/${c}`)));
     days.forEach(d=>ops.push({op:'set',path:`tours/${id}/days/${d.id}`,data:{...d.data,...now}}));
     stops.forEach(d=>ops.push({op:'set',path:`tours/${id}/stops/${d.id}`,data:{...d.data,...now}}));
@@ -1000,7 +1013,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
    Firestore doesn't delete sub-collections with their parent, so each one is listed and deleted in batches first. */
 const TOUR_PARTS=['days','stops','bakeries','nights','dinners','announcements','riders','live','wall','wallfull','extras'];
 async function deleteTourDialog(){
-  const T=S.tour; if(!T||!S.editor)return;
+  const T=S.tour; if(!T||!canDeleteTour(T))return;
   if(T.status==='locked') return dlg(`<h3>Delete ${esc(T.name||T.id)}</h3><p>This tour is locked. Unlock it first (tap Draft or Published above) if you really want to delete it.</p><div class="dbtns"><button type="button" class="btn" data-close>OK</button></div>`);
   dlg(`<h3>Delete ${esc(T.name||T.id)}</h3><p class="muted">Counting what’s in it…</p>`);
   const counts={}; try{ await Promise.all(TOUR_PARTS.map(async c=>{ counts[c]=(await FB.list(tp(c))).length; })); }catch(e){}
@@ -1014,7 +1027,7 @@ async function deleteTourDialog(){
     <div class="dbtns"><button type="button" class="btn danger" data-act="deltourgo">Delete for good</button><button type="button" class="btn" data-close>Cancel</button></div>`);
 }
 async function deleteTour(){
-  const T=S.tour; if(!T||!S.editor)return;
+  const T=S.tour; if(!T||!canDeleteTour(T))return;
   if(val('confirmname').trim().toLowerCase()!==String(T.name||T.id).trim().toLowerCase()){ dlgError('That doesn’t match the tour’s name.'); return; }
   const id=T.id, btn=$('[data-act="deltourgo"]'); if(btn)btn.disabled=true;
   dlg(`<h3>Deleting ${esc(T.name||id)}</h3><p class="muted" id="delmsg">Starting…</p>`);
@@ -1027,5 +1040,51 @@ async function deleteTour(){
     S.tours=S.tours.filter(t=>t.id!==id); await loadTours();
     const next=pickDefaultTour(); if(next)openTour(next.id); else { S.tourId=null; S.tour=null; renderTourSelect(); render(); }
     closeDlg(); toast(`${T.name||id} deleted`);
-  }catch(e){ dlg(`<h3>Couldn’t finish</h3><p class="err">${e&&e.code==='permission-denied'?'Firebase didn’t allow it. Only editors can delete tours.':'Something went wrong part way. Check your signal and try again; it carries on from where it stopped.'}</p><div class="dbtns"><button type="button" class="btn" data-close>Close</button></div>`); openTour(id); }
+  }catch(e){ dlg(`<h3>Couldn’t finish</h3><p class="err">${e&&e.code==='permission-denied'?'Firebase didn’t allow it. Only the tour’s owner can delete it.':'Something went wrong part way. Check your signal and try again; it carries on from where it stopped.'}</p><div class="dbtns"><button type="button" class="btn" data-close>Close</button></div>`); openTour(id); }
+}
+
+/* ---------- per-tour owner and editors (v4.14) ----------
+   Anyone signed in can plan a tour: they become its owner (ownerUid, ownerEmail) and first editor (editors: [emails]).
+   Editors are equal: they can change everything on that tour. Only the owner (or an admin) can delete it.
+   Admins = the emails in admins/editors (set in the Firebase console): they can see and edit every tour.
+   Editing needs a verified email (the Firebase rules check email_verified), except for admins. The prebuilt
+   Firebase bundle can't send verification emails, so verifyApi() loads Firebase's own auth module from its CDN
+   only when needed; it shares the signed-in session (same app and storage). */
+const lc=s=>String(s||'').trim().toLowerCase();
+function canEditTour(t){ return !!t&&!!S.user&&(S.admin||(t.editors||[]).map(lc).includes(S.user.email)); }
+const isOwner=t=>!!t&&!!S.user&&(t.ownerUid===S.user.uid||(!!t.ownerEmail&&lc(t.ownerEmail)===S.user.email));
+const canDeleteTour=t=>!!t&&(S.admin||isOwner(t));
+function roleOf(email,t=S.tour){ const e=lc(email); if(!e||!t)return 'rider'; if(t.ownerEmail&&lc(t.ownerEmail)===e)return 'owner'; return (t.editors||[]).map(lc).includes(e)?'editor':'rider'; }
+function myCrewName(){ for(const t of S.tours){ const c=(t.crew||[]).find(x=>lc(x.email)===S.user.email); if(c&&c.name)return c.name; }
+  const p=(S.user.email||'').split('@')[0].replace(/[._-]+/g,' ').trim(); return p?p[0].toUpperCase()+p.slice(1):'Me'; }
+const GSTATIC='https://www.gstatic.com/firebasejs/10.14.0/';
+let VAPI=null;
+async function verifyApi(){
+  if(FB.verify)return FB.verify; // a rebuilt bundle (or the test mock) can provide this directly
+  if(VAPI)return VAPI;
+  const [am,au]=await Promise.all([import(GSTATIC+'firebase-app.js'),import(GSTATIC+'firebase-auth.js')]);
+  const app=am.getApps().length?am.getApp():am.initializeApp(CFG.firebase), auth=au.getAuth(app);
+  await auth.authStateReady();
+  VAPI={ async status(){ const u=auth.currentUser; if(!u||lc(u.email)!==S.user.email)return null; await u.reload(); if(u.emailVerified)await u.getIdToken(true); return u.emailVerified; },
+    async send(){ const u=auth.currentUser; if(!u)throw new Error('not signed in'); await au.sendEmailVerification(u); } };
+  return VAPI;
+}
+async function checkVerified(){ if(S.admin)return (S.verified=true); try{ S.verified=await (await verifyApi()).status(); }catch(e){ S.verified=null; } return S.verified; }
+function verifyNotice(){
+  if(S.admin||!S.editor||S.verified!==false)return '';
+  return `<div class="notice vnote"><b>Check your email to start editing.</b> To keep tours safe, editors need a verified email. ${S.verifySent?`We sent a link to <b>${esc(S.user.email)}</b>. Tap it, then come back here.`:`We’ll send a link to <b>${esc(S.user.email)}</b>.`}
+    <div class="planbar"><button type="button" class="btn small primary" data-act="vsend">${S.verifySent?'Send it again':'Send the link'}</button><button type="button" class="btn small" data-act="vcheck">I’ve tapped the link</button></div></div>`;
+}
+function ensureVerifyCheck(){ if(S.admin||!S.editor||S.verified!=null||S.verifying)return; S.verifying=true; checkVerified().then(()=>{ S.verifying=false; render(); }); }
+document.addEventListener('click',async e=>{ const t=e.target;
+  if(t.closest('[data-act="vsend"]')){ try{ await (await verifyApi()).send(); S.verifySent=true; toast('Link sent. Check your inbox (and junk).'); render(); }catch(x){ toast(x&&x.code==='auth/too-many-requests'?'Sent recently. Give it a few minutes.':'Couldn’t send it. Check your signal and try again.'); } return; }
+  if(t.closest('[data-act="vcheck"]')){ const v=await checkVerified(); if(v){ toast('Email verified. Reloading…'); setTimeout(()=>location.reload(),900); } else toast(v===false?'Not verified yet. Tap the link in the email first.':'Couldn’t check. Try again in a moment.'); return; }
+  const cr=t.closest('[data-crewrole]'); if(cr){ const [role,email]=cr.dataset.crewrole.split('|'); const T=S.tour; let ed=(T.editors||[]).map(lc).filter(x=>x!==lc(email)); if(role==='editor')ed.push(lc(email));
+    try{ await FB.update(`tours/${S.tourId}`,{editors:[...new Set(ed)],...stamp()}); closeDlg(); toast(role==='editor'?'They can now edit this tour':'They’re a rider now'); }catch(x){ toast('Couldn’t change that.'); } return; }
+  if(t.closest('[data-act="claimowner"]')){ if(!S.admin)return; try{ await FB.update(`tours/${S.tourId}`,{ownerUid:S.user.uid,ownerEmail:S.user.email,editors:[...new Set([...(S.tour.editors||[]).map(lc),S.user.email])],...stamp()}); toast('You’re the owner now'); }catch(x){ toast('Couldn’t change that.'); } return; }
+});
+function ownerLine(T){
+  const eds=(T.editors||[]).map(lc), crew=T.crew||[], nm=e=>{ const c=crew.find(x=>lc(x.email)===e); return c?c.name:e===S.user.email?myCrewName():e; };
+  const own=T.ownerEmail?nm(lc(T.ownerEmail)):'';
+  return `<p class="muted ownline">${own?`Owner: <b>${esc(own)}</b>`:'No owner yet (admins look after it)'}${eds.filter(e=>e!==lc(T.ownerEmail)).length?` · Editors: ${eds.filter(e=>e!==lc(T.ownerEmail)).map(e=>esc(nm(e))).join(', ')}`:''}${!T.ownerUid&&S.admin?' <button type="button" class="linkb" data-act="claimowner">Make me the owner</button>':''}</p>`;
 }
