@@ -1,5 +1,5 @@
 // =====================================================================================
-// Ride Together (Bike Tours R Us 2027 app): Firestore rules ADDITIONS. Version 2 (app v4.14: per-tour owners and editors).
+// Ride Together (Bike Tours R Us 2027 app): Firestore rules ADDITIONS. Version 3 (app v4.18: reports; v4.14: per-tour owners and editors).
 //
 // Your Firebase project already has rules for the 2026 crew app (isCrew(), /crew, /wall, /live).
 // KEEP those exactly as they are, so the 2026 app keeps working.
@@ -69,10 +69,14 @@
       // delete a tour: its owner or an admin
       allow delete: if isAdmin() || (signedInWithEmail() && verified() && resource.data.get('ownerUid', '') == request.auth.uid);
 
-      // everything inside a tour: editors change it; riders and editors read it
+      // everything inside a tour: editors change it; riders and editors read it (except reports: editors only)
       match /{rest=**} {
-        allow read: if canEdit(t) || onTour(t);
+        allow read: if canEdit(t) || (onTour(t) && rest[0] != 'reports');
         allow write: if canEdit(t);
+      }
+      // reports about photos and charges (app v4.18): any rider can send one as themselves; editors read and close them
+      match /reports/{id} {
+        allow create: if onTour(t) && request.resource.data.uid == request.auth.uid;
       }
 
       // Ride-day features (app v4.0). Riders on the tour can also write these:
