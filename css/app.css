@@ -785,3 +785,9 @@ details.featcard>summary small{margin-left:auto;font-size:13px;color:var(--muted
 .bkrules p{margin:4px 0 0}
 .awards.one{grid-template-columns:1fr}
 .qchamp{margin:0 0 10px;font-size:15px}
+/* v4.22 crew updates */
+.annpost textarea{min-height:60px}
+.annpost .planbar{align-items:center}
+.annpost .planbar small{font-size:12.5px}
+.annact{margin-top:6px;text-align:right}
+.annact .linkb{font-size:13px;color:var(--muted)}
