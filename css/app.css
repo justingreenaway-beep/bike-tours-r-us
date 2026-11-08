@@ -653,3 +653,48 @@ html.pvopen,html.pvopen body{overflow:hidden}
 .pvfilm button{all:unset;cursor:pointer;flex:0 0 auto;width:50px;height:50px;border-radius:6px;overflow:hidden;opacity:.5;background:#222}
 .pvfilm button img{width:100%;height:100%;object-fit:cover;display:block}
 .pvfilm button.on{opacity:1;outline:2px solid var(--vis);outline-offset:-2px}
+/* v4.12 Plan > Bakeries: route view, open on arrival, summary, finder, hours tools */
+.baksum .bsline{margin:0 0 8px;font-size:14.5px}
+.baksum .bw{color:var(--warn)}
+.baksum .wfil{margin-bottom:0}
+.wfil button.w small{color:var(--warn);font-weight:700}
+.wfil button.w[aria-pressed="true"] small{color:inherit}
+.bkday{font-size:19px;text-transform:uppercase;margin:16px 0 6px}
+.bktowns{padding:2px 12px}
+.bktown{border-top:1px solid var(--rule)}
+.bktown:first-child{border-top:0}
+.bkhead{all:unset;cursor:pointer;display:flex;align-items:flex-start;gap:8px;width:100%;box-sizing:border-box;padding:10px 0}
+.bkhead:focus-visible{outline:2px solid var(--vis);outline-offset:2px;border-radius:6px}
+.bkhead .chev{color:var(--c);font-size:14px;line-height:22px;transition:transform .15s;flex:0 0 auto}
+.bktown.open>.bkhead .chev{transform:rotate(90deg)}
+.bkhead .rmain b{display:block;font:700 19px/1.15 var(--display)}
+.bkhead .rmain small{display:block;color:var(--muted);font-size:13px}
+.bktown.open{padding-bottom:10px}
+.bktown>.rlist,.bktown>.planbar,.bktown>.bksub,.bktown>details{margin-left:22px}
+.bktown .planbar{margin-top:8px}
+.bksub{font:700 13px var(--body);color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 0}
+.rmain small.bst{font-weight:600;margin-top:1px}
+.bst.open{color:var(--green)}.bst.soon{color:var(--orange)}.bst.shut{color:var(--warn)}.bst.unk{color:var(--muted)}
+details.bakmap{margin-top:8px}
+details.bakmap summary{cursor:pointer;font:600 14px var(--body);color:var(--blue)}
+details.bakmap .map{height:min(48vh,300px)}
+.fblist{display:grid;gap:6px;max-height:52vh;overflow:auto;margin:0 0 6px}
+.fbrow{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1.5px solid var(--rule);border-radius:10px;cursor:pointer;background:var(--bg)}
+.fbrow input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.fbtick{flex:0 0 auto;width:22px;height:22px;border-radius:50%;border:2px solid var(--rule);display:grid;place-items:center;font-size:13px;margin-top:1px}
+.fbrow:has(input:checked){border-color:var(--ink);background:var(--soft)}
+.fbrow:has(input:checked) .fbtick{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.fbrow:has(input:checked) .fbtick::after{content:"✓"}
+.fbrow:has(input:focus-visible){outline:2px solid var(--vis)}
+.fbrow.listed{opacity:.55;cursor:default}
+.fbt{min-width:0}.fbt b{display:block;font:700 17px/1.15 var(--display)}.fbt small{display:block;color:var(--muted);font-size:12.5px}
+.hpre{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 2px}
+.hpre button{all:unset;cursor:pointer;font:600 13px var(--body);color:var(--blue);padding:5px 10px;border:1.5px solid var(--rule);border-radius:999px;background:var(--surface)}
+.hpre button:focus-visible{outline:2px solid var(--vis)}
+.hread{margin:0 0 6px;font:600 13.5px var(--body);color:var(--green)}
+.hread:empty{display:none}
+.hread.bad{color:var(--warn)}
+.hpaste{display:flex;gap:6px;align-items:center;margin:0 0 8px}
+.hpaste input{flex:1;min-width:0;margin:0!important}
+.bknote{margin:6px 0 0 22px;font-size:13px;color:var(--muted)}
+.bknote .linkb{font-size:13px}
