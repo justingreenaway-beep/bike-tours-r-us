@@ -791,3 +791,31 @@ details.featcard>summary small{margin-left:auto;font-size:13px;color:var(--muted
 .annpost .planbar small{font-size:12.5px}
 .annact{margin-top:6px;text-align:right}
 .annact .linkb{font-size:13px;color:var(--muted)}
+/* groups that meet up, and route options (v4.27) */
+.grpseg button[aria-pressed="true"]{background:var(--g,var(--c))}
+.grpline{font-size:14px;margin:-4px 0 10px}
+.grpnote{font-size:13.5px;margin:6px 0 0;color:var(--muted)}
+.meetbox{margin:8px 0 2px;padding:9px 11px;border-radius:10px;background:var(--soft);border:1px solid var(--rule);border-left:5px solid var(--c);font-size:14px}
+.meetbox p{margin:4px 0 0}
+.gdot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--g);margin-right:6px}
+.meetcard{border-left:6px solid var(--c)}
+.meetcard h3{margin:2px 0 2px}
+.meetcard p{margin:4px 0 0;font-size:14px}
+.meetline{font-size:15px!important}
+.maplegend{display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:4px;font-weight:600}
+.maplegend i{display:inline-block;width:16px;height:4px;border-radius:2px;margin-right:5px;vertical-align:3px}
+.grpbar,.opttabs{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0 8px}
+.grplbl{font:700 12px var(--body);text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-right:2px}
+.gchip,.opttabs button:not(.ib){all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;border:1.5px solid var(--rule);font:600 13.5px var(--body);background:var(--surface);color:var(--ink)}
+.gchip{border-color:var(--g,var(--rule))}
+.gchip i{width:10px;height:10px;border-radius:50%;background:var(--g)}
+.gchip.add,.opttabs .add{border-style:dashed!important;color:var(--blue)!important}
+.gchip:disabled,.opttabs button:disabled{opacity:.45;cursor:default}
+.opttabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.opttabs small{font-weight:700;font-size:11.5px;opacity:.85}
+.optnote{font-size:12.5px;color:var(--muted);margin:0 0 8px}
+.routeextras{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0 0 8px;font-size:13.5px}
+.lanehd{font:700 12px var(--body);text-transform:uppercase;letter-spacing:.04em;color:var(--g,var(--muted));padding:10px 0 4px 2px;border-top:1px solid var(--rule)}
+.rlist>.lanehd:first-child{border-top:0;padding-top:2px}
+.pill.meet{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.optseg{max-width:100%;overflow-x:auto;scrollbar-width:none}
