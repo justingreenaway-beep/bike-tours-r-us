@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='4.11';
+const APP_VERSION='4.12';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -211,7 +211,7 @@ function dayHead(day){
 const bakeriesIn=town=>S.bakeries.filter(b=>b.town===town).sort((a,b)=>(a.rank||99)-(b.rank||99)||String(a.name).localeCompare(b.name));
 function bakeryList(town,when){
   return [...bakeriesIn(town),...(RIDE()?rideExtrasIn(town):[])].map((b,i)=>{ const os=openState(b,when);
-    return `<li><span class="rk">${i+1}</span><div><div class="bn"><a href="${mapsUrl(b)}" target="_blank" rel="noopener">${esc(b.name)}</a>${b.tag?`<span class="near">${esc(b.tag)}</span>`:''}</div>${b.must?`<div class="must">Must try: ${esc(b.must)}</div>`:''}<div class="meta">${b.rating?`${Number(b.rating).toFixed(1)}\u2605${b.reviews?` (${Number(b.reviews).toLocaleString()})`:''}. `:''}${esc(b.hours||fmtHours(b.hoursSpec))}${/^OpenStreetMap/.test(b.hoursSource||"")?" <span class=\"osmcredit\">(hours \u00a9 OpenStreetMap contributors)</span>":""}</div>${os?`<div class="ostate ${os.cls}">${esc(os.txt)}</div>`:''}${b.why?`<div class="why">${esc(b.why)}</div>`:''}${RIDE()?rideBakBits(b):''}</div>${RIDE()?rideTick(b):''}</li>`; }).join('');
+    return `<li><span class="rk">${i+1}</span><div><div class="bn"><a href="${mapsUrl(b)}" target="_blank" rel="noopener">${esc(b.name)}</a>${(()=>{ const nr=b.tag||(typeof offRoute==='function'?offRoute(b):''); return nr?`<span class="near">${esc(nr)}</span>`:''; })()}</div>${b.must?`<div class="must">Must try: ${esc(b.must)}</div>`:''}<div class="meta">${b.rating?`${Number(b.rating).toFixed(1)}\u2605${b.reviews?` (${Number(b.reviews).toLocaleString()})`:''}. `:''}${esc(b.hours||fmtHours(b.hoursSpec))}${/^OpenStreetMap/.test(b.hoursSource||"")?" <span class=\"osmcredit\">(hours \u00a9 OpenStreetMap contributors)</span>":""}</div>${os?`<div class="ostate ${os.cls}">${esc(os.txt)}</div>`:''}${b.why?`<div class="why">${esc(b.why)}</div>`:''}${RIDE()?rideBakBits(b):''}</div>${RIDE()?rideTick(b):''}</li>`; }).join('');
 }
 const nightsOf=dayId=>S.nights.filter(n=>n.dayId===dayId).sort((a,b)=>(a.order??99)-(b.order??99)||String(a.place||'').localeCompare(String(b.place||'')));
 function nightCard(n){
@@ -371,22 +371,7 @@ document.addEventListener('click',async e=>{
   try{ await FB.batch(ops); toast(`Deleted ${ids.length}`); S.selMode=null; S.sel=new Set(); render(); }catch(x){ toast(x&&x.code==='permission-denied'?'You don’t have permission to change this tour.':'Couldn’t delete. Check your signal and try again.'); }
 });
 
-function planBakeries(){
-  const L=locked(), towns=planTowns();
-  if(!S.bakTown||!towns.includes(S.bakTown)) S.bakTown=towns.find(t=>bakeriesIn(t).length)||towns[0]||null;
-  let h=`<h2>Bakeries</h2><div class="card"><label class="fl" style="margin:0">Town<select data-baktown>${towns.map(t=>`<option value="${esc(t)}"${t===S.bakTown?' selected':''}>${esc(t)} (${bakeriesIn(t).length})</option>`).join('')}</select></label>${towns.length?'':'<p class="muted">Add stops in Route first, or add a bakery and type its town.</p>'}</div>`;
-  const list=S.bakTown?bakeriesIn(S.bakTown):[];
-  h+=`<div class="card rlist" data-rlist="bak" style="--c:var(--blue)">${list.map((b,i)=>rrowHtml({kind:'bak',rid:b.id,grip:!selOn('bak')&&!L,num:i+1,big:i===0,
-      title:esc(b.name)+(b.must?' <span class="pill">Must</span>':''),
-      sub:esc(b.hours||fmtHours(b.hoursSpec)||'No hours yet')+(b.updatedBy?` · edited by ${esc(b.updatedBy)} ${ago(b.updatedAt)}`:''),
-      warns:Array.isArray(b.hoursSpec)&&b.hoursSpec.length?[]:['No opening times set'],open:L?'':`data-editbak="${esc(b.id)}"`,
-      act:selOn('bak')?pact('bak',b.id,''):null,menu:`bak|${b.id}`})).join('')||`<p class="muted">No bakeries${S.bakTown?' in '+esc(S.bakTown):''} yet.</p>`}
-    ${selBar('bak',list.map(b=>b.id),`<button type="button" class="btn primary small" data-act="addbak"${L?' disabled':''}>+ Add bakery</button>`,L,
-      S.bakeries.length>list.length?`<button type="button" class="btn small" data-selall="everybak">${S.bakeries.every(b=>S.sel.has(b.id))?'Clear every town':`Every town (${S.bakeries.length})`}</button>`:'')}
-    ${selOn('bak')&&S.sel.size?`<p class="muted" style="font-size:13px;margin:6px 0 0">${S.sel.size} selected${[...S.sel].some(id=>!list.some(b=>b.id===id))?' across towns':''}.</p>`:''}
-    <p class="muted" style="font-size:13px;margin:8px 0 0">With opening times set, the roadbook tells riders whether each bakery is open when the group gets there.</p></div>`;
-  return h;
-}
+/* Plan > Bakeries lives in route.js (planBakeries, v4.12) */
 function hoursRow(r={}){
   const days=new Set(r.days||[]), hm=x=>x?x.slice(0,2)+':'+x.slice(2):'';
   return `<div class="drow hrow"><div class="chips">${WEEK.map(d=>`<label><input type="checkbox" value="${d}"${days.has(d)?' checked':''}>${DAYN[d]}</label>`).join('')}</div>
@@ -467,7 +452,7 @@ function bakeryDialog(b){
    <label class="fl">Town<input name="town" list="townlist" value="${esc(b.town||'')}" maxlength="80"></label><datalist id="townlist">${planTowns().map(t=>`<option value="${esc(t)}">`).join('')}</datalist>
    ${field('Name','name',b.name,{ph:'e.g. Yass Bakery'})}${field('Must try','must',b.must,{ph:'e.g. Pepper steak pie'})}
    ${field('Why it’s on the list','why',b.why,{area:true,max:400})}${field('Short label (optional)','tag',b.tag,{ph:'e.g. 5 min off route',max:40})}
-   <div class="fl">Opening times<div id="hrows">${(spec.length?spec:[{}]).map(hoursRow).join('')}</div><div class="planbar" style="margin-top:0"><button type="button" class="btn small" data-act="hadd">+ More times</button><button type="button" class="btn small" data-act="osmfind">Find hours on OpenStreetMap</button></div>
+   <div class="fl">Opening times${typeof hoursTools==='function'?hoursTools():''}<div id="hrows">${(spec.length?spec:[{}]).map(hoursRow).join('')}</div>${typeof hoursTools2==='function'?hoursTools2():''}<div class="planbar" style="margin-top:0"><button type="button" class="btn small" data-act="hadd">+ More times</button><button type="button" class="btn small" data-act="osmfind">Find hours on OpenStreetMap</button></div>
      <div id="osmres" data-auto="${isNew?1:0}">${b.hoursSource?`<p class="osmcredit">Hours from ${esc(b.hoursSource)}</p>`:''}</div></div>
    ${field('Hours in words (leave blank to use the times above)','hours',custom,{ph:'e.g. Daily from 6 am, closed Christmas Day'})}
    ${b.rating?`<p class="muted" style="font-size:13px">${Number(b.rating).toFixed(1)}★ from ${Number(b.reviews||0).toLocaleString()} reviews${b.source?` (${esc(b.source)})`:''}.</p>`:''}
@@ -780,7 +765,7 @@ async function doSave(btn){
     if(osmPicked){ Object.assign(data,{osm:osmPicked.osm,hoursSource:`OpenStreetMap, ${new Date().toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})}`});
       if(osmPicked.lat!=null&&isFinite(osmPicked.lat)){ data.lat=+osmPicked.lat; data.lon=+osmPicked.lon; } }
     if(!existing||existing.town!==town){ const inTown=bakeriesIn(town).filter(b=>b.id!==id); data.rank=inTown.length?Math.max(...inTown.map(b=>b.rank||0))+1:1; }
-    return save(async()=>{ await FB.set(tp('bakeries',id),data,true); S.bakTown=town; },existing?'Bakery saved':'Bakery added');
+    return save(async()=>{ await FB.set(tp('bakeries',id),data,true); S.bakTown=town; if(S.bakOpen)S.bakOpen.add(town); },existing?'Bakery saved':'Bakery added');
   }
   if(k==='night'){
     const rooms=$$('#rrows .room').map(r=>({type:$('[data-r=type]',r).value,who:$$('input[type=checkbox]:checked',r).map(x=>x.value)}));

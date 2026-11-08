@@ -140,7 +140,7 @@ function rowMenu(spec){
   if(kind==='day'){ const d=S.days.find(x=>x.id===key); if(!d)return; title=`${d.label}: ${d.title||'Untitled'}`;
     items=B(`data-editday="${esc(key)}"`,'✎ Edit day')+B(`data-pickday="${esc(key)}" data-close`,'☰ Show its stops')+B(`data-del="day|${esc(key)}"`,'Delete day','del'); }
   if(kind==='bak'){ const b=S.bakeries.find(x=>x.id===key); if(!b)return; const list=bakeriesIn(b.town), i=list.findIndex(x=>x.id===key); title=b.name;
-    items=B(`data-editbak="${esc(key)}"`,'✎ Edit')+(i>0?B(`data-rm="top|bak|${esc(key)}"`,'⤒ Make it the top pick'):'')+(i<list.length-1?B(`data-rm="bottom|bak|${esc(key)}"`,'⤓ Move to the bottom'):'')+B(`data-del="bakery|${esc(key)}"`,'Delete','del'); }
+    items=B(`data-editbak="${esc(key)}"`,'✎ Edit')+(hasLL(b)?'':B(`data-baklocate="${esc(key)}"`,'📍 Find on the map'))+(i>0?B(`data-rm="top|bak|${esc(key)}"`,'⤒ Make it the top pick'):'')+(i<list.length-1?B(`data-rm="bottom|bak|${esc(key)}"`,'⤓ Move to the bottom'):'')+B(`data-del="bakery|${esc(key)}"`,'Delete','del'); }
   if(kind==='night'){ const n=S.nights.find(x=>x.id===key); if(!n)return; const list=nightsOf(n.dayId), i=list.findIndex(x=>x.id===key); title=n.place||'Bed';
     items=B(`data-editnight="${esc(key)}"`,'✎ Edit')+(i>0?B(`data-rm="top|night|${esc(key)}"`,'⤒ Move to the top'):'')+B(`data-del="night|${esc(key)}"`,'Delete bed and dinner','del'); }
   if(kind==='brief'){ const arr=T.brief||[], i=+key, c=arr[i]; if(!c)return; title=c.h||'Brief card';
@@ -359,3 +359,209 @@ function dayFormSync(){ // turn the friendly controls back into the fields the s
 }
 document.addEventListener('change',e=>{ if(e.target.closest&&e.target.closest('#dlg')&&['whomode','whoname','date'].includes(e.target.name))dayFormSync(); });
 document.addEventListener('click',e=>{ const u=e.target.closest('[data-usetitle]'); if(u){ e.preventDefault(); $('#dlg [name="title"]').value=u.dataset.usetitle; } });
+
+/* ---------- Plan > Bakeries (v4.12) ----------
+   The route day by day, each town a row: when the group is there, how many bakeries, the top pick, how many are open then.
+   Tap a town to open its ranked list (drag, ⋯ menu), with open/closed on arrival, crew ratings, distance from the stop,
+   riders' finds, "Find bakeries in town" (OpenStreetMap) and a small map. A summary on top filters to the problems. */
+S.bakOpen=new Set(); S.bakF='all'; S.bakMapOpen=new Set();
+const FOOD_TAGS=/Bakery stop|Breakfast|Coffee|Lunch/;
+const bakStops=town=>S.stops.filter(s=>s.town===town&&hasLL(s));
+const fromStop=m=>m<1000?`${Math.max(10,Math.round(m/10)*10)} m from the stop`:`${(m/1000).toFixed(1)} km from the stop`;
+function offRoute(b){ if(!hasLL(b))return ''; const st=bakStops(b.town); if(!st.length)return '';
+  const m=Math.min(...st.map(s=>kmBetween({lat:+s.lat,lon:+s.lon},{lat:+b.lat,lon:+b.lon})))*1000; return m>20000?'':fromStop(m); }
+const hasHours=b=>Array.isArray(b.hoursSpec)&&b.hoursSpec.length>0;
+function bakTownPlan(){ // route towns in day order (with each visit's date and time), then bakery towns off the route
+  const towns=new Map();
+  daysSorted().forEach(d=>{ const est=typeof dayTimes==='function'?dayTimes(d,null):null, date=dateFor(d);
+    stopsOf(d.id).forEach(s=>{ if(!s.town||s.ref)return; const x=est&&est.find(e=>e.s.id===s.id), mins=x?(x.arr??x.dep):null;
+      const t=s.arrive||s.depart||(mins!=null&&typeof min2hm==='function'?min2hm(mins):'');
+      if(!towns.has(s.town))towns.set(s.town,{town:s.town,day:d,visits:[]});
+      towns.get(s.town).visits.push({day:d,stop:s,date,t,est:!s.arrive&&!s.depart&&!!t}); }); });
+  S.bakeries.forEach(b=>{ if(b.town&&!towns.has(b.town))towns.set(b.town,{town:b.town,day:null,visits:[]}); });
+  if(RIDE()&&R.extras)R.extras.forEach(b=>{ if(b.town&&!towns.has(b.town))towns.set(b.town,{town:b.town,day:null,visits:[]}); });
+  return [...towns.values()];
+}
+function townWhen(T){ // the visit that matters for bakeries: a food stop with a time, else any visit with a time
+  const v=T.visits.find(v=>(v.stop.tags||[]).some(t=>FOOD_TAGS.test(t))&&v.t)||T.visits.find(v=>v.t)||T.visits[0];
+  return v?{date:v.date,t:v.t,visit:v}:null; }
+function bakStatus(b,w){
+  if(!hasHours(b))return {cls:'unk',txt:'Hours unknown'};
+  if(!w||!w.date)return {cls:'unk',txt:S.tour.startDate?'Hours set; no date for this day':'Hours set; add the tour’s start date to check'};
+  if(!w.t)return {cls:'unk',txt:'Hours set; no time for this stop yet'};
+  return openState(b,w)||{cls:'unk',txt:''}; }
+function townInfo(T){
+  const list=bakeriesIn(T.town), w=townWhen(T), st=list.map(b=>({b,s:T.visits.length?bakStatus(b,w):null}));
+  const known=st.filter(x=>x.s&&x.s.cls!=='unk'), open=known.filter(x=>x.s.cls!=='shut').length;
+  const finds=RIDE()&&typeof rideExtrasIn==='function'?rideExtrasIn(T.town).filter(x=>!list.some(b=>nameMatch(x.name,b.name)>=.6||nameMatch(b.name,x.name)>=.6)):[];
+  return {T,list,w,st,open,known:known.length,topShut:!!(st[0]&&st[0].s&&st[0].s.cls==='shut'),noneOpen:list.length>0&&known.length===list.length&&!open,
+    noHours:list.filter(b=>!hasHours(b)).length,noLoc:list.filter(b=>!hasLL(b)).length,finds,gap:T.visits.length>0&&!list.length}; }
+const BAKF={gaps:x=>x.gap,closed:x=>x.topShut||x.noneOpen,nohours:x=>x.noHours>0,noloc:x=>x.noLoc>0,finds:x=>x.finds.length>0};
+function planBakeries(){
+  const L=locked(), info=bakTownPlan().map(townInfo), route=info.filter(x=>x.T.visits.length);
+  if(S.bakF!=='all'&&!BAKF[S.bakF])S.bakF='all';
+  const F=S.bakF, n={gaps:info.filter(BAKF.gaps).length,closed:info.filter(BAKF.closed).length,nohours:info.reduce((a,x)=>a+x.noHours,0),noloc:info.reduce((a,x)=>a+x.noLoc,0),finds:info.reduce((a,x)=>a+x.finds.length,0)};
+  const pill=(k,label,cnt,warn)=>k!=='all'&&!cnt&&F!==k?'':`<button type="button" data-bakf="${k}" aria-pressed="${F===k}"${warn?' class="w"':''}>${label}${cnt!=null?` <small>${cnt}</small>`:''}</button>`;
+  let h=`<h2>Bakeries</h2><div class="card baksum"><p class="bsline"><b>${route.length-n.gaps} of ${route.length}</b> towns on the route have a bakery${n.closed?` · <b class="bw">${n.closed}</b> with the top pick (or all) closed when we arrive`:''}${n.nohours?` · <b class="bw">${n.nohours}</b> bakeries missing hours`:''}.${S.tour.startDate?'':' Add the tour’s start date to check opening times.'}</p>
+    <div class="wfil" role="group" aria-label="Show">${pill('all','All towns',null)}${pill('gaps','No bakery',n.gaps,1)}${pill('closed','Closed when we arrive',n.closed,1)}${pill('nohours','Missing hours',n.nohours,1)}${pill('noloc','No location',n.noloc)}${pill('finds','Riders’ finds',n.finds)}</div></div>`;
+  const shown=info.filter(x=>F==='all'||BAKF[F](x));
+  if(!shown.length)h+=`<div class="card"><p class="muted" style="margin:0">${F==='all'?'Add stops in Route first, or add a bakery and type its town.':'Nothing here. All sorted.'}</p></div>`;
+  daysSorted().forEach(d=>{ const xs=shown.filter(x=>x.T.day&&x.T.day.id===d.id); if(!xs.length)return;
+    h+=`<h3 class="bkday" style="color:var(--${esc(d.colour||'blue')})">${esc(d.label)}: ${esc(d.title||'Untitled')}</h3><div class="card bktowns" style="--c:var(--${esc(d.colour||'blue')})">${xs.map(x=>townBlock(x,L)).join('')}</div>`; });
+  const off=shown.filter(x=>!x.T.day);
+  if(off.length)h+=`<h3 class="bkday">Off the route</h3><div class="card bktowns" style="--c:var(--muted)">${off.map(x=>townBlock(x,L)).join('')}</div>`;
+  h+=`<div class="card">${selBar('bak',S.bakeries.map(b=>b.id),`<button type="button" class="btn primary small" data-act="addbak"${L?' disabled':''}>+ Add bakery</button>`,L)}
+    ${selOn('bak')?`<p class="muted" style="font-size:13px;margin:6px 0 0">Open towns to tick bakeries${S.sel.size?`; ${S.sel.size} selected`:''}.</p>`:''}
+    <p class="muted" style="font-size:13px;margin:8px 0 0">With opening times set, the roadbook tells riders whether each bakery is open when the group gets there. Hours searches use OpenStreetMap (© OpenStreetMap contributors).</p></div>`;
+  return h;
+}
+function townBlock(x,L){
+  const {T,list,w}=x, open=S.bakOpen.has(T.town)||S.bakF!=='all', v=w&&w.visit, avg=RIDE()&&typeof crewAvg==='function'?crewAvg():{};
+  const when=v?`${esc(v.day.label)}${v.t?`, ${v.est?'about ':''}${esc(t12(v.t))}`:''}`:'Not on the route';
+  const warns=[]; if(x.gap)warns.push('No bakery yet');
+  if(x.topShut)warns.push(`Top pick closed when we get there${x.open?'':', and so are the rest'}`); else if(x.noneOpen)warns.push('None open when we get there');
+  if(x.noHours)warns.push(`${x.noHours} without opening times`);
+  const sub=[when,list.length?`${list.length} bakery${list.length===1?'':' options'}`:'',list[0]?'top: '+esc(list[0].name):'',x.known?`${x.open} open then`:'',x.finds.length?`${x.finds.length} riders’ find${x.finds.length===1?'':'s'}`:''].filter(Boolean).join(' · ');
+  let h=`<div class="bktown${open?' open':''}"><button type="button" class="bkhead" data-baktgl="${esc(T.town)}" aria-expanded="${open}"><span class="chev" aria-hidden="true">▸</span><span class="rmain"><b>${esc(T.town)}</b><small>${sub}</small>${warns.map(t=>`<span class="rwarn">${esc(t)}</span>`).join('')}</span></button>`;
+  if(!open)return h+'</div>';
+  h+=`<div class="rlist flush" data-rlist="bak">${x.st.map(({b,s},i)=>{ const a=avg[b.id], dist=offRoute(b);
+    const meta=[esc(b.hours||fmtHours(b.hoursSpec)||'No hours yet'),a?`crew ${a.a.toFixed(1)}/10 (${a.c})`:'',b.rating?`${Number(b.rating).toFixed(1)}★`:'',dist||(b.tag?esc(b.tag):''),b.updatedBy?`edited by ${esc(b.updatedBy)} ${ago(b.updatedAt)}`:''].filter(Boolean).join(' · ');
+    return rrowHtml({kind:'bak',rid:b.id,grip:!selOn('bak')&&!L,num:i+1,big:i===0,title:esc(b.name)+(b.must?' <span class="pill">Must</span>':''),
+      sub:meta+(s&&s.txt?`</small><small class="bst ${s.cls}">${s.cls==='open'?'✓ ':s.cls==='soon'?'⚠ ':s.cls==='shut'?'✗ ':''}${esc(s.txt)}`:''),
+      warns:hasHours(b)?[]:['No opening times set'],
+      open:L?'':`data-editbak="${esc(b.id)}"`,act:selOn('bak')?pact('bak',b.id,''):null,menu:`bak|${b.id}`}); }).join('')||'<p class="muted" style="margin:6px 0">No bakeries here yet.</p>'}</div>`;
+  if(x.noLoc)h+=`<p class="bknote">${x.noLoc===list.length?(list.length===1?'It has no':'None of these have a'):`${x.noLoc} ${x.noLoc===1?'has':'have'} no`} map location yet, so no pin or distance from the stop. <button type="button" class="linkb" data-baklocall="${esc(T.town)}"${L?' disabled':''}>Find ${x.noLoc===1?'it':'them'} on the map</button></p>`;
+  if(x.finds.length)h+=`<p class="bksub">Found by riders</p><div class="rlist flush">${x.finds.map(f=>rrowHtml({kind:'find',rid:f.docId,title:esc(f.name),
+      sub:[f.must?'Must try: '+esc(f.must):'',f.by?'added by '+esc(f.by):''].filter(Boolean).join(' · '),
+      act:`<div class="pact"><button type="button" class="btn small" data-extraadd="${esc(f.docId)}"${L?' disabled':''}>Add to the plan</button></div>`})).join('')}</div>`;
+  const next=x.topShut&&x.st.find(y=>y.s&&(y.s.cls==='open'||y.s.cls==='soon'));
+  h+=`<div class="planbar"><button type="button" class="btn small primary" data-addbakin="${esc(T.town)}"${L?' disabled':''}>+ Add bakery</button><button type="button" class="btn small" data-bakfind="${esc(T.town)}"${L?' disabled':''}>Find bakeries in ${esc(T.town)}</button>${next?`<button type="button" class="btn small" data-baknext="${esc(T.town)}"${L?' disabled':''}>Make ${esc(next.b.name)} the top pick</button>`:''}</div>`;
+  if(bakStops(T.town).length||list.some(hasLL))h+=`<details class="bakmap" data-bakmap="${esc(T.town)}"${S.bakMapOpen.has(T.town)?' open':''}><summary>Map of ${esc(T.town)}</summary><div class="map"></div></details>`;
+  return h+'</div>';
+}
+async function drawBakMap(det){
+  const el=$('.map',det); if(!el||el._drawn)return; el._drawn=true;
+  try{ await loadLeaflet(); }catch(e){ el._drawn=false; return; }
+  if(!document.body.contains(el))return;
+  const town=det.dataset.bakmap, st=bakStops(town), bs=bakeriesIn(town), pts=[];
+  const m=L.map(el,{scrollWheelZoom:false,tap:true}); MAPS['bk'+Math.random()]=m;
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(m);
+  st.forEach(s=>{ pts.push([+s.lat,+s.lon]); L.circleMarker([+s.lat,+s.lon],{radius:9,color:'#fff',weight:3,fillColor:getComputedStyle(det).getPropertyValue('--c').trim()||'#2387E0',fillOpacity:1}).bindPopup(`<b>Stop: ${esc(s.town)}</b>${timeText(s)?'<br>'+esc(timeText(s)):''}`).addTo(m); });
+  bs.forEach((b,i)=>{ if(!hasLL(b))return; pts.push([+b.lat,+b.lon]);
+    L.marker([+b.lat,+b.lon],{icon:L.divIcon({className:'mk',html:`<span style="--c:#B4441B" class="${i===0?'big':''}">${i+1}</span>`,iconSize:[28,28],iconAnchor:[14,14]})}).bindPopup(`<b>${esc(b.name)}</b>${offRoute(b)?'<br>'+esc(offRoute(b)):''}`).addTo(m); });
+  if(pts.length>1)m.fitBounds(pts,{padding:[28,28],maxZoom:17}); else if(pts.length)m.setView(pts[0],15);
+}
+{ const _dm=drawMaps; drawMaps=function(){ _dm(); $$('details.bakmap[open]').forEach(drawBakMap); }; }
+document.addEventListener('toggle',e=>{ const d=e.target; if(!d.matches||!d.matches('details.bakmap'))return;
+  if(d.open){ S.bakMapOpen.add(d.dataset.bakmap); drawBakMap(d); } else S.bakMapOpen.delete(d.dataset.bakmap); },true);
+
+/* find bakeries in a town (OpenStreetMap): tick the ones to add, all in one go */
+const FB_={town:'',hits:[]};
+function osmConv(h){ const a=h.address||{}; return {name:h.name||String(h.display_name||'').split(',')[0],addr:[((a.house_number?a.house_number+' ':'')+(a.road||'')).trim(),a.suburb||a.town||a.village||a.city].filter(Boolean).join(', '),
+  hours:(h.extratags||{}).opening_hours||'',osm:h.osm_type+'/'+h.osm_id,lat:+h.lat,lon:+h.lon,kind:h.type}; }
+async function findBakeries(town){
+  FB_.town=town; FB_.hits=[];
+  dlg(`<h3>Bakeries in ${esc(town)}</h3><p class="muted" id="fbmsg">Searching OpenStreetMap…</p><div id="fblist" class="fblist"></div>
+    <div class="dbtns"><button type="button" class="btn primary" data-fbadd disabled>Add selected</button><button type="button" class="btn" data-close>Cancel</button></div>`);
+  const st=bakStops(town)[0], NOM='https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=au&extratags=1&addressdetails=1&limit=40&q=';
+  let hits=[];
+  try{ if(st){ const d=.05; hits=await osmFetch(NOM+'bakery'+`&viewbox=${+st.lon-d},${+st.lat+d},${+st.lon+d},${+st.lat-d}&bounded=1`); }
+    if(!hits.length){ if(st)await new Promise(r=>setTimeout(r,1100)); hits=await osmFetch(NOM+encodeURIComponent('bakery in '+town)); } }
+  catch(e){ if($('#fbmsg'))$('#fbmsg').textContent='Couldn’t reach OpenStreetMap. Check your signal and try again.'; return; }
+  if(!$('#fblist'))return;
+  const have=bakeriesIn(town), seen=new Set();
+  FB_.hits=hits.map(osmConv).filter(r=>r.name&&!seen.has(r.osm)&&seen.add(r.osm)).map(r=>({...r,dist:st?kmBetween({lat:+st.lat,lon:+st.lon},r)*1000:null,
+    listed:have.some(b=>nameMatch(r.name,b.name)>=.6||nameMatch(b.name,r.name)>=.6),p:r.hours?parseOsmHours(r.hours):null}))
+    .sort((a,b)=>(a.listed-b.listed)||((a.dist??1e9)-(b.dist??1e9)));
+  if(!FB_.hits.length){ $('#fbmsg').textContent=`OpenStreetMap has no bakeries listed in ${town}. Add them by hand instead.`; return; }
+  const fresh=FB_.hits.filter(r=>!r.listed).length;
+  $('#fbmsg').textContent=fresh?`${fresh} not on your list yet. Tap the ones to add.`:'Everything OpenStreetMap lists here is already on your list.';
+  $('#fblist').innerHTML=FB_.hits.map((r,i)=>`<label class="fbrow${r.listed?' listed':''}"><input type="checkbox" value="${i}"${r.listed?' disabled':''}><span class="fbtick" aria-hidden="true"></span><span class="fbt"><b>${esc(r.name)}</b>
+    <small>${[r.addr?esc(r.addr):'',r.dist!=null?fromStop(r.dist):''].filter(Boolean).join(' · ')}</small>
+    <small>${r.listed?'Already on your list':r.p&&r.p.spec?'Hours: '+esc(fmtHours(r.p.spec)):r.hours?'Hours listed but too complex to read':'No hours listed'}</small></span></label>`).join('')+'<p class="osmcredit">© OpenStreetMap contributors</p>';
+}
+document.addEventListener('change',e=>{ if(e.target.closest('#fblist')){ const n=$$('#fblist input:checked').length, b=$('#dlg [data-fbadd]'); if(b){ b.disabled=!n; b.textContent=n?`Add ${n} ${n===1?'bakery':'bakeries'}`:'Add selected'; } } });
+async function fbAdd(){
+  const town=FB_.town, picks=$$('#fblist input:checked').map(x=>FB_.hits[+x.value]).filter(Boolean); if(!picks.length)return;
+  const inTown=bakeriesIn(town); let rank=inTown.length?Math.max(...inTown.map(b=>b.rank||0)):0;
+  const when=new Date().toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}), ops=[];
+  picks.forEach(r=>{ const id=(slug(town)+'--'+slug(r.name)).slice(0,80); if(S.bakeries.some(b=>b.id===id))return; const spec=r.p&&r.p.spec?r.p.spec:null;
+    ops.push({op:'set',path:tp('bakeries',id),data:{town,name:r.name,must:'',why:'',tag:'',rank:++rank,hoursSpec:spec,hours:spec?fmtHours(spec):'',osm:r.osm,lat:r.lat,lon:r.lon,...(spec?{hoursSource:`OpenStreetMap, ${when}`}:{}),...stamp()}}); });
+  if(!ops.length){ closeDlg(); return; }
+  try{ await FB.batch(ops); closeDlg(); S.bakOpen.add(town); toast(`Added ${ops.length} to ${town}`); render(); }catch(x){ toast('Couldn’t add those. Check your signal.'); }
+}
+async function bakLocate(id){
+  const b=S.bakeries.find(x=>x.id===id); if(!b)return; closeDlg(); toast(`Looking for ${b.name} on OpenStreetMap…`);
+  try{ const r=(await osmSearch(b.name,b.town)).find(x=>x.score>=.6&&isFinite(x.lat)); if(!r){ toast(`Couldn’t find ${b.name} on OpenStreetMap.`); return; }
+    await FB.set(tp('bakeries',id),{lat:r.lat,lon:r.lon,osm:r.osm,...stamp()},true); toast(`Found ${b.name}${offRoute({...b,lat:r.lat,lon:r.lon})?', '+offRoute({...b,lat:r.lat,lon:r.lon}):''}`); }
+  catch(e){ toast('Couldn’t reach OpenStreetMap. Check your signal.'); }
+}
+async function bakLocateAll(town){ // one at a time: Nominatim allows about one request a second
+  const todo=bakeriesIn(town).filter(b=>!hasLL(b)); let found=0;
+  for(let i=0;i<todo.length;i++){ const b=todo[i]; toast(`Finding ${i+1} of ${todo.length}: ${b.name}…`);
+    try{ const r=(await osmSearch(b.name,b.town)).find(x=>x.score>=.6&&isFinite(x.lat));
+      if(r){ await FB.set(tp('bakeries',b.id),{lat:r.lat,lon:r.lon,osm:r.osm,...stamp()},true); found++; } }
+    catch(e){ toast('Couldn’t reach OpenStreetMap. Check your signal.'); return; }
+    if(i<todo.length-1)await new Promise(r=>setTimeout(r,1100)); }
+  toast(found===todo.length?`Found all ${found} on the map`:`Found ${found} of ${todo.length}. OpenStreetMap doesn’t list the others.`);
+}
+document.addEventListener('click',async e=>{ const t=e.target;
+  const la=t.closest('[data-baklocall]'); if(la){ la.disabled=true; bakLocateAll(la.dataset.baklocall); return; }
+  const tg=t.closest('[data-baktgl]'); if(tg){ const k=tg.dataset.baktgl; if(S.bakF!=='all'){ S.bakF='all'; S.bakOpen.add(k); } else S.bakOpen.has(k)?S.bakOpen.delete(k):S.bakOpen.add(k); render(); return; }
+  const bf=t.closest('[data-bakf]'); if(bf){ S.bakF=S.bakF===bf.dataset.bakf?'all':bf.dataset.bakf; render(); return; }
+  const ai=t.closest('[data-addbakin]'); if(ai){ S.bakTown=ai.dataset.addbakin; bakeryDialog(); return; }
+  const fd=t.closest('[data-bakfind]'); if(fd){ findBakeries(fd.dataset.bakfind); return; }
+  if(t.closest('[data-fbadd]')){ fbAdd(); return; }
+  const lc=t.closest('[data-baklocate]'); if(lc){ bakLocate(lc.dataset.baklocate); return; }
+  const nx=t.closest('[data-baknext]'); if(nx){ const T=bakTownPlan().find(x=>x.town===nx.dataset.baknext); if(!T)return; const x=townInfo(T), y=x.st.find(z=>z.s&&(z.s.cls==='open'||z.s.cls==='soon')); if(!y)return;
+    const ids=x.list.map(b=>b.id).filter(id=>id!==y.b.id); ids.unshift(y.b.id); try{ await REORDER.bak(ids,y.b.id); toast(`${y.b.name} is now the top pick`); }catch(z){ toast('Couldn’t change that.'); } return; }
+  const xa=t.closest('[data-extraadd]'); if(xa){ const f=R.extras.find(z=>z.docId===xa.dataset.extraadd); if(!f)return;
+    const id=(slug(f.town)+'--'+slug(f.name)).slice(0,80), inTown=bakeriesIn(f.town);
+    try{ await FB.set(tp('bakeries',id),{town:f.town,name:f.name,must:f.must||'',why:f.why||'',tag:'',hoursSpec:null,hours:'',rank:(inTown.length?Math.max(...inTown.map(b=>b.rank||0)):0)+1,foundBy:f.by||'',...stamp()},true);
+      toast(`${f.name} added to the plan. Add its hours next.`); }catch(z){ toast('Couldn’t add that.'); } return; }
+});
+
+/* opening times: presets, paste in words, and a read-back line (bakery form) */
+function hoursTools(){
+  return `<div class="hpre" role="group" aria-label="Quick set the days">${[['all','Every day'],['wk','Weekdays'],['we','Weekends'],['nosun','Closed Sunday']].map(([k,l])=>`<button type="button" data-hpreset="${k}">${l}</button>`).join('')}</div>`; }
+function hoursTools2(){
+  return `<p class="hread" id="hread" aria-live="polite"></p>
+    <div class="hpaste"><input name="hpaste" placeholder="Or paste, e.g. Mon–Fri 6–3, Sat 7–1, Sun closed" autocomplete="off"><button type="button" class="btn small" data-hpasteread>Read</button></div>`; }
+const PDAY={mon:'mo',monday:'mo',tue:'tu',tues:'tu',tuesday:'tu',wed:'we',weds:'we',wednesday:'we',thu:'th',thur:'th',thurs:'th',thursday:'th',fri:'fr',friday:'fr',sat:'sa',saturday:'sa',sun:'su',sunday:'su'};
+function friendlyHours(txt){ // "Mon–Fri 6–3, Sat 7am-1pm, Sun closed" -> {spec} or {err}
+  let s=' '+String(txt||'').toLowerCase().replace(/[–—]/g,'-').replace(/\bto\b|\btill\b|\buntil\b/g,'-').replace(/(\d)\.(\d\d)/g,'$1:$2').replace(/\bnoon\b|\bmidday\b/g,'12pm')+' ';
+  s=s.replace(/\b(daily|every ?day|7 days( a week)?|all week|mon(day)?\s*-\s*sun(day)?)\b/g,'mo-su').replace(/\bweekdays?\b/g,'mo-fr').replace(/\bweekends?\b/g,'sa-su');
+  s=s.replace(/\b(monday|mon|tuesday|tues|tue|wednesday|weds|wed|thursday|thurs|thur|thu|friday|fri|saturday|sat|sunday|sun)\b/g,m=>PDAY[m]);
+  s=s.replace(/\s*-\s*/g,'-').replace(/\s*(am|pm)\b/g,'$1').trim();
+  const parts=s.split(/;|\n|,(?=\s*(?:mo|tu|we|th|fr|sa|su)\b)/).map(x=>x.trim()).filter(Boolean), rules=[]; let carry=[];
+  const H=(h,mm,ap,openH)=>{ h=+h; mm=mm||'00'; if(ap==='pm'&&h<12)h+=12; else if(ap==='am'&&h===12)h=0; else if(!ap&&openH!=null&&(h*60+ +mm)<=openH*60)h+=12; return {h,mm,v:h*60+ +mm}; };
+  for(const p of parts){
+    const m=p.match(/^((?:(?:mo|tu|we|th|fr|sa|su)(?:-(?:mo|tu|we|th|fr|sa|su))?[\s,&]*(?:and\s*)?)*)(.*)$/); if(!m)return {err:p};
+    const days=(m[1].match(/(?:mo|tu|we|th|fr|sa|su)(?:-(?:mo|tu|we|th|fr|sa|su))?/g)||[]).map(d=>d.split('-').map(x=>x[0].toUpperCase()+x[1]).join('-'));
+    const rest=m[2].replace(/^[:\s]+/,'').trim();
+    if(!rest){ carry.push(...days); continue; }
+    const dd=[...carry,...days]; carry=[];
+    if(/^(closed|off|shut)/.test(rest)){ if(dd.length)rules.push(dd.join(',')+' off'); continue; }
+    const spans=[]; for(const t of rest.split(/\s*(?:,|&|\band\b)\s*/).filter(Boolean)){
+      const tm=t.replace(/\s+/g,'').match(/^(\d{1,2})(?::(\d\d))?(am|pm)?-(\d{1,2})(?::(\d\d))?(am|pm)?$/); if(!tm)return {err:p};
+      // no am/pm: it opens in the morning (12 = noon) and closes after it opens ("6–3" = 6 am to 3 pm)
+      const o=H(tm[1],tm[2],tm[3]||(+tm[1]===12?'pm':'am')), c=H(tm[4],tm[5],tm[6],tm[6]?null:o.h);
+      if(c.v<=o.v||c.h>24)return {err:p}; spans.push(`${pad(o.h)}:${o.mm}-${pad(c.h===24?23:c.h)}:${c.h===24?'59':c.mm}`); }
+    rules.push(`${dd.length?dd.join(',')+' ':''}${spans.join(',')}`); }
+  if(!rules.length)return {err:'nothing'};
+  return parseOsmHours(rules.join('; '));
+}
+function hoursReadback(){ const el=$('#hread'); if(!el)return; const r=readHours();
+  el.className='hread'+(r.err?' bad':''); el.textContent=r.err?r.err:r.spec.length?'Reads as: '+fmtHours(r.spec):''; }
+document.addEventListener('click',e=>{ const t=e.target;
+  const pr=t.closest('[data-hpreset]'); if(pr){ const k=pr.dataset.hpreset, rows=$$('#hrows .hrow'); if(!rows.length)$('#hrows').insertAdjacentHTML('beforeend',hoursRow());
+    if(k==='nosun')$$('#hrows .hrow input[type=checkbox][value="0"]').forEach(x=>x.checked=false);
+    else { const set={all:[0,1,2,3,4,5,6],wk:[1,2,3,4,5],we:[0,6]}[k], last=$$('#hrows .hrow').pop(); $$('input[type=checkbox]',last).forEach(x=>x.checked=set.includes(+x.value)); }
+    hoursReadback(); return; }
+  if(t.closest('[data-hpasteread]')){ const v=val('hpaste'); if(!v)return; const r=friendlyHours(v);
+    if(!r.spec){ const el=$('#hread'); if(el){ el.className='hread bad'; el.textContent=`Couldn’t read “${v}”. Try something like: Mon–Fri 6–3, Sat 7–1, Sun closed.`; } return; }
+    $('#hrows').innerHTML=r.spec.map(hoursRow).join(''); const hw=$('#dlg [name="hours"]'); if(hw)hw.value=''; $('#dlg [name="hpaste"]').value=''; hoursReadback(); return; }
+  if(t.closest('#hrows, [data-act="hadd"], [data-osmuse]'))setTimeout(hoursReadback,0);
+});
+document.addEventListener('input',e=>{ if(e.target.closest('#hrows'))hoursReadback(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.matches('#dlg [name="hpaste"]')){ e.preventDefault(); $('#dlg [data-hpasteread]').click(); } });
