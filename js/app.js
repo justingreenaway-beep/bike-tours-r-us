@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='4.16';
+const APP_VERSION='4.17';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -516,7 +516,7 @@ function planNights(){
     h+=`<div class="card nsum"><b>${has} of ${need.length}</b> night${need.length===1?'':'s'} away ${need.length===1?'has':'have'} a bed${has<need.length?` · <b class="w">${need.length-has} still to book</b>`:''}${short?` · <b class="w">${short} rider${short===1?'':'s'}</b> without a room`:''}${bar(d=>nightsOf(d.id).length)}</div>`;
     if(typeof nightsPrefs==='function')h+=nightsPrefs('rooms');
     h+=days.map(d=>{ const ns=nightsOf(d.id), who=ridersOn(d);
-      return `<div class="card" style="--c:var(--${esc(d.colour||'blue')})">${head(d,`${who.length} rider${who.length===1?'':'s'}`,`<button type="button" class="btn small" data-addnight="${esc(d.id)}"${L?' disabled':''}>+ Bed</button>`)}
+      return `<div class="card" style="--c:var(--${esc(d.colour||'blue')})">${head(d,`${who.length} rider${who.length===1?'':'s'}`,`<button type="button" class="btn small" data-stayfind="${esc(d.id)}"${L?' disabled':''}>Find</button><button type="button" class="btn small" data-addnight="${esc(d.id)}"${L?' disabled':''}>+ Bed</button>`)}
         <div class="rlist flush" data-rlist="night">${ns.map(n=>{ const inRoom=new Set((n.rooms||[]).flatMap(r=>r.who||[])), out=who.filter(x=>!inRoom.has(x)), nr=(n.rooms||[]).length;
           return rrowHtml({kind:'night',rid:n.id,grip:ns.length>1&&!L,title:esc(n.place||'Unnamed'),
             sub:`${nr} room${nr===1?'':'s'}${n.checkIn?` · check in from ${esc(t12(n.checkIn))}`:''}${n.updatedBy?` · edited by ${esc(n.updatedBy)} ${ago(n.updatedAt)}`:''}${nr&&!out.length?'</small><small class="bst open">✓ Everyone has a room':''}`,
@@ -532,7 +532,7 @@ function planNights(){
       <div class="rlist flush">${D?rrowHtml({kind:'dinner',rid:d.id,title:esc(D.place||'Venue to be confirmed'),
           sub:[D.time?esc(t12(D.time)):'',D.under?`booked under ${esc(D.under)}`:'',di.txt?esc(di.txt):'',D.updatedBy?`edited by ${esc(D.updatedBy)} ${ago(D.updatedAt)}`:''].filter(Boolean).join(' · ')+(D.booked?`</small><small class="bst open">✓ Booked${D.deposit?', deposit paid':''}${courtNightIds().has(d.id)?' · Koala Court sits here':''}`:''),
           warns:D.booked?[]:['Not booked yet'],open:L||D.legacy?'':`data-editdinner="${esc(d.id)}"`,menu:`dinner|${d.id}`,dis:!!D.legacy})
-        :`<div class="nempty2"><span class="muted">${needsNight(d)?'No dinner planned.':'No dinner (not a night away).'}</span><button type="button" class="btn small primary" data-adddinner="${esc(d.id)}"${L?' disabled':''}>+ Add dinner</button></div>`}</div></div>`; }).join('');
+        :`<div class="nempty2"><span class="muted">${needsNight(d)?'No dinner planned.':'No dinner (not a night away).'}</span><button type="button" class="btn small" data-eatfind="${esc(d.id)}"${L?' disabled':''}>Find places to eat</button><button type="button" class="btn small primary" data-adddinner="${esc(d.id)}"${L?' disabled':''}>+ Add dinner</button></div>`}</div></div>`; }).join('');
   return h;
 }
 const courtNightIds=()=>new Set(typeof courtNights==='function'&&RIDE()?courtNights().map(n=>n.dayId):[]);
@@ -541,23 +541,24 @@ function roomRow(r={}){
   return `<div class="drow room"><div class="frow3"><label class="fl">Room<select data-r="type">${ROOM_TYPES.map(t=>`<option${r.type===t?' selected':''}>${t}</option>`).join('')}</select></label><span></span><button type="button" class="ib" data-rowdel aria-label="Remove room">✕</button></div>
     <div class="chips">${names.map(n=>`<label><input type="checkbox" value="${esc(n)}"${who.has(n)?' checked':''}>${esc(n)}</label>`).join('')||'<span class="muted">Add riders to the crew list first.</span>'}</div></div>`;
 }
-function nightDialog(n,dayId){
-  const isNew=!n; n=n||{dayId,rooms:[]};
-  dlg(`<h3>${isNew?'Add a bed':'Edit bed'}</h3>
+function nightDialog(n,dayId,pre){
+  const isNew=!n; n=n||{dayId,rooms:[],...(pre||{})};
+  dlg(`<h3>${isNew?'Add a bed':'Edit bed'}</h3>${osmNote(n,'stayfind',n.dayId,'stay')}
    <label class="fl">Night of<select name="dayId">${daysSorted().map(d=>`<option value="${esc(d.id)}"${d.id===n.dayId?' selected':''}>${esc(d.label)}: ${esc(d.title||'')}</option>`).join('')}</select></label>
    ${field('Where we’re staying','place',n.place,{ph:'e.g. Millthorpe Motel'})}${field('Address','address',n.address,{ph:'26 Victoria St, Millthorpe NSW'})}
    <div class="frow">${field('Phone','phone',n.phone,{type:'tel'})}${field('Check in from','checkIn',n.checkIn,{type:'time'})}</div>
    <div class="fl">Rooms<div id="rrows">${(n.rooms||[]).map(roomRow).join('')}</div><button type="button" class="btn small" data-act="radd">+ Add room</button></div>
    ${field('Note for riders','note',n.note,{area:true,max:300,ph:'e.g. Park bikes round the back'})}
    <details class="sfmore"${n.booking?' open':''}><summary>More: booking details for editors</summary>${field('Booking details (ref, paid, who booked)','booking',n.booking,{area:true,max:300})}</details>
-   <p class="muted" style="font-size:13px;margin:0 0 8px">Dinner is planned on the Dinner tab.</p>
+   ${llInputs(n)}<p class="muted" style="font-size:13px;margin:0 0 8px">Dinner is planned on the Dinner tab.</p>
    <div class="dbtns"><button type="button" class="btn primary" data-save="night" data-id="${isNew?'':esc(n.id)}">Save</button><button type="button" class="btn" data-close>Cancel</button>${isNew?'':`<button type="button" class="btn danger" data-del="night|${esc(n.id)}">Delete</button>`}</div>`);
 }
-function dinnerDialog(dayId,copyFrom){
-  const ex=S.dinners.find(x=>x.dayId===dayId), D=ex||(copyFrom?{place:copyFrom.place,address:copyFrom.address,phone:copyFrom.phone}:{}), isNew=!ex;
+function dinnerDialog(dayId,copyFrom,replace){
+  const ex=S.dinners.find(x=>x.dayId===dayId), cf=copyFrom?{place:copyFrom.place,address:copyFrom.address,phone:copyFrom.phone,lat:copyFrom.lat,lon:copyFrom.lon,osm:copyFrom.osm,fromOsm:copyFrom.fromOsm}:null;
+  const D=ex?(replace&&cf?{...ex,...cf,booked:false,deposit:false,under:''}:ex):(cf||{}), isNew=!ex; // a new venue starts unbooked
   const free=daysSorted().filter(d=>d.id===dayId||!S.dinners.some(x=>x.dayId===d.id));
   const st=D.deposit?'deposit':D.booked?'booked':'no';
-  dlg(`<h3>${isNew?'Add dinner':'Edit dinner'}</h3>
+  dlg(`<h3>${isNew?'Add dinner':'Edit dinner'}</h3>${osmNote(D,'eatfind',dayId,'eat')}
    <label class="fl">Night of<select name="dayId" data-dinday>${free.map(d=>`<option value="${esc(d.id)}"${d.id===dayId?' selected':''}>${esc(d.label)}: ${esc(d.title||'')}${dateFor(d)?' ('+esc(shortDate(dateFor(d)))+')':''}</option>`).join('')}</select></label>
    ${field('Where','place',D.place,{ph:'e.g. The Commercial Hotel'})}
    <div class="frow">${field('Time','time',D.time,{type:'time'})}${field('Booked under','under',D.under,{ph:'e.g. Gary'})}</div>
@@ -566,7 +567,7 @@ function dinnerDialog(dayId,copyFrom){
    <div class="dinfo" id="dinfo">${dinnerInfo(dayId)}</div>
    ${field('Note for riders','note',D.note,{area:true,max:300,ph:'e.g. Walk from the motel, 5 min'})}
    <details class="sfmore"${D.phone||D.booking?' open':''}><summary>More: phone, booking notes for editors</summary>${field('Phone','phone',D.phone,{type:'tel'})}${field('Booking notes (editors only)','booking',D.booking,{area:true,max:300})}</details>
-   <div class="dbtns"><button type="button" class="btn primary" data-save="dinner" data-was="${isNew?'':esc(dayId)}">Save</button><button type="button" class="btn" data-close>Cancel</button>${isNew?'':`<button type="button" class="btn danger" data-del="dinner|${esc(dayId)}">Delete</button>`}</div>`);
+   ${llInputs(D)}<div class="dbtns"><button type="button" class="btn primary" data-save="dinner" data-was="${isNew?'':esc(dayId)}">Save</button><button type="button" class="btn" data-close>Cancel</button>${isNew?'':`<button type="button" class="btn danger" data-del="dinner|${esc(dayId)}">Delete</button>`}</div>`);
 }
 function dinnerInfo(dayId){ const d=S.days.find(x=>x.id===dayId), who=ridersOn(d), di=dietsFor(who);
   return `<b>For the booking</b>${who.length} rider${who.length===1?'':'s'} that night${d&&d.kind==='solo'?' (solo day)':' (everyone)'}
@@ -855,7 +856,7 @@ async function doSave(btn){
     if(dup){dlgError(`${dup} is in two rooms.`);return}
     if(!val('place')){dlgError('Add where you’re staying.');return}
     const id=btn.dataset.id||FB.newId(tp('nights'));
-    const data={dayId:val('dayId'),place:val('place'),address:val('address'),phone:val('phone'),checkIn:val('checkIn')||null,booking:val('booking'),note:val('note'),rooms,...stamp()};
+    const data={dayId:val('dayId'),place:val('place'),address:val('address'),phone:val('phone'),checkIn:val('checkIn')||null,booking:val('booking'),note:val('note'),rooms,...llVals(),...stamp()};
     const old=btn.dataset.id&&S.nights.find(x=>x.id===id); if(old&&old.order!=null)data.order=old.order;
     return save(()=>FB.set(tp('nights',id),data),btn.dataset.id?'Bed saved':'Bed added');
   }
@@ -863,7 +864,7 @@ async function doSave(btn){
     const dayId=val('dayId'), was=btn.dataset.was; if(!val('place')){dlgError('Add where dinner is.');return}
     if(dayId!==was&&S.dinners.some(x=>x.dayId===dayId)){dlgError('That night already has a dinner.');return}
     const st=($('#dlg input[name="dst"]:checked')||{}).value||'no', old=was&&S.dinners.find(x=>x.dayId===was)||{};
-    const data={...old,dayId,place:val('place'),time:val('time')||null,under:val('under'),address:val('address'),phone:val('phone'),booking:val('booking'),note:val('note'),booked:st!=='no',deposit:st==='deposit',...stamp()}; delete data.id;
+    const data={...old,dayId,place:val('place'),time:val('time')||null,under:val('under'),address:val('address'),phone:val('phone'),booking:val('booking'),note:val('note'),booked:st!=='no',deposit:st==='deposit',...llVals(),...stamp()}; delete data.id;
     return save(async()=>{ if(was&&was!==dayId)await FB.batch([{op:'set',path:tp('dinners',dayId),data},{op:'del',path:tp('dinners',was)}]); else await FB.set(tp('dinners',dayId),data); },was?'Dinner saved':'Dinner added');
   }
   if(k==='role'||k==='brief'){
@@ -1116,3 +1117,11 @@ document.addEventListener('change',async e=>{ const c=e.target.closest('[data-fe
   const f={...(S.tour.features||{})}; if(c.checked)delete f[c.dataset.feat]; else f[c.dataset.feat]=false;
   try{ await FB.update(`tours/${S.tourId}`,{features:f,...stamp()}); const n=FEATURES.find(x=>x[0]===c.dataset.feat); toast(`${n?n[1]:'Feature'} ${c.checked?'on':'off'}`); }
   catch(x){ c.checked=!c.checked; toast(x&&x.code==='permission-denied'?'Only editors can change features.':'Couldn’t change that.'); } });
+
+/* bed and dinner forms: the location picked in the finder (v4.17) */
+function llInputs(x){ return `<input type="hidden" name="lat" value="${hasLL(x)?esc(x.lat):''}"><input type="hidden" name="lon" value="${hasLL(x)?esc(x.lon):''}"><input type="hidden" name="osm" value="${esc(x.osm||'')}">`; }
+function llVals(){ const la=val('lat'), lo=val('lon'); return la&&lo&&isFinite(la)&&isFinite(lo)?{lat:+la,lon:+lo,osm:val('osm')||null}:{}; }
+function osmNote(x,act,dayId,kind){
+  if(x.fromOsm)return `<p class="notice osmnote">Filled in from OpenStreetMap. Check the details (and ring them) before booking. <button type="button" class="linkb" data-${act}="${esc(dayId)}">Pick another</button></p>`;
+  const st=nightTown(S.days.find(d=>d.id===dayId)); if(!st||locked())return '';
+  return `<p class="osmfind"><button type="button" class="linkb" data-${act}="${esc(dayId)}">🔍 Find places ${kind==='stay'?'to stay':'to eat'} in ${esc(st.town)}</button></p>`; }

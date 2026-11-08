@@ -148,7 +148,7 @@ function rowMenu(spec){
   if(kind==='roles'){ const arr=T.roles||[], i=+key, r=arr[i]; if(!r)return; title=r.role||'Role';
     items=B(`data-editrole="${i}"`,'✎ Edit')+arrMoves('roles',i,arr.length)+B(`data-del="role|${i}"`,'Delete','del'); }
   if(kind==='dinner'){ const D=dinnerFor(key), d=S.days.find(x=>x.id===key); if(!D)return; title=D.place||'Dinner';
-    items=B(`data-editdinner="${esc(key)}"`,'✎ Edit dinner')+B(`data-dinbook="${esc(key)}"`,D.booked?'✗ Mark as not booked':'✓ Mark as booked')+B(`data-dincopy="${esc(key)}"`,'📋 Copy booking details')+B(`data-dinsame="${esc(key)}"`,'⎘ Same venue another night…')+B(`data-del="dinner|${esc(key)}"`,'Delete dinner','del'); }
+    items=B(`data-editdinner="${esc(key)}"`,'✎ Edit dinner')+B(`data-eatfind="${esc(key)}"`,'🔍 Find somewhere else')+B(`data-dinbook="${esc(key)}"`,D.booked?'✗ Mark as not booked':'✓ Mark as booked')+B(`data-dincopy="${esc(key)}"`,'📋 Copy booking details')+B(`data-dinsame="${esc(key)}"`,'⎘ Same venue another night…')+B(`data-del="dinner|${esc(key)}"`,'Delete dinner','del'); }
   if(kind==='crew'){ title=key; const role=roleOf(extra);
     items=B(`data-editcrew="${esc(key)}|${esc(extra||'')}"`,'✎ Edit')
       +(role==='owner'||!extra?'':role==='editor'?B(`data-crewrole="rider|${esc(extra)}"`,'Make a rider (can’t edit)'):B(`data-crewrole="editor|${esc(extra)}"`,'Make an editor (can change this tour)'))
@@ -569,3 +569,59 @@ document.addEventListener('click',e=>{ const t=e.target;
 });
 document.addEventListener('input',e=>{ if(e.target.closest('#hrows'))hoursReadback(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.matches('#dlg [name="hpaste"]')){ e.preventDefault(); $('#dlg [data-hpasteread]').click(); } });
+
+/* ---------- Plan > Nights: find places to stay and eat (v4.17) ----------
+   Like the bakery finder: OpenStreetMap (Nominatim) searches within about 5 km of the night's town (its Overnight stop,
+   else the day's last stop); dinner searches centre on the bed when it has a location. One search per kind of place,
+   about a second apart (Nominatim's limit). "Use this" opens the bed or dinner form filled in, keeping lat/lon/osm. */
+const NF={kind:'',dayId:'',hits:[],busy:false};
+const STAY_Q=[['motel','Motels'],['hotel','Hotels'],['guest house','Guest houses'],['caravan park','Caravan parks'],['apartment','Apartments']];
+const EAT_Q=[['restaurant','Restaurants'],['pub','Pubs'],['bar','Bars']];
+const STAY_T={motel:'Motel',hotel:'Hotel',guest_house:'Guest house',hostel:'Hostel',caravan_site:'Caravan park',apartment:'Apartments',chalet:'Cabins',camp_site:'Camping',bed_and_breakfast:'B&B'};
+const EAT_T={restaurant:'Restaurant',pub:'Pub',bar:'Bar',biergarten:'Beer garden',cafe:'Café',hotel:'Pub hotel'};
+function nightTown(d){ if(!d)return null; const st=stopsOf(d.id).filter(s=>s.town&&!s.ref);
+  return st.filter(s=>(s.tags||[]).includes('Overnight')).pop()||st[st.length-1]||null; }
+function osmPlace(h){ const a=h.address||{}, x=h.extratags||{};
+  return {name:h.name||String(h.display_name||'').split(',')[0],addr:[((a.house_number?a.house_number+' ':'')+(a.road||'')).trim(),a.suburb||a.town||a.village||a.city].filter(Boolean).join(', '),
+    hours:x.opening_hours||'',phone:x.phone||x['contact:phone']||'',web:x.website||x['contact:website']||'',osm:h.osm_type+'/'+h.osm_id,lat:+h.lat,lon:+h.lon,type:h.type,cls:h.category||h.class}; }
+async function nightFind(kind,dayId){
+  const d=S.days.find(x=>x.id===dayId), stop=nightTown(d); if(!d)return;
+  const bed=kind==='eat'?nightsOf(dayId).find(hasLL):null, ctr=bed||(stop&&hasLL(stop)?stop:null), town=stop?stop.town:'';
+  if(!town&&!ctr){ toast('Add the day’s stops first, so the app knows which town you’re staying in.'); return; }
+  Object.assign(NF,{kind,dayId,hits:[],busy:true});
+  const Q=kind==='stay'?STAY_Q:EAT_Q, T=kind==='stay'?STAY_T:EAT_T;
+  dlg(`<h3>${kind==='stay'?'Places to stay':'Places to eat'}${town?' in '+esc(town):''}</h3><p class="muted" id="nfmsg">Searching OpenStreetMap…</p><div id="nflist" class="nflist"></div>
+    <div class="dbtns"><button type="button" class="btn" data-close>Close</button></div>`);
+  const NOM='https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=au&extratags=1&addressdetails=1&limit=30&q=';
+  const box=ctr?`&viewbox=${+ctr.lon-.05},${+ctr.lat+.05},${+ctr.lon+.05},${+ctr.lat-.05}&bounded=1`:'', seen=new Set(); let all=[];
+  for(let i=0;i<Q.length;i++){ if(!$('#nflist'))return; const m=$('#nfmsg'); if(m)m.textContent=`Searching OpenStreetMap: ${Q[i][1].toLowerCase()} (${i+1} of ${Q.length})…`;
+    try{ const res=await osmFetch(NOM+encodeURIComponent(ctr?Q[i][0]:`${Q[i][0]} in ${town}`)+box);
+      res.map(osmPlace).forEach(p=>{ if(p.name&&T[p.type]&&!seen.has(p.osm)){ seen.add(p.osm); all.push(p); } }); }
+    catch(e){ if($('#nfmsg'))$('#nfmsg').textContent='Couldn’t reach OpenStreetMap. Check your signal and try again.'; NF.busy=false; return; }
+    if(i<Q.length-1)await new Promise(r=>setTimeout(r,1100)); }
+  NF.busy=false; if(!$('#nflist'))return;
+  const have=(kind==='stay'?nightsOf(dayId):[dinnerFor(dayId)]).filter(x=>x&&x.place); // same name, and (if both have a location) the same spot
+  const same=(p,h)=>(nameMatch(p.name,h.place)>=.6||nameMatch(h.place,p.name)>=.6)&&(!hasLL(h)||kmBetween({lat:+h.lat,lon:+h.lon},p)<.3);
+  const D=dinnerFor(dayId), when={date:dateFor(d),t:(D&&D.time)||'18:30'};
+  all=all.map(p=>{ const spec=p.hours?(parseOsmHours(p.hours).spec||null):null;
+    return {...p,label:T[p.type],dist:ctr?kmBetween({lat:+ctr.lat,lon:+ctr.lon},p)*1000:null,spec,
+      open:kind==='eat'&&spec&&when.date?openState({hoursSpec:spec},when):null,listed:have.some(h=>same(p,h))}; })
+    .sort((a,b)=>(a.listed-b.listed)||((a.dist??1e9)-(b.dist??1e9)));
+  NF.hits=all;
+  $('#nfmsg').textContent=!all.length?`OpenStreetMap has nothing listed${town?' near '+town:''}. Add it by hand instead.`
+    :`${all.length} found${ctr?` within about 5 km of ${bed?'the bed':esc(town)}`:''}, nearest first. OpenStreetMap has no reviews, so check the Google Maps link before booking.`;
+  const from=bed?'from the bed':'from the stop';
+  $('#nflist').innerHTML=all.map((p,i)=>`<div class="nfrow${p.listed?' listed':''}"><div class="nft"><b>${esc(p.name)}</b> <span class="pill">${esc(p.label)}</span>
+      <small>${[p.addr?esc(p.addr):'',p.dist!=null?(p.dist<1000?Math.max(10,Math.round(p.dist/10)*10)+' m ':(p.dist/1000).toFixed(1)+' km ')+from:''].filter(Boolean).join(' · ')}</small>
+      ${kind==='eat'?`<small class="${p.open?'bst '+p.open.cls:''}">${p.open?(p.open.cls==='open'?'✓ ':p.open.cls==='shut'?'✗ ':'⚠ ')+esc(p.open.txt.replace('when we get there',`at ${t12(when.t)}`).replace('when we arrive',`at ${t12(when.t)}`)):p.spec?esc(fmtHours(p.spec)):p.hours?'Hours listed but too complex to read':'No hours listed'}</small>`:''}
+      ${p.phone?`<small>${esc(p.phone)}</small>`:''}
+      <span class="nflinks"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name+' '+(p.addr||town))}" target="_blank" rel="noopener">Google Maps</a>${p.web?` <a href="${esc(/^https?:/.test(p.web)?p.web:'https://'+p.web)}" target="_blank" rel="noopener">Website</a>`:''}</span></div>
+    ${p.listed?'<span class="muted" style="font-size:12.5px">Already added</span>':`<button type="button" class="btn small primary" data-nfuse="${i}">Use this</button>`}</div>`).join('')+(all.length?'<p class="osmcredit">© OpenStreetMap contributors</p>':'');
+}
+document.addEventListener('click',e=>{ const t=e.target;
+  const sf=t.closest('[data-stayfind]'); if(sf){ nightFind('stay',sf.dataset.stayfind); return; }
+  const ef=t.closest('[data-eatfind]'); if(ef){ nightFind('eat',ef.dataset.eatfind); return; }
+  const u=t.closest('[data-nfuse]'); if(u){ const p=NF.hits[+u.dataset.nfuse]; if(!p)return;
+    const pre={place:p.name,address:p.addr,phone:p.phone,lat:p.lat,lon:p.lon,osm:p.osm,fromOsm:true};
+    if(NF.kind==='stay')nightDialog(null,NF.dayId,pre); else dinnerDialog(NF.dayId,pre,true); }
+});
