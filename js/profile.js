@@ -139,7 +139,7 @@ function profileDialog(which){
   if(which==='crew') return dlg(`<h3>On the crew list</h3>
     <div class="frow">${field('Bike year','byear',b.year,{type:'number',ph:'2019'})}${field('Colour','bcolour',b.colour,{ph:'e.g. vivid black'})}</div>
     <div class="frow">${field('Make','bmake',b.make,{ph:'e.g. Harley-Davidson'})}${field('Model','bmodel',b.model,{ph:'e.g. Fat Boy'})}</div>
-    ${field('Mobile','mobile',pr.mobile,{type:'tel',ph:'0412 345 678'})}
+    ${field('Mobile','mobile',pr.mobile,{type:'tel',ph:'0491 570 006'})}
     <label class="fl chk"><input type="checkbox" name="showMobile"${pr.showMobile!==false?' checked':''}> Show my mobile to the crew (with a Call button)</label>
     <div class="dbtns"><button type="button" class="btn primary" data-prof-save="crew">Save</button><button type="button" class="btn" data-close>Cancel</button></div>`);
   if(which==='safety') return dlg(`<h3>Safety</h3><p class="muted" style="margin:0 0 8px">Optional. Anything you enter here can be seen by everyone on your tours, so the crew can help if something happens.</p>

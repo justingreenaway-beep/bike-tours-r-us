@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='4.24';
+const APP_VERSION='4.25';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -467,7 +467,7 @@ function bakeryDialog(b){
   osmResults=[]; osmPicked=null;
   dlg(`<h3>${isNew?'Add a bakery':'Edit bakery'}</h3>
    <label class="fl">Town<input name="town" list="townlist" value="${esc(b.town||'')}" maxlength="80"></label><datalist id="townlist">${planTowns().map(t=>`<option value="${esc(t)}">`).join('')}</datalist>
-   ${field('Name','name',b.name,{ph:'e.g. Yass Bakery'})}${field('Must try','must',b.must,{ph:'e.g. Pepper steak pie'})}
+   ${field('Name','name',b.name,{ph:'e.g. Town Bakery'})}${field('Must try','must',b.must,{ph:'e.g. Pepper steak pie'})}
    ${field('Why it’s on the list','why',b.why,{area:true,max:400})}${field('Short label (optional)','tag',b.tag,{ph:'e.g. 5 min off route',max:40})}
    <div class="fl">Opening times${typeof hoursTools==='function'?hoursTools():''}<div id="hrows">${(spec.length?spec:[{}]).map(hoursRow).join('')}</div>${typeof hoursTools2==='function'?hoursTools2():''}<div class="planbar" style="margin-top:0"><button type="button" class="btn small" data-act="hadd">+ More times</button><button type="button" class="btn small" data-act="osmfind">Find hours on OpenStreetMap</button></div>
      <div id="osmres" data-auto="${isNew?1:0}">${b.hoursSource?`<p class="osmcredit">Hours from ${esc(b.hoursSource)}</p>`:''}</div></div>
@@ -549,7 +549,7 @@ function nightDialog(n,dayId,pre){
   const isNew=!n; n=n||{dayId,rooms:[],...(pre||{})};
   dlg(`<h3>${isNew?'Add a bed':'Edit bed'}</h3>${osmNote(n,'stayfind',n.dayId,'stay')}
    <label class="fl">Night of<select name="dayId">${daysSorted().map(d=>`<option value="${esc(d.id)}"${d.id===n.dayId?' selected':''}>${esc(d.label)}: ${esc(d.title||'')}</option>`).join('')}</select></label>
-   ${field('Where we’re staying','place',n.place,{ph:'e.g. Millthorpe Motel'})}${field('Address','address',n.address,{ph:'26 Victoria St, Millthorpe NSW'})}
+   ${field('Where we’re staying','place',n.place,{ph:'e.g. Riverside Motel'})}${field('Address','address',n.address,{ph:'e.g. 12 Main St, Riverton NSW'})}
    <div class="frow">${field('Phone','phone',n.phone,{type:'tel'})}${field('Check in from','checkIn',n.checkIn,{type:'time'})}</div>
    <div class="fl">Rooms<div id="rrows">${(n.rooms||[]).map(roomRow).join('')}</div><button type="button" class="btn small" data-act="radd">+ Add room</button></div>
    ${field('Note for riders','note',n.note,{area:true,max:300,ph:'e.g. Park bikes round the back'})}
@@ -564,9 +564,9 @@ function dinnerDialog(dayId,copyFrom,replace){
   const st=D.deposit?'deposit':D.booked?'booked':'no';
   dlg(`<h3>${isNew?'Add dinner':'Edit dinner'}</h3>${osmNote(D,'eatfind',dayId,'eat')}
    <label class="fl">Night of<select name="dayId" data-dinday>${free.map(d=>`<option value="${esc(d.id)}"${d.id===dayId?' selected':''}>${esc(d.label)}: ${esc(d.title||'')}${dateFor(d)?' ('+esc(shortDate(dateFor(d)))+')':''}</option>`).join('')}</select></label>
-   ${field('Where','place',D.place,{ph:'e.g. The Commercial Hotel'})}
-   <div class="frow">${field('Time','time',D.time,{type:'time'})}${field('Booked under','under',D.under,{ph:'e.g. Gary'})}</div>
-   ${field('Address','address',D.address,{ph:'e.g. 30 Market St, Mudgee'})}
+   ${field('Where','place',D.place,{ph:'e.g. The Royal Hotel'})}
+   <div class="frow">${field('Time','time',D.time,{type:'time'})}${field('Booked under','under',D.under,{ph:'e.g. Alex'})}</div>
+   ${field('Address','address',D.address,{ph:'e.g. 30 Railway St, Riverton'})}
    <div class="fl">Booking<div class="seg2r dinst"><label><input type="radio" name="dst" value="no"${st==='no'?' checked':''}><span>Not booked</span></label><label><input type="radio" name="dst" value="booked"${st==='booked'?' checked':''}><span>Booked</span></label><label><input type="radio" name="dst" value="deposit"${st==='deposit'?' checked':''}><span>Deposit paid</span></label></div></div>
    <div class="dinfo" id="dinfo">${dinnerInfo(dayId)}</div>
    ${field('Note for riders','note',D.note,{area:true,max:300,ph:'e.g. Walk from the motel, 5 min'})}
@@ -635,7 +635,7 @@ function editTourDialog(){
   const many=S.days.length>1;
   dlg(`<h3>Tour details</h3>${tourKindSeg(T.kind||'multi')}<p class="muted" id="kindnote" style="font-size:13px;margin:-2px 0 10px"${T.kind==='day'&&many?'':' hidden'}>A day ride shows only its first day. The other ${S.days.length-1} ${S.days.length===2?'day is':'days are'} kept, hidden, and come back if you switch to multi-day.</p><div class="frow">${field('Tour name','name',T.name,{ph:'e.g. High Country Run'})}${field('Year','year',T.year,{type:'number'})}</div>${field('Short description','subtitle',T.subtitle,{ph:'Where it goes'})}
    <div class="frow">${field(T.kind==='day'?'Date':'Day 1 date','startDate',T.startDate,{type:'date'})}${field('Fuel range rule (km)','fuelRangeKm',T.fuelRangeKm,{type:'number'})}</div>
-   ${field('Meeting point','meet',T.meet,{ph:'e.g. Lanyon Shops, 8:30 am coffee'})}
+   ${field('Meeting point','meet',T.meet,{ph:'e.g. The servo on the highway, 8:30 am coffee'})}
    <div class="dbtns"><button type="button" class="btn primary" data-save="tour">Save</button><button type="button" class="btn" data-close>Cancel</button></div>`);
 }
 /* ---------- Phase 3: places, distances, maps ----------
@@ -763,7 +763,7 @@ async function drawMap(det){
 
 function crewDialog(c){
   const isNew=!c; c=c||{};
-  dlg(`<h3>${isNew?'Add a rider':'Edit rider'}</h3>${field('Name','name',c.name,{ph:'e.g. Tony'})}${field('Email they sign in with','email',c.email,{type:'email',ph:'name@example.com'})}
+  dlg(`<h3>${isNew?'Add a rider':'Edit rider'}</h3>${field('Name','name',c.name,{ph:'e.g. Sam'})}${field('Email they sign in with','email',c.email,{type:'email',ph:'name@example.com'})}
    <p class="muted" style="font-size:13.5px;margin:0 0 6px">They create their account in the app with this email (or keep the one from 2026).</p>
    ${roleOf(c.email)==='owner'?'<p class="notice" style="margin:0 0 10px">Owner of this tour: always an editor.</p>':`<div class="fl">On this tour<div class="seg2r"><label><input type="radio" name="crole" value="rider"${roleOf(c.email)==='rider'?' checked':''}><span>Rider</span></label><label><input type="radio" name="crole" value="editor"${roleOf(c.email)==='editor'?' checked':''}><span>Editor</span></label></div><small class="muted" style="font-size:12.5px">Editors can change everything on this tour. Riders see it once it’s published.</small></div>`}
    <div class="dbtns"><button type="button" class="btn primary" data-save="crew" data-orig="${isNew?'':esc((c.name||'')+'|'+(c.email||''))}">Save</button><button type="button" class="btn" data-close>Cancel</button>${isNew?'':`<button type="button" class="btn danger" data-del="crew|${esc((c.name||'')+'|'+(c.email||''))}">Remove</button>`}</div>`);

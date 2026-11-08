@@ -277,7 +277,7 @@ function stopDialog(stop,ctx){
      ${field('Roads to get there','road',stop.road,{ph:'e.g. Wee Jasper Rd'})}
      ${field('Note','note',stop.note,{area:true,max:400,ph:'What riders should know about this stop'})}
      ${field('"Did you know?" fact','fact',stop.fact,{area:true,max:300})}
-     ${field('Where we’re staying (overnight stops)','stay',stop.stay,{ph:'e.g. Millthorpe Motel, 26 Victoria St'})}
+     ${field('Where we’re staying (overnight stops)','stay',stop.stay,{ph:'e.g. Riverside Motel, 12 Main St'})}
      <label class="fl">Route option<select name="option"><option value="">All options</option><option value="2"${stop.option===2?' selected':''}>Option 2 only</option></select></label>
      ${field('Fuel note','fuelKm',stop.fuelKm,{ph:'e.g. 118 km'})}
      ${stop.timeNote?field('Imported time text (clear it to use the times above)','timeNote',stop.timeNote):''}
