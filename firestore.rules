@@ -1,12 +1,21 @@
 // =====================================================================================
-// Bike Tours R Us (2027 app): Firestore rules ADDITIONS.
+// Ride Together (Bike Tours R Us 2027 app): Firestore rules ADDITIONS. Version 2 (app v4.14: per-tour owners and editors).
 //
 // Your Firebase project already has rules for the 2026 crew app (isCrew(), /crew, /wall, /live).
 // KEEP those exactly as they are, so the 2026 app keeps working.
-// Copy ONLY the block between the two marker lines below and paste it inside your existing
-//     match /databases/{database}/documents { ... }
-// block, just before its final closing brace. Then tap Publish.
-// No emails go in this file: editors live in Firestore at admins/editors (see README).
+// In the Firebase console (Firestore Database > Rules): find the old block that starts with
+//     // ----- Bike Tours R Us: copy from here -----
+// and ends with
+//     // ----- Bike Tours R Us: copy to here -----
+// and replace everything between (and including) those two lines with the block below. Then tap Publish.
+// No emails go in this file: admins live in Firestore at admins/editors (emails field).
+//
+// Who can do what:
+//   Admins (admins/editors): see and change every tour.
+//   Anyone signed in with a VERIFIED email: can start a tour. They become its owner and first editor.
+//   A tour's editors (tours/{t}.editors, verified emails): change everything on that tour. They can't change the owner,
+//     and can't remove the owner from the editors. Only the owner (or an admin) can delete the tour.
+//   Riders (tours/{t}.memberEmails): read the tour, and write only their own ride-day records (below).
 // =====================================================================================
 
     // ----- Bike Tours R Us: copy from here -----
@@ -16,36 +25,60 @@
     function myEmail() {
       return request.auth.token.email.lower();
     }
-    function isEditor() {
+    function verified() {
+      return request.auth.token.email_verified == true;
+    }
+    function isAdmin() {
       return signedInWithEmail()
         && exists(/databases/$(database)/documents/admins/editors)
         && myEmail() in get(/databases/$(database)/documents/admins/editors).data.emails;
     }
+    function tourData(t) {
+      return get(/databases/$(database)/documents/tours/$(t)).data;
+    }
+    function canEdit(t) {
+      return isAdmin() || (signedInWithEmail() && verified() && myEmail() in tourData(t).get('editors', []));
+    }
     function onTour(t) {
       return signedInWithEmail()
-        && myEmail() in get(/databases/$(database)/documents/tours/$(t)).data.memberEmails;
+        && (myEmail() in tourData(t).get('memberEmails', []) || myEmail() in tourData(t).get('editors', []));
     }
 
-    // The editors list: anyone signed in can check it; only you can change it, in the Firebase console.
+    // The admins list: anyone signed in can check it; only you can change it, in the Firebase console.
     match /admins/{doc} {
       allow read: if signedInWithEmail();
       allow write: if false;
     }
 
-    // Tours: editors (you and Tony) read and change everything; riders read tours they're on.
     match /tours/{t} {
-      allow read: if isEditor() || (signedInWithEmail() && myEmail() in resource.data.memberEmails);
-      allow write: if isEditor();
+      // read: admins, the tour's riders, the tour's editors
+      allow read: if isAdmin();
+      allow read: if signedInWithEmail() && myEmail() in resource.data.memberEmails;
+      allow read: if signedInWithEmail() && myEmail() in resource.data.editors;
+      // start a tour: verified email, and you're its owner and an editor
+      allow create: if isAdmin() || (signedInWithEmail() && verified()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerEmail == myEmail()
+        && myEmail() in request.resource.data.editors);
+      // change a tour: its editors; the owner can't be changed or removed from the editors (admins can do anything)
+      allow update: if isAdmin() || (signedInWithEmail() && verified()
+        && myEmail() in resource.data.get('editors', [])
+        && request.resource.data.get('ownerUid', '') == resource.data.get('ownerUid', '')
+        && request.resource.data.get('ownerEmail', '') == resource.data.get('ownerEmail', '')
+        && (resource.data.get('ownerEmail', '') == '' || resource.data.ownerEmail in request.resource.data.get('editors', [])));
+      // delete a tour: its owner or an admin
+      allow delete: if isAdmin() || (signedInWithEmail() && verified() && resource.data.get('ownerUid', '') == request.auth.uid);
 
+      // everything inside a tour: editors change it; riders and editors read it
       match /{rest=**} {
-        allow read: if isEditor() || onTour(t);
-        allow write: if isEditor();
+        allow read: if canEdit(t) || onTour(t);
+        allow write: if canEdit(t);
       }
 
-      // Ride-day features (added in app v4.0). Riders on the tour can also write these:
-      // their own passport, scores, trivia, votes and Koala Court charges (one document each, only theirs)
+      // Ride-day features (app v4.0). Riders on the tour can also write these:
+      // their own passport, scores, trivia, votes, likes, profile and Koala Court charges (one document each, only theirs)
       match /riders/{uid} {
-        allow write: if request.auth != null && request.auth.uid == uid && (onTour(t) || isEditor());
+        allow write: if request.auth != null && request.auth.uid == uid && (onTour(t) || canEdit(t));
       }
       // the shared "We're here" position
       match /live/{doc} {
