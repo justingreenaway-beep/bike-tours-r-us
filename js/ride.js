@@ -334,7 +334,7 @@ function boardRows(){
   const ids=new Set(tourBakIds());
   return riders().map(v=>{ const t=Object.keys(v.ticks||{}).filter(n=>ids.has(n)); const q=Object.values(v.quiz||{}).reduce((a,x)=>a+(x&&x.s||0),0);
     const per={}; groupDays().forEach(d=>{ const di=new Set(dayBakIds(d)); per[d.id]=t.filter(n=>di.has(n)).length; });
-    return {id:v.id,name:v.name,t:t.length,r:Object.keys(v.ratings||{}).length,q,per,mine:v.id===myUid()}; }).sort((a,b)=>b.t-a.t||b.q-a.q||a.name.localeCompare(b.name));
+    return {id:v.id,name:v.name,t:t.length,r:Object.keys(v.ratings||{}).length,q,per,mine:v.id===myUid()}; }).sort((a,b)=>b.t-a.t||b.r-a.r||a.name.localeCompare(b.name)); // bakeries ticked, then bakeries scored
 }
 const BEST_MIN=3; // Best bakery needs scores from at least this many riders
 function awards(){ // v4.19: one award (Best bakery); the trivia champion lives in the Trivia section
@@ -355,7 +355,7 @@ function rideBakeries(){
     <div class="pdays">${groupDays().map(d=>{ const di=dayBakIds(d), you=di.filter(id=>m.ticks[id]).length, top=rows.filter(r=>r.per[d.id]>0).sort((a,c)=>c.per[d.id]-a.per[d.id])[0];
       return `<div class="pday" style="--c:var(--${esc(d.colour||'blue')})"><h3>${esc(d.label)}</h3><div class="bar"><i style="width:${di.length?Math.round(you/di.length*100):0}%"></i></div><small>You: ${you} of ${di.length}</small><small>Leader: ${top?esc(top.name)+' ('+top.per[d.id]+')':'nobody yet'}</small></div>`; }).join('')}</div>
     <div class="bkrules"><span class="bkh">How it works</span><p><b>Tick</b> a bakery in the roadbook when you eat there, then <b>score</b> it out of 10.</p><p><b>Best bakery</b> goes to the crew\u2019s highest average score, from at least ${BEST_MIN} riders.</p></div></section>
-    <section class="sec"><h2>Leaderboard</h2><div class="lbwrap">${rows.length?`<table class="lb"><thead><tr><th></th><th>Rider</th><th>Bakeries</th><th>Rated</th><th>Trivia</th></tr></thead><tbody>${rows.map((r,i)=>`<tr class="${r.mine?'mine':''}"><td class="pos">${i+1}</td><td>${personBtn(r.name)}</td><td><b>${r.t}</b></td><td>${r.r}</td><td>${r.q}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">No one on the board yet. Tick a bakery to get started.</p>'}</div></section>
+    <section class="sec"><h2>Leaderboard</h2><div class="lbwrap">${rows.length?`<table class="lb"><thead><tr><th></th><th>Rider</th><th>Bakeries</th><th>Rated</th></tr></thead><tbody>${rows.map((r,i)=>`<tr class="${r.mine?'mine':''}"><td class="pos">${i+1}</td><td>${personBtn(r.name)}</td><td><b>${r.t}</b></td><td>${r.r}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">No one on the board yet. Tick a bakery to get started.</p>'}</div></section>
     <section class="sec"><h2>Best bakery</h2><div class="awards one">
       ${aw(`Best bakery of ${esc(S.tour.name||'the tour')}`,A.bo&&b(A.bo).name,A.bo?`${esc(b(A.bo).town)} · crew average ${A.bo[1].a.toFixed(1)}/10 from ${A.bo[1].c} riders`:(A.near?`Closest so far: ${esc(b(A.near).name)}, scored by ${A.near[1].c} of the ${BEST_MIN} riders needed`:`Needs scores from at least ${BEST_MIN} riders`))}</div></section>
     <section class="sec"><h2>What I\u2019ve tried</h2><ul class="tried">${tried.length?tried.map(x=>`<li>${esc(x.name)}${m.ratings[x.id]?` <b>${m.ratings[x.id]}/10</b>`:''} <span class="muted">${esc(x.town)}</span></li>`).join(''):'<li class="muted" style="list-style:none;margin-left:-18px">Nothing ticked yet.</li>'}</ul>
