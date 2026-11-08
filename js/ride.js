@@ -646,14 +646,25 @@ async function wrDraw(kind){ // v4.20: Ride Together brand, follows Plan > Featu
   const ctx=[when,S.tour.kind==='day'?'':pl(gd.length,'riding day'),S.tour.subtitle||''].filter(Boolean).join(' · ');
   x.fillStyle=WR.mut; x.font=Bf(500,28); wrText(x,ctx,72,370,936,34,1);
   x.fillStyle=WR.ink; x.font=Bf(600,36); x.fillText(kind==='me'?`${me().name}’s ${S.tour.kind==='day'?'ride':'tour'}`:'The crew',72,428);
+  let head=428; // bottom of the heading block
+  if(kind!=='me'){ const names=[...new Set((S.tour.crew||[]).map(c2=>c2.name).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    if(names.length){ x.fillStyle=WR.mut; x.font=Bf(500,26); const lines=wrText(x,names.join(' · '),72,468,936,34,2); head=468+(lines-1)*34; } }
   const km=gd.reduce((a,d)=>a+(parseFloat(String(d.km||'').replace(/[^\d.]/g,''))||0),0), ids=tourBakIds(), {t:ct}=courtTotals();
-  const BAK=feat('bakeries'), COURT=feat('court'), TRIV=feat('trivia'), PHOTOS=feat('photos'), lk=likeCounts();
-  const stops=gd.flatMap(d=>stopsOf(d.id)).filter(s=>s.town&&!s.ref), route=stops.length?{t:stops.length>1?`${stops[0].town} to ${stops[stops.length-1].town}`:stops[0].town,s:`${pl(new Set(stops.map(s=>s.town)).size,'town')}${km?' · '+Math.round(km).toLocaleString()+' km':''}`}:null;
+  const BAK=feat('bakeries')&&tourBakIds().length>0, COURT=feat('court'), TRIV=feat('trivia'), PHOTOS=feat('photos'), lk=likeCounts();
+  const stops=gd.flatMap(d=>stopsOf(d.id)).filter(s=>s.town&&!s.ref), route=stops.length?{t:stops.length>1?(stops[0].town===stops[stops.length-1].town?`Loop from ${stops[0].town}`:`${stops[0].town} to ${stops[stops.length-1].town}`):stops[0].town,s:`${pl(new Set(stops.map(s=>s.town)).size,'town')}${km?' · '+Math.round(km).toLocaleString()+' km':''}`}:null;
+  if(S.tour.kind==='day'&&stops.length>1){ // the route as dots and towns
+    const towns=stops.map(s2=>s2.town).filter((t2,i,a)=>t2!==a[i-1]); let show=towns; if(towns.length>6)show=[...towns.slice(0,2),`+${towns.length-4} more`,...towns.slice(-2)];
+    const Y=head+64, X0=96, X1=984, step=show.length>1?(X1-X0)/(show.length-1):0;
+    x.strokeStyle=WR.vis; x.lineWidth=5; x.beginPath(); x.moveTo(X0,Y); x.lineTo(X1,Y); x.stroke();
+    show.forEach((t2,i)=>{ const X=X0+i*step, more=/^\d/.test(t2); x.fillStyle=more?WR.bg:WR.vis; x.beginPath(); x.arc(X,Y,more?7:11,0,Math.PI*2); x.fill(); if(more){ x.strokeStyle=WR.vis; x.lineWidth=3; x.stroke(); }
+      x.fillStyle=more?WR.mut:WR.ink; x.font=Bf(600,24); x.textAlign=i===0?'left':i===show.length-1?'right':'center'; wrText(x,t2,X+(i===0?-12:i===show.length-1?12:0),Y+44,step||300,28,1); x.textAlign='left'; });
+    head=Y+52; }
   const stats=[], boxes=[]; // stats: [big, label, colour]; boxes: [label, title, sub, colour]
   if(kind==='me'){
     const m=me(), mine=ids.filter(id=>m.ticks[id]), rated=Object.entries(m.ratings||{}).filter(([id])=>bakById(id)).sort((a,b)=>b[1]-a[1]);
     const q=Object.values(m.quiz||{}).reduce((a,v)=>a+(v&&v.s||0),0), myPh=R.wall.filter(p=>p.uid===myUid());
-    if(km)stats.push([Math.round(km).toLocaleString(),'km ridden']); else stats.push([String(gd.length),gd.length===1?'riding day':'riding days']);
+    const nTowns=new Set(stops.map(s2=>s2.town)).size;
+    if(km)stats.push([Math.round(km).toLocaleString(),'km ridden']); else if(S.tour.kind==='day'&&nTowns)stats.push([String(nTowns),nTowns===1?'town':'towns']); else stats.push([String(gd.length),gd.length===1?'riding day':'riding days']);
     if(BAK)stats.push([String(mine.length),`of ${pl(ids.length,'bakery','bakeries')}`,WR.vis]);
     if(TRIV&&q)stats.push([String(q),q===1?'trivia point':'trivia points']);
     if(PHOTOS&&myPh.length&&stats.length<3)stats.push([String(myPh.length),myPh.length===1?'photo':'photos']);
@@ -663,13 +674,15 @@ async function wrDraw(kind){ // v4.20: Ride Together brand, follows Plan > Featu
       if(per&&per.n)boxes.push(['Best day',per.d.label,`${per.d.title?per.d.title+' · ':''}${pl(per.n,'bakery','bakeries')} ticked`]);
       const tc={}; mine.forEach(id=>{ const b=bakById(id); tc[b.town]=(tc[b.town]||0)+1; }); const town=Object.entries(tc).sort((a,b)=>b[1]-a[1])[0];
       if(town&&town[1]>1)boxes.push(['Bakery capital',town[0],`${town[1]} bakeries tried there`]); }
+    if(PHOTOS){ const at={}; myPh.forEach(p=>{ if(p.town)at[p.town]=(at[p.town]||0)+1; }); const fav=Object.entries(at).sort((a,b)=>b[1]-a[1])[0];
+      if(fav&&fav[1]>1)boxes.push(['Favourite stop',fav[0],`${fav[1]} photos taken there`]); }
     if(COURT){ const kp=ct[m.name]?ct[m.name].tot:0, laid=(m.kc||[]).reduce((a,c2)=>a+c2.pts,0);
       boxes.push(['Koala Court',kp?`${pl(kp,'point')} against me`:'A clean record',laid?`${pl(laid,'point')} laid on others`:'No charges laid',WR.red]); }
   } else {
     const tc={}; riders().forEach(v=>Object.keys(v.ticks||{}).forEach(n=>{ if(bakById(n))tc[n]=1; }));
     const crewN=(S.tour.crew||[]).length||riders().length;
     stats.push([String(crewN),crewN===1?'rider':'riders']);
-    if(km)stats.push([Math.round(km).toLocaleString(),'km']);
+    if(km)stats.push([Math.round(km).toLocaleString(),'km']); else { const nT=new Set(stops.map(s2=>s2.town)).size; if(nT)stats.push([String(nT),nT===1?'town':'towns']); }
     if(BAK)stats.push([String(Object.keys(tc).length),Object.keys(tc).length===1?'bakery':'bakeries',WR.vis]);
     if(PHOTOS&&R.wall.length)stats.push([String(R.wall.length),R.wall.length===1?'photo':'photos']);
     if(BAK){ const A=awards(), B=A.B; boxes.push(['Best bakery',A.bo?B(A.bo).name:(A.near?B(A.near).name:null),A.bo?`${B(A.bo).town}, crew average ${A.bo[1].a.toFixed(1)}/10 from ${A.bo[1].c} riders`:(A.near?`Crew favourite so far (${pl(A.near[1].c,'score')})`:'No bakeries scored')]); }
@@ -681,7 +694,7 @@ async function wrDraw(kind){ // v4.20: Ride Together brand, follows Plan > Featu
   // photos: the most-liked (mine on My Wrapped)
   const ph=!PHOTOS?[]:(kind==='me'?R.wall.filter(p=>p.uid===myUid()):R.wall.slice()).sort((a,b)=>(lk[b.id]||0)-(lk[a.id]||0)||tsMs(b.at)-tsMs(a.at)).slice(0,4);
   // layout: stats and boxes centred in the space between the heading and the photos (or the footer)
-  const top=470, bottom=ph.length?1040:1270, rows=boxes.length<=2?1:2, rowH=boxes.length?Math.min(230,Math.max(190,Math.floor((bottom-top-150-24*(rows-1))/rows))):0;
+  const top=Math.max(470,head+42), bottom=ph.length?1040:1270, rows=boxes.length<=2?1:2, rowH=boxes.length?Math.min(230,Math.max(190,Math.floor((bottom-top-150-24*(rows-1))/rows))):0;
   const blockH=(stats.length?150:0)+(rows*rowH+(rows-1)*24); let y=top+Math.max(0,Math.floor((bottom-top-blockH)/2));
   if(stats.length){ const n=stats.length, w=936/n, big=n>3?78:96;
     stats.forEach(([b,s,col],i)=>{ const X=72+i*w; x.fillStyle=col||WR.ink; x.font=C(800,big); wrText(x,b,X,y+86,w-16,big,1); x.fillStyle=WR.mut; x.font=Bf(500,26); wrText(x,s,X,y+126,w-16,30,1); });
@@ -693,7 +706,8 @@ async function wrDraw(kind){ // v4.20: Ride Together brand, follows Plan > Featu
     const w=n===2||(!full&&n>2)?456:936; card(72+(n===2?i*480:col*480),y+r*(rowH+24),w,rowH,...b); });
   for(let i=0;i<ph.length;i++){ const im=await new Promise(r=>{ const k=new Image(); k.onload=()=>r(k); k.onerror=()=>r(null); k.src=ph[i].thumb; }); if(!im)continue;
     const X=72+i*240, Y=1064, s=216, sc=Math.max(s/im.width,s/im.height); x.save(); x.beginPath(); x.roundRect?x.roundRect(X,Y,s,s,14):x.rect(X,Y,s,s); x.clip(); x.drawImage(im,X+(s-im.width*sc)/2,Y+(s-im.height*sc)/2,im.width*sc,im.height*sc); x.restore(); }
-  x.fillStyle=WR.mut; x.font=Bf(500,22); x.fillText('Made with Ride Together',72,WR.H-34);
+  if(logo){ const lw=44, lh=Math.round(lw*logo.height/logo.width); x.globalAlpha=.8; x.drawImage(logo,72,WR.H-34-lh+2,lw,lh); x.globalAlpha=1; }
+  x.fillStyle=WR.mut; x.font=Bf(500,22); x.fillText('Made with Ride Together',logo?126:72,WR.H-34);
   return c;
 }
 async function showWrapped(kind){
