@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ride Together design system: components</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="components.css">
+<script>
+  // theme (?theme=light|dark), phone-frame mode (?frame=1) and grid overlay (?grid=1), before first paint
+  (function(){ var q=new URLSearchParams(location.search), h=document.documentElement;
+    var t=q.get('theme'); if(t==='light'||t==='dark') h.setAttribute('data-theme',t);
+    if(q.get('frame')) h.classList.add('frame'); if(q.get('grid')) h.classList.add('show-grid');
+    var y=q.get('y'); if(y!==null){ h.classList.add('shot'); h.style.marginTop=(-y)+'px'; } /* screenshot chunks: offset rather than scroll */ })();
+</script>
+</head>
+<body class="sh-baseline">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-logo" viewBox="0 0 28 20"><circle cx="6" cy="14" r="4.5"/><circle cx="22" cy="14" r="4.5"/><path d="M6 14l5-7h6l5 7M11 7l-2-3H6M17 7l2-3h3"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-today" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></symbol>
+  <symbol id="i-bakery" viewBox="0 0 24 24"><path d="M4 15c0-4.4 3.6-8 8-8s8 3.6 8 8l-2 3H6z"/><path d="M9.5 8.5l1 9M14.5 8.5l-1 9"/></symbol>
+  <symbol id="i-court" viewBox="0 0 24 24"><path d="M14 4l6 6-4 4-6-6z"/><path d="M12 10l-8 8 2 2 8-8M4 21h9"/></symbol>
+  <symbol id="i-crew" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.6a3 3 0 0 1 0 6M18 14.2c1.9.7 3 2.6 3 5.8"/></symbol>
+  <symbol id="i-plan" viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 24 24"><path d="M5 9h14M5 15h14"/></symbol>
+  <symbol id="i-nav" viewBox="0 0 24 24"><path d="M3 11l18-8-8 18-2-8z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-fuel" viewBox="0 0 24 24"><path d="M5 20V5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v15M3 20h13M14 9h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V8l-3-3M7 8h5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+</svg>
+
+<div class="sh-grid" aria-hidden="true"><div><div id="gridcols"></div></div></div>
+
+<header class="sh-top">
+  <div class="sh-top-in">
+    <p class="t-h3">Ride Together · components</p>
+    <div class="seg" role="radiogroup" aria-label="Theme" id="themeseg">
+      <button type="button" role="radio" data-theme-set="auto" aria-checked="true">Auto</button>
+      <button type="button" role="radio" data-theme-set="light" aria-checked="false">Light</button>
+      <button type="button" role="radio" data-theme-set="dark" aria-checked="false">Dark</button>
+    </div>
+    <label class="chip" id="gridchip"><input type="checkbox" id="gridtoggle">Grid overlay</label>
+  </div>
+</header>
+
+<main class="sh-wrap">
+  <section class="sh-intro">
+    <p class="t-caps muted">Design system · draft for review</p>
+    <h1 class="t-display" style="margin-top:8px">Editorial minimalism on a Swiss grid</h1>
+    <p class="t-body">Every component from DESIGN.md section 9 with each of its states. States are forced with classes (<code class="sh-code">is-hover</code>, <code class="sh-code">is-loading</code>, <code class="sh-code">is-disabled</code> …) so they can be seen together. Switch the theme above, or turn on the grid overlay to see columns and the 4 px baseline. Nothing here is applied to the app yet.</p>
+  </section>
+
+  <!-- ===================== both themes at 390 ===================== -->
+  <section class="sh-sec" id="phones">
+    <header><h2 class="t-h2">Both themes at 390 px</h2><p class="t-small">A roadbook day on an iPhone 13–16 width, light and dark side by side. Each frame scrolls.</p></header>
+    <div class="sh-phones">
+      <div class="sh-phone"><span class="t-caps">Light</span><iframe title="Roadbook day, light theme" data-frame="light"></iframe></div>
+      <div class="sh-phone"><span class="t-caps">Dark</span><iframe title="Roadbook day, dark theme" data-frame="dark"></iframe></div>
+    </div>
+  </section>
+
+  <!-- ===================== colour ===================== -->
+  <section class="sh-sec" id="colour">
+    <header><h2 class="t-h2">Colour</h2><p class="t-small">Hex values are read from tokens.css for the theme you’re viewing. Ratios are against <code class="sh-code">--color-background</code>.</p></header>
+    <div class="sh-row"><div class="sh-name"><b>Neutral scale</b>12 steps</div><div class="sh-swatches" data-swatches="n0 n1 n2 n3 n4 n5 n6 n7 n8 n9 n10 n11"></div></div>
+    <div class="sh-row"><div class="sh-name"><b>Roles</b>Surfaces, borders, text</div><div class="sh-swatches" data-swatches="color-background color-surface color-surface-raised color-surface-muted color-surface-selected color-border color-border-strong color-text color-text-muted color-text-subtle color-text-disabled"></div></div>
+    <div class="sh-row"><div class="sh-name"><b>Accent and semantic</b>One accent; four semantic colours with tints</div><div class="sh-swatches" data-swatches="color-accent color-accent-fg color-accent-ink color-success color-success-bg color-warning color-warning-bg color-danger color-danger-bg color-info color-info-bg"></div></div>
+    <div class="sh-row"><div class="sh-name"><b>Route colours</b>As a rule, a dot, a label and a filled node</div>
+      <div class="sh-route">
+        <div class="sh-route-item r-blue"><span class="t-label">Day 1 · blue</span><div class="row"><span class="d"></span><span class="node is-filled">1</span><span class="node">2</span><code class="sh-code" data-hex="route-blue"></code></div></div>
+        <div class="sh-route-item r-orange"><span class="t-label">Day 2 · orange</span><div class="row"><span class="d"></span><span class="node is-filled">1</span><span class="node">2</span><code class="sh-code" data-hex="route-orange"></code></div></div>
+        <div class="sh-route-item r-green"><span class="t-label">Day 3 · green</span><div class="row"><span class="d"></span><span class="node is-filled">1</span><span class="node">2</span><code class="sh-code" data-hex="route-green"></code></div></div>
+        <div class="sh-route-item r-purple"><span class="t-label">Day 4 · purple</span><div class="row"><span class="d"></span><span class="node is-filled">1</span><span class="node">2</span><code class="sh-code" data-hex="route-purple"></code></div></div>
+        <div class="sh-route-item r-red"><span class="t-label">Ride home · red (solo)</span><div class="row"><span class="d"></span><span class="node is-filled">1</span><span class="node">2</span><code class="sh-code" data-hex="route-red"></code></div></div>
+      </div></div>
+    <div class="sh-row"><div class="sh-name"><b>Tour status</b></div><div class="sh-states" style="--sh-min:150px">
+      <div class="sh-state"><span class="t-caps">Draft</span><span class="pill pill-draft">Draft</span></div>
+      <div class="sh-state"><span class="t-caps">Published</span><span class="pill pill-published">Published</span></div>
+      <div class="sh-state"><span class="t-caps">Locked</span><span class="pill pill-locked">Locked</span></div></div></div>
+    <div class="sh-row"><div class="sh-name"><b>Contrast table</b>Every allowed pair, worked out live from tokens.css for both themes</div>
+      <div class="sh-ctable-wrap"><table class="sh-ctable" id="ctable"><thead><tr><th>Pair</th><th>Use</th><th>Light</th><th>Dark</th><th>Needs</th><th></th></tr></thead><tbody></tbody></table></div></div>
+  </section>
+
+  <!-- ===================== type ===================== -->
+  <section class="sh-sec" id="type">
+    <header><h2 class="t-h2">Typography</h2><p class="t-small">Geist and Geist Mono (SIL OFL 1.1). Sizes shown are mobile; display and h1 step up at 1024 px.</p></header>
+    <div class="sh-type">
+      <div>display 40/44 600</div><div><p class="t-display">Conder to Millthorpe</p></div>
+      <div>h1 30/36 600</div><div><p class="t-h1">Bike Tour 26</p></div>
+      <div>h2 22/28 600</div><div><p class="t-h2">Day 1 · Conder to Millthorpe</p></div>
+      <div>h3 17/24 600</div><div><p class="t-h3">Yass</p></div>
+      <div>body 16/24 400</div><div><p class="t-body">Cotter, Brindabella and Mountain Creek roads: the tightest riding of the day, with pine forest, river crossings and almost no traffic.</p></div>
+      <div>body-small 14/20 400</div><div><p class="t-small muted">Wee Jasper Rd · fuel and bakery stop</p></div>
+      <div>label 13/16 500</div><div><p class="t-label">Arrive</p></div>
+      <div>label-caps 11/16 500 +.08em</div><div><p class="t-caps">Best leg of the day</p></div>
+      <div>caption 12/16 400</div><div><p class="t-caption subtle">Last edited by Tony, 2 h ago</p></div>
+      <div>mono-data 15/20 500</div><div><p class="t-mono">11:00 · 118 km · 4.6</p></div>
+      <div>mono-data-lg 24/28 500</div><div><p class="t-mono-lg">335<span class="unit">km</span> &nbsp; 4:20<span class="unit">riding</span></p></div>
+      <div>mono-data-xl 48/48 400</div><div><p class="t-mono-xl">10:25</p></div>
+    </div>
+  </section>
+
+  <!-- ===================== space and shape ===================== -->
+  <section class="sh-sec" id="space">
+    <header><h2 class="t-h2">Spacing, shape and icons</h2><p class="t-small">4 px base. Radii stay small; only nodes, dots and avatars are round.</p></header>
+    <div class="sh-row"><div class="sh-name"><b>Spacing scale</b></div><div class="sh-ruler" id="ruler"></div></div>
+    <div class="sh-row"><div class="sh-name"><b>Radius</b></div><div class="sh-radii">
+      <div><i style="border-radius:var(--radius-0)"></i>radius-0 · 0</div><div><i style="border-radius:var(--radius-xs)"></i>radius-xs · 2</div><div><i style="border-radius:var(--radius-sm)"></i>radius-sm · 4</div><div><i style="border-radius:var(--radius-md)"></i>radius-md · 8</div><div><i style="border-radius:var(--radius-full)"></i>radius-full</div></div></div>
+    <div class="sh-row"><div class="sh-name"><b>Rules and depth</b></div><div class="sh-states" style="--sh-min:180px">
+      <div class="sh-state"><span class="t-caps">Hairline 1 px</span><div style="border-top:1px solid var(--color-border);height:24px"></div></div>
+      <div class="sh-state"><span class="t-caps">Control 1 px</span><div style="border-top:1px solid var(--color-border-strong);height:24px"></div></div>
+      <div class="sh-state"><span class="t-caps">Emphasis 2 px</span><div style="border-top:2px solid var(--color-text);height:24px"></div></div>
+      <div class="sh-state"><span class="t-caps">Route 3 px</span><div class="r-orange" style="border-top:3px solid var(--c);height:24px"></div></div>
+      <div class="sh-state"><span class="t-caps">shadow-overlay</span><div style="height:56px;background:var(--color-surface-raised);box-shadow:var(--shadow-overlay);border-radius:var(--radius-md)"></div></div>
+      <div class="sh-state"><span class="t-caps">shadow-toast</span><div style="height:44px;background:var(--color-text);box-shadow:var(--shadow-toast);border-radius:var(--radius-sm)"></div></div></div></div>
+    <div class="sh-row"><div class="sh-name"><b>Icons</b>24 grid, 1.5 px stroke; 16, 20, 24</div><div class="sh-states" style="--sh-min:64px">
+      <div class="sh-state"><svg class="ic lg"><use href="#i-today"/></svg></div><div class="sh-state"><svg class="ic lg"><use href="#i-book"/></svg></div><div class="sh-state"><svg class="ic lg"><use href="#i-bakery"/></svg></div><div class="sh-state"><svg class="ic lg"><use href="#i-court"/></svg></div><div class="sh-state"><svg class="ic lg"><use href="#i-crew"/></svg></div><div class="sh-state"><svg class="ic lg"><use href="#i-plan"/></svg></div><div class="sh-state"><svg class="ic lg"><use href="#i-nav"/></svg></div><div class="sh-state"><svg class="ic lg"><use href="#i-camera"/></svg></div><div class="sh-state"><svg class="ic lg"><use href="#i-fuel"/></svg></div><div class="sh-state"><svg class="ic lg"><use href="#i-route"/></svg></div><div class="sh-state"><svg class="ic lg"><use href="#i-clock"/></svg></div><div class="sh-state"><svg class="ic"><use href="#i-alert"/></svg></div><div class="sh-state"><svg class="ic sm"><use href="#i-check"/></svg></div></div></div>
+  </section>
+
+  <!-- ===================== components ===================== -->
+  <section class="sh-sec" id="c-bars">
+    <header><h2 class="t-h2">9.1–9.2 App bar and tab bar</h2></header>
+    <div class="sh-row"><div class="sh-name"><b>App bar</b>Logo, tour switcher, account</div><div class="sh-states" style="--sh-min:330px">
+      <div class="sh-state"><span class="t-caps">Default</span><div class="sh-frame"><div class="appbar" style="position:relative"><div class="appbar-in"><svg class="ic appbar-logo"><use href="#i-logo"/></svg><button class="tour-switch" type="button"><b>Bike Tour 27</b><svg class="ic sm"><use href="#i-down"/></svg></button><button class="account" type="button" aria-label="Account"><span>JG</span></button></div></div></div></div>
+      <div class="sh-state"><span class="t-caps">Hover on switcher, draft tour</span><div class="sh-frame"><div class="appbar" style="position:relative"><div class="appbar-in"><svg class="ic appbar-logo"><use href="#i-logo"/></svg><button class="tour-switch is-hover" type="button"><b>Snowy Three Day</b><svg class="ic sm"><use href="#i-down"/></svg></button><span class="pill pill-draft">Draft</span><button class="account" type="button" aria-label="Account"><span>JG</span></button></div></div></div></div>
+      <div class="sh-state"><span class="t-caps">Focus on switcher</span><div class="sh-frame"><div class="appbar" style="position:relative"><div class="appbar-in"><svg class="ic appbar-logo"><use href="#i-logo"/></svg><button class="tour-switch is-focus" type="button"><b>Bike Tour 27</b><svg class="ic sm"><use href="#i-down"/></svg></button><button class="account" type="button" aria-label="Account"><span>JG</span></button></div></div></div></div>
+      <div class="sh-state"><span class="t-caps">One tour, profile open</span><div class="sh-frame"><div class="appbar" style="position:relative"><div class="appbar-in"><svg class="ic appbar-logo"><use href="#i-logo"/></svg><button class="tour-switch is-single" type="button"><b>Brindabella Loop</b><svg class="ic sm"><use href="#i-down"/></svg></button><button class="account is-current" type="button" aria-label="Account"><span>TM</span></button></div></div></div></div>
+    </div></div>
+    <div class="sh-row"><div class="sh-name"><b>Tab bar</b>Fixed at bottom: 0 with the safe area below</div><div class="sh-states" style="--sh-min:330px">
+      <div class="sh-state"><span class="t-caps">Today current, badge on Crew</span><div class="sh-frame"><nav class="tabbar" aria-label="Sections"><button class="tab" aria-current="page"><svg class="ic"><use href="#i-today"/></svg>Today</button><button class="tab"><svg class="ic"><use href="#i-book"/></svg>Roadbook</button><button class="tab"><svg class="ic"><use href="#i-bakery"/></svg>Bakeries</button><button class="tab"><svg class="ic"><use href="#i-court"/></svg>Court</button><button class="tab"><svg class="ic"><use href="#i-crew"/></svg>Crew<span class="badge"></span></button><button class="tab"><svg class="ic"><use href="#i-plan"/></svg>Plan</button></nav></div></div>
+      <div class="sh-state"><span class="t-caps">Hover Bakeries, focus Plan</span><div class="sh-frame"><nav class="tabbar" aria-label="Sections"><button class="tab"><svg class="ic"><use href="#i-today"/></svg>Today</button><button class="tab" aria-current="page"><svg class="ic"><use href="#i-book"/></svg>Roadbook</button><button class="tab is-hover"><svg class="ic"><use href="#i-bakery"/></svg>Bakeries</button><button class="tab"><svg class="ic"><use href="#i-court"/></svg>Court</button><button class="tab"><svg class="ic"><use href="#i-crew"/></svg>Crew</button><button class="tab is-focus"><svg class="ic"><use href="#i-plan"/></svg>Plan</button></nav></div></div>
+      <div class="sh-state"><span class="t-caps">Day ride (features off: 4 tabs)</span><div class="sh-frame"><nav class="tabbar" aria-label="Sections"><button class="tab" aria-current="page"><svg class="ic"><use href="#i-today"/></svg>Today</button><button class="tab"><svg class="ic"><use href="#i-book"/></svg>Roadbook</button><button class="tab"><svg class="ic"><use href="#i-crew"/></svg>Crew</button><button class="tab"><svg class="ic"><use href="#i-plan"/></svg>Plan</button></nav></div></div>
+    </div></div>
+  </section>
+
+  <section class="sh-sec" id="c-buttons">
+    <header><h2 class="t-h2">9.3 Buttons</h2><p class="t-small">44 px high (52 px large). Small buttons are 36 px visible inside a 44 px hit area.</p></header>
+    <div class="sh-row"><div class="sh-name"><b>States by variant</b></div><div class="sh-states" style="--sh-min:120px" id="btngrid"></div></div>
+    <div class="sh-row"><div class="sh-name"><b>Icon-only, small, large</b></div><div class="sh-states" style="--sh-min:140px">
+      <div class="sh-state"><span class="t-caps">Icon default</span><button class="btn btn-icon" type="button" aria-label="More for Yass"><svg class="ic"><use href="#i-more"/></svg></button></div>
+      <div class="sh-state"><span class="t-caps">Icon hover</span><button class="btn btn-icon is-hover" type="button" aria-label="More"><svg class="ic"><use href="#i-more"/></svg></button></div>
+      <div class="sh-state"><span class="t-caps">Icon outlined, focus</span><button class="btn btn-icon is-outlined is-focus" type="button" aria-label="Close"><svg class="ic"><use href="#i-x"/></svg></button></div>
+      <div class="sh-state"><span class="t-caps">Icon disabled</span><button class="btn btn-icon is-disabled" type="button" aria-label="More" disabled><svg class="ic"><use href="#i-more"/></svg></button></div>
+      <div class="sh-state"><span class="t-caps">Small secondary</span><button class="btn btn-secondary btn-sm" type="button"><svg class="ic sm"><use href="#i-nav"/></svg>Navigate</button></div>
+      <div class="sh-state"><span class="t-caps">Small accent</span><button class="btn btn-accent btn-sm" type="button">We’re here</button></div>
+      <div class="sh-state"><span class="t-caps">Large primary</span><button class="btn btn-primary btn-lg" type="button">Sign in</button></div>
+      <div class="sh-state"><span class="t-caps">Danger, confirm</span><button class="btn btn-danger-fill" type="button">Delete tour</button></div>
+      <div class="sh-state"><span class="t-caps">Text link</span><button class="link t-small" type="button">Forgot password</button></div>
+    </div></div>
+  </section>
+
+  <section class="sh-sec" id="c-inputs">
+    <header><h2 class="t-h2">9.4 Inputs</h2><p class="t-small">Label above, hint or error below. 16 px text so iOS doesn’t zoom. Numbers, dates and times in Geist Mono.</p></header>
+    <div class="sh-row"><div class="sh-name"><b>Types</b></div><div class="sh-states" style="--sh-min:220px">
+      <div class="sh-state"><label class="field"><span class="field-label">Town or place</span><input class="input" type="text" value="Yass"><span class="field-hint">Start typing; the nearest match is picked</span></label></div>
+      <div class="sh-state"><label class="field"><span class="field-label">Email they sign in with</span><input class="input" type="email" placeholder="name@example.com"></label></div>
+      <div class="sh-state"><div class="field"><label class="field-label" for="pw1">Password</label><div class="input-wrap"><input class="input" id="pw1" type="password" value="ridetogether"><button class="btn btn-icon" type="button" aria-label="Show password"><svg class="ic"><use href="#i-eye"/></svg></button></div></div></div>
+      <div class="sh-state"><label class="field"><span class="field-label">Fuel range <span class="opt">(km)</span></span><input class="input is-mono" type="number" value="183" inputmode="numeric"></label></div>
+      <div class="sh-state"><label class="field"><span class="field-label">Date</span><input class="input is-mono" type="date" value="2026-10-31"></label></div>
+      <div class="sh-state"><div class="field-row"><label class="field"><span class="field-label">Arrive</span><input class="input is-mono" type="time" value="11:00"></label><label class="field"><span class="field-label">Depart</span><input class="input is-mono" type="time" value="11:30"></label></div></div>
+      <div class="sh-state"><label class="field"><span class="field-label">Leader</span><span class="input-wrap"><select class="input"><option>Ewart</option><option>Tony</option></select><svg class="ic sm"><use href="#i-down"/></svg></span></label></div>
+      <div class="sh-state"><label class="field"><span class="field-label">Note for riders</span><textarea class="input">Park behind the bakery on Comur St; the main street is tight on a Saturday.</textarea></label></div>
+    </div></div>
+    <div class="sh-row"><div class="sh-name"><b>States</b></div><div class="sh-states" style="--sh-min:200px">
+      <div class="sh-state"><span class="t-caps">Default</span><label class="field"><span class="field-label">Nickname</span><input class="input" type="text" placeholder="e.g. Sam"></label></div>
+      <div class="sh-state"><span class="t-caps">Hover</span><label class="field"><span class="field-label">Nickname</span><input class="input is-hover" type="text" value="Mel"></label></div>
+      <div class="sh-state"><span class="t-caps">Focus</span><label class="field"><span class="field-label">Nickname</span><input class="input is-focus" type="text" value="Mel"></label></div>
+      <div class="sh-state"><span class="t-caps">Disabled</span><label class="field"><span class="field-label">Tour id</span><input class="input is-disabled" type="text" value="2027-bike-tour-27" disabled></label></div>
+      <div class="sh-state"><span class="t-caps">Read-only</span><label class="field"><span class="field-label">Km into the day</span><input class="input is-mono" type="text" value="118" readonly><span class="field-hint">Worked out from the route</span></label></div>
+      <div class="sh-state"><span class="t-caps">Error</span><label class="field"><span class="field-label">Email they sign in with</span><input class="input is-error" type="email" value="tony@" aria-invalid="true" aria-describedby="e1"><span class="field-error" id="e1"><svg class="ic sm"><use href="#i-alert"/></svg>That email doesn’t look right.</span></label></div>
+    </div></div>
+  </section>
+
+  <section class="sh-sec" id="c-select">
+    <header><h2 class="t-h2">9.5–9.7 Chips, segmented control, pills</h2></header>
+    <div class="sh-row"><div class="sh-name"><b>Checkbox chips</b>Stop tags</div><div class="sh-states" style="--sh-min:260px">
+      <div class="sh-state is-wide"><span class="t-caps">What happens here: default, selected, hover, focus, disabled</span><div class="chips">
+        <label class="chip"><input type="checkbox">Start</label><label class="chip is-selected"><input type="checkbox" checked>Fuel</label><label class="chip is-selected"><input type="checkbox" checked>Bakery stop</label><label class="chip is-hover"><input type="checkbox">Coffee</label><label class="chip is-focus"><input type="checkbox">Lunch</label><label class="chip"><input type="checkbox">Meet up</label><label class="chip is-disabled"><input type="checkbox" disabled>Overnight</label><button class="btn btn-ghost btn-sm" type="button">+ 6 more</button></div></div>
+    </div></div>
+    <div class="sh-row"><div class="sh-name"><b>Segmented control</b>Groups, route options, tour status</div><div class="sh-states" style="--sh-min:300px">
+      <div class="sh-state"><span class="t-caps">Route option</span><div class="seg" role="group" aria-label="Route option"><button type="button" aria-pressed="true">Main</button><button type="button" aria-pressed="false">Wombeyan Caves Rd</button></div></div>
+      <div class="sh-state"><span class="t-caps">Group, hover on Everyone</span><div class="seg" role="group" aria-label="Group"><button type="button" aria-pressed="false">Sydney crew</button><button type="button" aria-pressed="true">Canberra crew</button><button type="button" class="is-hover" aria-pressed="false">Everyone</button></div></div>
+      <div class="sh-state"><span class="t-caps">Tour status, draft</span><div class="seg" role="group" aria-label="Tour status"><button type="button" class="st-draft" aria-pressed="true"><span class="dot"></span>Draft</button><button type="button" class="st-published" aria-pressed="false">Published</button><button type="button" class="st-locked" aria-pressed="false">Locked</button></div></div>
+      <div class="sh-state"><span class="t-caps">Tour status, published, focus</span><div class="seg" role="group" aria-label="Tour status"><button type="button" class="st-draft" aria-pressed="false">Draft</button><button type="button" class="st-published is-focus" aria-pressed="true"><span class="dot"></span>Published</button><button type="button" class="st-locked" aria-pressed="false">Locked</button></div></div>
+      <div class="sh-state"><span class="t-caps">Tour status, locked</span><div class="seg" role="group" aria-label="Tour status"><button type="button" class="st-draft" aria-pressed="false">Draft</button><button type="button" class="st-published" aria-pressed="false">Published</button><button type="button" class="st-locked" aria-pressed="true"><span class="dot"></span>Locked</button></div></div>
+      <div class="sh-state"><span class="t-caps">Disabled segment</span><div class="seg" role="group" aria-label="Type"><button type="button" aria-pressed="true">Multi-day tour</button><button type="button" class="is-disabled" aria-pressed="false" disabled>Day ride</button></div></div>
+    </div></div>
+    <div class="sh-row"><div class="sh-name"><b>Status pill / badge</b>Not interactive</div><div class="sh-states" style="--sh-min:120px">
+      <div class="sh-state"><span class="t-caps">Draft</span><span class="pill pill-draft">Draft</span></div>
+      <div class="sh-state"><span class="t-caps">Published</span><span class="pill pill-published">Published</span></div>
+      <div class="sh-state"><span class="t-caps">Locked</span><span class="pill pill-locked">Locked</span></div>
+      <div class="sh-state"><span class="t-caps">Neutral</span><span class="pill">Ride through</span></div>
+      <div class="sh-state"><span class="t-caps">Success</span><span class="pill pill-success">Booked</span></div>
+      <div class="sh-state"><span class="t-caps">Warning</span><span class="pill pill-warning">Fuel gap</span></div>
+      <div class="sh-state"><span class="t-caps">Danger</span><span class="pill pill-danger">Shut at 11:00</span></div>
+      <div class="sh-state"><span class="t-caps">Info</span><span class="pill pill-info">Estimated</span></div>
+      <div class="sh-state"><span class="t-caps">Route</span><span class="pill pill-route r-orange">Day 2</span></div>
+      <div class="sh-state"><span class="t-caps">Count</span><span class="pill pill-count">12</span></div>
+    </div></div>
+  </section>
+
+  <section class="sh-sec" id="c-day">
+    <header><h2 class="t-h2">9.8–9.9 Day header and stop timeline</h2></header>
+    <div class="sh-row"><div class="sh-name"><b>Day header</b></div><div class="sh-states" style="--sh-min:330px">
+      <div class="sh-state"><span class="t-caps">Default</span><div class="dayhead r-blue">
+        <div class="dayhead-eyebrow"><span class="t-caps">Day 1</span><span class="t-label muted">Sat 31 Oct</span></div>
+        <h3 class="t-h2 dayhead-title">Conder to Millthorpe</h3>
+        <div class="stats"><div><span class="t-mono-lg">335<span class="unit">km</span></span><span class="t-caption">distance</span></div><div><span class="t-mono-lg">4:20</span><span class="t-caption">riding</span></div><div><span class="t-mono-lg">5:50</span><span class="t-caption">with stops</span></div></div>
+        <p class="t-small dayhead-meta">Leader <b>Ewart</b> · Sweep <b>Tony</b></p>
+        <p class="t-body" style="margin-top:8px">Mostly cruisey with some tight sections.</p>
+        <p class="t-small muted" style="margin-top:4px">Cotter, Brindabella and Mountain Creek roads, Wee Jasper, Lachlan Valley, Mid Western Hwy</p></div></div>
+      <div class="sh-state"><span class="t-caps">Today, with groups and options</span><div class="dayhead r-orange is-today">
+        <div class="dayhead-eyebrow"><span class="t-caps">Day 2</span><span class="t-label muted">Sun 1 Nov</span></div>
+        <h3 class="t-h2 dayhead-title">Millthorpe to Shellharbour</h3>
+        <div class="dayhead-controls"><div class="seg" role="group" aria-label="Group"><button type="button" aria-pressed="true">Sydney crew</button><button type="button" aria-pressed="false">Canberra crew</button><button type="button" aria-pressed="false">Everyone</button></div>
+          <div class="seg" role="group" aria-label="Route option"><button type="button" aria-pressed="true">Main</button><button type="button" aria-pressed="false">Kangaroo Valley</button></div></div>
+        <div class="stats"><div><span class="t-mono-lg">365<span class="unit">km</span></span><span class="t-caption">distance</span></div><div><span class="t-mono-lg">5:05</span><span class="t-caption">riding</span></div></div></div></div>
+      <div class="sh-state"><span class="t-caps">Done</span><div class="dayhead r-green is-done">
+        <div class="dayhead-eyebrow"><span class="t-caps">Day 3</span><span class="t-label muted">Mon 2 Nov</span></div>
+        <h3 class="t-h2 dayhead-title">Shellharbour to Huskisson</h3>
+        <div class="stats"><div><span class="t-mono-lg">255<span class="unit">km</span></span><span class="t-caption">distance</span></div></div></div></div>
+      <div class="sh-state"><span class="t-caps">Empty (no stops)</span><div class="dayhead r-purple">
+        <div class="dayhead-eyebrow"><span class="t-caps">Day 4</span><span class="t-label muted">Tue 3 Nov</span></div>
+        <h3 class="t-h2 dayhead-title">Huskisson to Theodore</h3>
+        <p class="t-small muted" style="margin-top:12px">No stops yet.</p></div></div>
+    </div></div>
+    <div class="sh-row"><div class="sh-name"><b>Stop timeline item</b>Time column, rail and node, content</div><div class="sh-states" style="--sh-min:330px">
+      <div class="sh-state"><span class="t-caps">Start (filled), passed</span><ol class="timeline r-blue">
+        <li class="stop is-passed"><div class="stop-time"><span class="t-mono">9:00</span></div><span class="node is-filled">1</span><div class="stop-body"><h4 class="t-h3 stop-town">Conder</h4><p class="t-small stop-road">Lanyon Shops car park</p><div class="stop-tags"><span class="pill no-dot">Start</span><span class="pill no-dot">Coffee</span></div></div></li></ol></div>
+      <div class="sh-state"><span class="t-caps">Current (we’re here), with disclosures</span><ol class="timeline r-blue">
+        <li class="stop"><div class="stop-time"><span class="t-mono">11:00</span><span class="t-mono dep">11:30</span></div><span class="node is-current">4</span><div class="stop-body"><h4 class="t-h3 stop-town">Yass</h4><p class="t-small stop-road">Wee Jasper Rd · 118 km</p><div class="stop-tags"><span class="pill pill-warning">Fuel</span><span class="pill no-dot">Bakery stop</span></div>
+          <p class="t-body stop-note">Park behind the bakery on Comur St.</p>
+          <details class="disclosure"><summary>Did you know?<svg class="ic sm"><use href="#i-right"/></svg></summary><div class="disclosure-body"><p class="t-small">Explorer Hamilton Hume settled here. His home, Cooma Cottage, still stands on the edge of town.</p></div></details>
+          <details class="disclosure" open><summary>Bakery audit · 4<svg class="ic sm"><use href="#i-right"/></svg></summary><div class="disclosure-body"><ol class="bakeries">
+            <li class="bakery is-top"><span class="bakery-rank">1</span><div><span class="bakery-name">Clementine Bakery</span><p class="t-small bakery-must">Sausage roll</p><div class="bakery-meta"><span class="pill pill-success">Open at 11:00</span><span class="t-mono">4.6</span></div></div><span></span></li>
+            <li class="bakery"><span class="bakery-rank">2</span><div><span class="bakery-name">Yass Country Kitchen</span><p class="t-small bakery-must">Chunky beef pie</p></div><span></span></li></ol></div></details>
+          <div class="stop-actions"><button class="btn btn-accent btn-sm" type="button">We’re here</button><button class="btn btn-secondary btn-sm" type="button"><svg class="ic sm"><use href="#i-nav"/></svg>Navigate</button><button class="btn btn-ghost btn-sm" type="button"><svg class="ic sm"><use href="#i-camera"/></svg>Photo</button></div></div></li></ol></div>
+      <div class="sh-state"><span class="t-caps">Ride through, estimated time</span><ol class="timeline r-blue">
+        <li class="stop"><div class="stop-time is-estimate"><span class="t-mono">12:05</span></div><span class="node">5</span><div class="stop-body"><h4 class="t-h3 stop-town">Rye Park</h4><p class="t-small stop-road">Wargeila Rd, Rye Park Rd</p><div class="stop-tags"><span class="pill no-dot">Ride through</span></div></div></li></ol></div>
+      <div class="sh-state"><span class="t-caps">No time, warning, overnight</span><ol class="timeline r-blue">
+        <li class="stop"><div class="stop-time"><span class="t-mono subtle">—</span></div><span class="node">7</span><div class="stop-body"><h4 class="t-h3 stop-town">Blayney</h4><p class="t-small stop-road">Mid Western Hwy</p><p class="stop-warn"><svg class="ic sm"><use href="#i-fuel"/></svg>196 km since fuel at Yass: over the 183 km rule</p></div></li>
+        <li class="stop"><div class="stop-time"><span class="t-mono">3:00<span class="ampm">pm</span></span></div><span class="node is-filled">8</span><div class="stop-body"><h4 class="t-h3 stop-town">Millthorpe</h4><div class="stop-tags"><span class="pill no-dot">Overnight</span></div></div></li></ol></div>
+      <div class="sh-state"><span class="t-caps">Loading</span><div aria-busy="true"><span class="vh">Loading</span>
+        <div style="display:grid;grid-template-columns:52px 28px 1fr;column-gap:12px"><span class="sk sk-line" style="width:40px;margin-left:auto"></span><span class="sk sk-node"></span><div><span class="sk sk-title"></span><span class="sk sk-line" style="width:80%"></span><span class="sk sk-line" style="width:45%"></span></div></div></div></div>
+    </div></div>
+  </section>
+
+  <section class="sh-sec" id="c-bakery">
+    <header><h2 class="t-h2">9.10–9.12 Bakery row, best-leg callout, notices</h2></header>
+    <div class="sh-row"><div class="sh-name"><b>Bakery row</b></div><div class="sh-states" style="--sh-min:330px">
+      <div class="sh-state is-wide"><ol class="bakeries" style="max-width:560px">
+        <li class="bakery is-top"><span class="bakery-rank">1</span><div><span class="bakery-name">Millthorpe Providore</span> <span class="pill">Top pick</span><p class="t-small bakery-must">Sausage roll</p><div class="bakery-meta"><span class="pill pill-success">Open on arrival</span><span class="t-mono">4.6</span><span class="t-caption">Weekends 7 am to 3 pm</span></div></div><button class="tick is-selected" type="button" aria-pressed="true" aria-label="Ticked"><span><svg class="ic sm"><use href="#i-check"/></svg></span></button></li>
+        <li class="bakery is-shut"><span class="bakery-rank">2</span><div><span class="bakery-name">The Old Mill Cafe</span><p class="t-small bakery-must">Lemon meringue pie</p><div class="bakery-meta"><span class="pill pill-danger">Shut at 3:00 pm</span><span class="t-mono">4.5</span><span class="t-caption">Wed to Sun 7 am to 2 pm</span></div></div><button class="tick" type="button" aria-pressed="false" aria-label="Tick"><span></span></button></li>
+        <li class="bakery"><span class="bakery-rank">3</span><div><span class="bakery-name">Millthorpe Sweets and Treats</span><p class="t-small bakery-must">Handmade chocolates</p><div class="bakery-meta"><span class="pill">Hours unknown</span><span class="pill pill-info">400 m off route</span></div></div><button class="tick" type="button" aria-pressed="false" aria-label="Tick"><span></span></button></li>
+      </ol></div>
+      <div class="sh-state"><span class="t-caps">Empty town</span><div class="bakery" style="grid-template-columns:1fr"><p class="t-small muted">No bakeries in Rye Park yet.</p><div><button class="btn btn-ghost btn-sm" type="button"><svg class="ic sm"><use href="#i-plus"/></svg>Find bakeries</button></div></div></div>
+    </div></div>
+    <div class="sh-row"><div class="sh-name"><b>Best-leg callout</b></div><div class="sh-states" style="--sh-min:300px">
+      <div class="sh-state"><span class="t-caps">Default</span><div class="bestleg r-blue"><span class="t-caps">Best leg of the day</span><h4 class="t-h3">Tharwa to Cavan</h4><p class="t-small">The tightest riding of the day, with pine forest, river crossings and almost no traffic. Mountain Creek Rd is narrow, so keep it tidy.</p><div class="bestleg-votes"><button class="btn btn-secondary btn-sm" type="button">Agree</button><button class="btn btn-ghost btn-sm" type="button">Pick another leg</button></div></div></div>
+      <div class="sh-state"><span class="t-caps">Voted</span><div class="bestleg r-orange"><span class="t-caps">Best leg of the day</span><h4 class="t-h3">Fitzroy Falls to Kangaroo Valley</h4><p class="t-small">Down Barrengarry Mountain: tight hairpins, then the valley floor.</p><div class="bestleg-votes"><label class="chip is-selected"><input type="checkbox" checked>Agree · 7</label><span class="t-caption subtle" style="align-self:center">2 picked another leg</span></div></div></div>
+    </div></div>
+    <div class="sh-row"><div class="sh-name"><b>Notice and fuel note</b>2 px rule; tint only when it must stand out</div><div class="sh-states" style="--sh-min:300px">
+      <div class="sh-state"><span class="t-caps">Info</span><div class="notice notice-info"><svg class="ic"><use href="#i-info"/></svg><p>Distances are worked out from OpenStreetMap routing. Check the roadbook where Google differs.</p></div></div>
+      <div class="sh-state"><span class="t-caps">Success</span><div class="notice notice-success"><svg class="ic"><use href="#i-check"/></svg><p>Dinner at the Royal Hotel is booked for 10 at 7:00 pm.</p></div></div>
+      <div class="sh-state"><span class="t-caps">Fuel note (warning)</span><div class="notice notice-warning"><svg class="ic"><use href="#i-fuel"/></svg><p><b>Fuel at Yass.</b> Next servo is Cowra, <span class="t-mono">137 km</span> on.</p></div></div>
+      <div class="sh-state"><span class="t-caps">Danger</span><div class="notice notice-danger"><svg class="ic"><use href="#i-alert"/></svg><p>Couldn’t save the stop. Check your signal and try again.</p></div></div>
+      <div class="sh-state"><span class="t-caps">Tinted, with action</span><div class="notice notice-warning is-tinted"><svg class="ic"><use href="#i-alert"/></svg><div><p><b>Check your email to start editing.</b> We sent a link to tony@example.com.</p><button class="btn btn-secondary btn-sm" type="button">Send it again</button></div></div></div>
+    </div></div>
+  </section>
+
+  <section class="sh-sec" id="c-plan">
+    <header><h2 class="t-h2">9.13 Plan list row</h2><p class="t-small">Drag handle, number or dot, title and metadata, ⋯ menu. Tap the main area to edit.</p></header>
+    <div class="sh-row"><div class="sh-name"><b>States</b></div><div class="sh-states" style="--sh-min:330px">
+      <div class="sh-state is-wide"><div class="plist r-blue" style="max-width:560px">
+        <div class="plist-lane r-green"><i></i><span class="t-caps">Sydney crew</span></div>
+        <div class="prow"><button class="prow-grip" type="button" aria-label="Drag to reorder"><svg class="ic"><use href="#i-grip"/></svg></button><span class="prow-num">1</span><button class="prow-main" type="button"><b>Conder</b><small><span class="t-mono">0 km</span> · Coffee 8:30 am, roll out 9:00 am</small></button><button class="btn btn-icon" type="button" aria-label="More for Conder"><svg class="ic"><use href="#i-more"/></svg></button></div>
+        <div class="prow is-hover"><button class="prow-grip" type="button" aria-label="Drag to reorder"><svg class="ic"><use href="#i-grip"/></svg></button><span class="prow-num">2</span><button class="prow-main" type="button"><b>Tharwa</b><small><span class="t-mono">22 km</span> · Ride through</small></button><button class="btn btn-icon" type="button" aria-label="More"><svg class="ic"><use href="#i-more"/></svg></button></div>
+        <div class="prow is-selected"><button class="prow-grip" type="button" aria-label="Drag to reorder"><svg class="ic"><use href="#i-grip"/></svg></button><span class="prow-num">4</span><button class="prow-main" type="button"><b>Yass</b><small><span class="t-mono">118 km</span> · Arrive 11:00 am, depart 11:30 am</small><span class="edited">Last edited by Tony, 2 h ago</span></button><button class="btn btn-icon" type="button" aria-label="More"><svg class="ic"><use href="#i-more"/></svg></button></div>
+        <div class="prow is-dragging"><button class="prow-grip" type="button" aria-label="Drag to reorder"><svg class="ic"><use href="#i-grip"/></svg></button><span class="prow-num">6</span><button class="prow-main" type="button"><b>Cowra</b><small><span class="t-mono">255 km</span> · Lunch, fuel</small></button><button class="btn btn-icon" type="button" aria-label="More"><svg class="ic"><use href="#i-more"/></svg></button></div>
+        <div class="prow is-drop-before"><button class="prow-grip" type="button" aria-label="Drag to reorder"><svg class="ic"><use href="#i-grip"/></svg></button><span class="prow-num">7</span><button class="prow-main" type="button"><b>Blayney</b><small><span class="t-mono">—</span> · No time set</small><span class="stop-warn"><svg class="ic sm"><use href="#i-fuel"/></svg>196 km since fuel at Yass: over the 183 km rule</span></button><button class="btn btn-icon" type="button" aria-label="More"><svg class="ic"><use href="#i-more"/></svg></button></div>
+        <div class="prow is-pressed"><button class="prow-grip" type="button" aria-label="Drag to reorder"><svg class="ic"><use href="#i-grip"/></svg></button><span class="prow-num">8</span><button class="prow-main is-focus" type="button"><b>Millthorpe</b><small><span class="t-mono">335 km</span> · Overnight</small></button><button class="btn btn-icon" type="button" aria-label="More"><svg class="ic"><use href="#i-more"/></svg></button></div>
+      </div><p class="t-caption subtle" style="margin-top:8px">Rows top to bottom: default, hover, selected (with “last edited by”), dragging, drop target with a warning, pressed with focus.</p></div>
+      <div class="sh-state"><span class="t-caps">Locked tour</span><div class="plist r-blue"><div class="prow is-locked"><span class="prow-grip"></span><span class="prow-num">1</span><button class="prow-main" type="button"><b>Caringbah</b><small><span class="t-mono">0 km</span> · Start</small></button><button class="btn btn-icon is-disabled" type="button" aria-label="More" disabled><svg class="ic"><use href="#i-more"/></svg></button></div></div></div>
+      <div class="sh-state"><span class="t-caps">Empty list</span><div class="plist"><div class="empty" style="padding:24px 8px"><svg class="ic lg"><use href="#i-route"/></svg><h3 class="t-h3">No stops yet</h3><p class="t-small">Add the day’s towns one by one, or paste them all with Quick build.</p><button class="btn btn-primary" type="button"><svg class="ic"><use href="#i-plus"/></svg>Add stop</button></div></div></div>
+    </div></div>
+  </section>
+
+  <section class="sh-sec" id="c-overlay">
+    <header><h2 class="t-h2">9.14–9.17 Dialog, toast, empty state, skeleton</h2></header>
+    <div class="sh-row"><div class="sh-name"><b>Dialog / sheet</b>Sheet on phones, dialog from 640 px</div><div class="sh-states" style="--sh-min:330px">
+      <div class="sh-state"><span class="t-caps">Sheet (mobile)</span><div class="sh-frame scrim" style="padding-top:120px"><div class="sheet"><div class="sheet-grab"></div><div class="sheet-head"><h3 class="t-h3">Edit stop</h3><p class="t-small muted">After Tharwa, before Rye Park</p></div>
+        <label class="field"><span class="field-label">Town or place</span><input class="input" type="text" value="Yass"></label>
+        <div class="field-row"><label class="field"><span class="field-label">Arrive</span><input class="input is-mono" type="time" value="11:00"></label><label class="field"><span class="field-label">Depart</span><input class="input is-mono" type="time" value="11:30"></label></div>
+        <div class="sheet-foot"><button class="btn btn-primary btn-block" type="button">Save</button><button class="btn btn-ghost btn-block" type="button">Cancel</button></div></div></div></div>
+      <div class="sh-state"><span class="t-caps">Saving (loading)</span><div class="sh-frame scrim" style="padding-top:220px"><div class="sheet"><div class="sheet-grab"></div><div class="sheet-head"><h3 class="t-h3">Add a rider</h3></div><label class="field"><span class="field-label">Name</span><input class="input" type="text" value="Shannon" readonly></label><div class="sheet-foot"><button class="btn btn-primary btn-block is-loading" type="button" aria-busy="true">Save<span class="vh">Saving…</span></button><button class="btn btn-ghost btn-block is-disabled" type="button" disabled>Cancel</button></div></div></div></div>
+      <div class="sh-state"><span class="t-caps">Error</span><div class="sh-frame scrim" style="padding-top:180px"><div class="sheet"><div class="sheet-grab"></div><div class="sheet-head"><h3 class="t-h3">Add a rider</h3></div><label class="field"><span class="field-label">Email they sign in with</span><input class="input is-error" type="email" value="mick@example" aria-invalid="true"><span class="field-error"><svg class="ic sm"><use href="#i-alert"/></svg>That email doesn’t look right.</span></label><div class="notice notice-danger"><svg class="ic"><use href="#i-alert"/></svg><p>Couldn’t save. Fix the email and try again.</p></div><div class="sheet-foot"><button class="btn btn-primary btn-block" type="button">Save</button></div></div></div></div>
+      <div class="sh-state"><span class="t-caps">Destructive confirm (dialog, 640 px+)</span><div class="sheet is-dialog"><div class="sheet-head"><h3 class="t-h3">Delete Bike Tour 27?</h3><p class="t-small muted">This deletes every day, stop, bakery, bed, dinner and photo. It can’t be undone. Type the tour’s name to confirm.</p></div><label class="field"><span class="field-label">Tour name</span><input class="input" type="text" value="Bike Tour 27"></label><div class="sheet-foot"><button class="btn btn-danger-fill" type="button">Delete tour</button><button class="btn btn-secondary" type="button">Cancel</button></div></div></div>
+    </div></div>
+    <div class="sh-row"><div class="sh-name"><b>Toast</b>Inverted, above the tab bar</div><div class="sh-states" style="--sh-min:300px">
+      <div class="sh-state"><span class="t-caps">Neutral</span><div class="toast" role="status"><span>Stop saved</span></div></div>
+      <div class="sh-state"><span class="t-caps">With action</span><div class="toast" role="status"><span>Yass deleted</span><button class="btn btn-ghost btn-sm" type="button">Undo</button></div></div>
+      <div class="sh-state"><span class="t-caps">Error</span><div class="toast" role="alert"><svg class="ic sm toast-icon"><use href="#i-alert"/></svg><span>Couldn’t set the position.</span></div></div>
+    </div></div>
+    <div class="sh-row"><div class="sh-name"><b>Empty state</b></div><div class="sh-states" style="--sh-min:300px">
+      <div class="sh-state"><span class="t-caps">No tours</span><div class="empty"><svg class="ic lg"><use href="#i-book"/></svg><h3 class="t-h3">You’re not on a tour yet</h3><p class="t-body">When an organiser adds your email to a crew list, the tour shows up here. Or plan your own.</p><button class="btn btn-primary" type="button">Plan a tour</button></div></div>
+      <div class="sh-state"><span class="t-caps">No photos</span><div class="empty"><svg class="ic lg"><use href="#i-camera"/></svg><h3 class="t-h3">No photos yet</h3><p class="t-body">Add one from any stop with “Photo”.</p></div></div>
+    </div></div>
+    <div class="sh-row"><div class="sh-name"><b>Skeleton loading</b>Static under reduced motion</div><div class="sh-states" style="--sh-min:300px">
+      <div class="sh-state"><span class="t-caps">Day header</span><div aria-busy="true"><span class="vh">Loading</span><div style="border-top:3px solid var(--color-skeleton);padding-top:12px"><span class="sk sk-line" style="width:60px"></span><span class="sk sk-title" style="height:28px;width:80%"></span><div style="display:flex;gap:24px"><span class="sk" style="width:64px;height:28px"></span><span class="sk" style="width:56px;height:28px"></span><span class="sk" style="width:56px;height:28px"></span></div></div></div></div>
+      <div class="sh-state"><span class="t-caps">List rows</span><div aria-busy="true"><span class="vh">Loading</span><span class="sk sk-line" style="width:90%"></span><span class="sk sk-line" style="width:70%"></span><span class="sk sk-line" style="width:82%"></span><span class="sk sk-line" style="width:60%"></span></div></div>
+    </div></div>
+  </section>
+
+  <section class="sh-sec" id="c-auth">
+    <header><h2 class="t-h2">9.18–9.19 Auth and boot screens</h2></header>
+    <div class="sh-row"><div class="sh-name"><b>Auth</b></div><div class="sh-states" style="--sh-min:330px">
+      <div class="sh-state"><span class="t-caps">Sign in</span><div class="sh-frame"><div class="auth">
+        <svg class="ic auth-logo"><use href="#i-logo"/></svg><p class="t-caps">Ride Together</p><h3 class="t-h1">Sign in</h3>
+        <div class="seg is-full" role="radiogroup" aria-label="Account"><button type="button" role="radio" aria-checked="true">Sign in</button><button type="button" role="radio" aria-checked="false">Create account</button></div>
+        <label class="field"><span class="field-label">Email</span><input class="input" type="email" value="mel@example.com"></label>
+        <div class="field"><label class="field-label" for="pw2">Password</label><div class="input-wrap"><input class="input" id="pw2" type="password" value="password1"><button class="btn btn-icon" type="button" aria-label="Show password"><svg class="ic"><use href="#i-eye"/></svg></button></div></div>
+        <button class="btn btn-primary btn-lg btn-block" type="button">Sign in</button>
+        <p style="margin:12px 0 0"><button class="link t-small" type="button">Forgot password</button></p><p class="auth-status" role="status"></p>
+        <div class="auth-links t-caption"><span>Privacy</span><span>Help and support</span></div></div></div></div>
+      <div class="sh-state"><span class="t-caps">Submitting</span><div class="sh-frame"><div class="auth">
+        <svg class="ic auth-logo"><use href="#i-logo"/></svg><p class="t-caps">Ride Together</p><h3 class="t-h1">Create account</h3>
+        <label class="field"><span class="field-label">Email</span><input class="input" type="email" value="ewart@example.com" readonly></label>
+        <label class="field"><span class="field-label">Password</span><input class="input" type="password" value="password1" readonly></label>
+        <button class="btn btn-primary btn-lg btn-block is-loading" type="button" aria-busy="true">Create account<span class="vh">Creating your account…</span></button></div></div></div>
+      <div class="sh-state"><span class="t-caps">Error, and reset sent</span><div class="sh-frame"><div class="auth">
+        <svg class="ic auth-logo"><use href="#i-logo"/></svg><p class="t-caps">Ride Together</p><h3 class="t-h1">Sign in</h3>
+        <label class="field"><span class="field-label">Password</span><input class="input is-error" type="password" value="wrong" aria-invalid="true"><span class="field-error"><svg class="ic sm"><use href="#i-alert"/></svg>That password doesn’t match this email.</span></label>
+        <button class="btn btn-primary btn-lg btn-block" type="button">Sign in</button>
+        <p class="auth-status is-error">Wrong email or password.</p><p class="auth-status is-success" style="margin-top:4px">Reset link sent to tony@example.com. Check your junk folder too.</p></div></div></div>
+    </div></div>
+    <div class="sh-row"><div class="sh-name"><b>Boot / loading</b></div><div class="sh-states" style="--sh-min:330px">
+      <div class="sh-state"><span class="t-caps">Loading</span><div class="sh-frame"><div class="boot"><div class="boot-bar"></div><svg class="ic boot-logo"><use href="#i-logo"/></svg><h3 class="t-h1">Ride Together</h3><p class="t-small muted" role="status">Loading your tours…</p></div></div></div>
+      <div class="sh-state"><span class="t-caps">Slow</span><div class="sh-frame"><div class="boot"><div class="boot-bar"></div><svg class="ic boot-logo"><use href="#i-logo"/></svg><h3 class="t-h1">Ride Together</h3><p class="t-small muted" role="status">Still loading. Check your signal.</p></div></div></div>
+      <div class="sh-state"><span class="t-caps">Error</span><div class="sh-frame"><div class="boot"><svg class="ic boot-logo"><use href="#i-logo"/></svg><h3 class="t-h1">Ride Together</h3><p class="t-small" style="color:var(--color-danger)" role="alert">Couldn’t connect.</p><button class="btn btn-secondary" type="button" style="margin-top:16px">Try again</button></div></div></div>
+    </div></div>
+  </section>
+</main>
+
+<!-- ===================== phone screen (shown only inside the 390 px frames) ===================== -->
+<div class="sh-screen">
+  <div class="appbar"><div class="appbar-in"><svg class="ic appbar-logo"><use href="#i-logo"/></svg><button class="tour-switch" type="button"><b>Bike Tour 26</b><svg class="ic sm"><use href="#i-down"/></svg></button><button class="account" type="button" aria-label="Account"><span>JG</span></button></div></div>
+  <div style="padding:0 var(--grid-margin)">
+    <div style="padding:var(--space-8) 0 var(--space-6)"><p class="t-caps muted">Roadbook</p><h1 class="t-display" style="margin-top:4px">Bike Tour 26</h1>
+      <div class="stats"><div><span class="t-mono-lg">1,154<span class="unit">km</span></span><span class="t-caption">group route</span></div><div><span class="t-mono-lg">4</span><span class="t-caption">riding days</span></div></div><p class="t-small muted" style="margin-top:8px">Sat 31 Oct to Wed 4 Nov</p></div>
+    <div class="dayhead r-blue is-today">
+      <div class="dayhead-eyebrow"><span class="t-caps">Day 1</span><span class="t-label muted">Sat 31 Oct</span></div>
+      <h2 class="t-h2 dayhead-title">Conder to Millthorpe</h2>
+      <div class="stats"><div><span class="t-mono-lg">335<span class="unit">km</span></span><span class="t-caption">distance</span></div><div><span class="t-mono-lg">4:20</span><span class="t-caption">riding</span></div><div><span class="t-mono-lg">5:50</span><span class="t-caption">with stops</span></div></div>
+      <p class="t-small dayhead-meta">Leader <b>Ewart</b> · Sweep <b>Tony</b></p>
+    </div>
+    <div class="bestleg r-blue" style="margin:var(--space-6) 0"><span class="t-caps">Best leg of the day</span><h3 class="t-h3">Tharwa to Cavan</h3><p class="t-small">Pine forest, river crossings and almost no traffic. Mountain Creek Rd is narrow, so keep it tidy.</p></div>
+    <ol class="timeline r-blue">
+      <li class="stop is-passed"><div class="stop-time"><span class="t-mono">9:00</span></div><span class="node is-filled">1</span><div class="stop-body"><h3 class="t-h3 stop-town">Conder</h3><p class="t-small stop-road">Lanyon Shops car park</p></div></li>
+      <li class="stop is-passed"><div class="stop-time is-estimate"><span class="t-mono">9:20</span></div><span class="node">2</span><div class="stop-body"><h3 class="t-h3 stop-town">Tharwa</h3><p class="t-small stop-road">Tharwa Rd · ride through</p></div></li>
+      <li class="stop"><div class="stop-time"><span class="t-mono">11:00</span><span class="t-mono dep">11:30</span></div><span class="node is-current">4</span><div class="stop-body"><h3 class="t-h3 stop-town">Yass</h3><p class="t-small stop-road">Wee Jasper Rd · 118 km</p><div class="stop-tags"><span class="pill pill-warning">Fuel</span><span class="pill no-dot">Bakery stop</span></div>
+        <details class="disclosure" open><summary>Bakery audit · 4<svg class="ic sm"><use href="#i-right"/></svg></summary><div class="disclosure-body"><ol class="bakeries">
+          <li class="bakery is-top"><span class="bakery-rank">1</span><div><span class="bakery-name">Clementine Bakery</span><p class="t-small bakery-must">Sausage roll</p><div class="bakery-meta"><span class="pill pill-success">Open</span><span class="t-mono">4.6</span></div></div><span></span></li>
+          <li class="bakery"><span class="bakery-rank">2</span><div><span class="bakery-name">Yass Country Kitchen</span><p class="t-small bakery-must">Chunky beef pie</p></div><span></span></li></ol></div></details>
+        <div class="stop-actions"><button class="btn btn-accent btn-sm" type="button">We’re here</button><button class="btn btn-secondary btn-sm" type="button"><svg class="ic sm"><use href="#i-nav"/></svg>Navigate</button></div></div></li>
+      <li class="stop"><div class="stop-time"><span class="t-mono">1:00<span class="ampm">pm</span></span><span class="t-mono dep">2:00</span></div><span class="node">6</span><div class="stop-body"><h3 class="t-h3 stop-town">Cowra</h3><p class="t-small stop-road">Lachlan Valley Rd · 255 km</p><div class="stop-tags"><span class="pill pill-warning">Fuel</span><span class="pill no-dot">Lunch</span></div></div></li>
+      <li class="stop"><div class="stop-time"><span class="t-mono">3:00<span class="ampm">pm</span></span></div><span class="node is-filled">8</span><div class="stop-body"><h3 class="t-h3 stop-town">Millthorpe</h3><p class="t-small stop-road">Overnight · 335 km</p></div></li>
+    </ol>
+  </div>
+  <nav class="tabbar" aria-label="Sections"><button class="tab"><svg class="ic"><use href="#i-today"/></svg>Today</button><button class="tab" aria-current="page"><svg class="ic"><use href="#i-book"/></svg>Roadbook</button><button class="tab"><svg class="ic"><use href="#i-bakery"/></svg>Bakeries</button><button class="tab"><svg class="ic"><use href="#i-court"/></svg>Court</button><button class="tab"><svg class="ic"><use href="#i-crew"/></svg>Crew</button><button class="tab"><svg class="ic"><use href="#i-plan"/></svg>Plan</button></nav>
+</div>
+
+<script>
+(function(){
+  var h=document.documentElement, $=function(s,r){return (r||document).querySelector(s)}, $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+  if(h.classList.contains('frame')) return;
+  /* theme switch */
+  var cur=h.getAttribute('data-theme')||'auto';
+  $$('[data-theme-set]').forEach(function(b){ b.setAttribute('aria-checked', String(b.dataset.themeSet===cur)); });
+  function setTheme(t){ if(t==='auto')h.removeAttribute('data-theme'); else h.setAttribute('data-theme',t);
+    $$('[data-theme-set]').forEach(function(b){ b.setAttribute('aria-checked', String(b.dataset.themeSet===t)); }); paint(); }
+  $$('[data-theme-set]').forEach(function(b){ b.addEventListener('click',function(){ setTheme(b.dataset.themeSet); }); });
+  /* grid toggle */
+  var gt=$('#gridtoggle'); gt.checked=h.classList.contains('show-grid');
+  gt.addEventListener('change',function(){ h.classList.toggle('show-grid',gt.checked); $('#gridchip').classList.toggle('is-selected',gt.checked); });
+  $('#gridchip').classList.toggle('is-selected',gt.checked);
+  function cols(){ var n=parseInt(getComputedStyle(h).getPropertyValue('--grid-columns'))||4, g=$('#gridcols'); g.innerHTML=''; for(var i=0;i<n;i++)g.appendChild(document.createElement('span')); }
+  cols(); window.addEventListener('resize',cols);
+  /* phones */
+  $$('iframe[data-frame]').forEach(function(f){ f.src=location.pathname+'?frame=1&theme='+f.dataset.frame; });
+  /* buttons grid: variants x states */
+  var V=[['Primary','btn-primary','Save'],['Secondary','btn-secondary','Add stop'],['Ghost','btn-ghost','Cancel'],['Accent','btn-accent','We’re here'],['Danger','btn-danger','Delete day']];
+  var ST=[['Default',''],['Hover','is-hover'],['Pressed','is-pressed'],['Focus','is-focus'],['Disabled','is-disabled'],['Loading','is-loading']];
+  var bg=$('#btngrid'); bg.style.setProperty('--sh-min','120px');
+  var html='';
+  V.forEach(function(v){ ST.forEach(function(s){ html+='<div class="sh-state"><span class="t-caps">'+v[0]+' · '+s[0]+'</span><button type="button" class="btn '+v[1]+' '+s[1]+'"'+(s[1]==='is-disabled'?' disabled':'')+(s[1]==='is-loading'?' aria-busy="true"':'')+'>'+v[2]+'</button></div>'; }); });
+  bg.innerHTML=html;
+  /* spacing ruler */
+  var R=[0,1,2,3,4,5,6,8,10,12,16,20], rl=$('#ruler'), rh='';
+  R.forEach(function(k){ rh+='<div><span>space-'+k+'</span><span>'+(k*4)+'</span><i style="width:var(--space-'+k+')"></i></div>'; }); rl.innerHTML=rh;
+  /* colour maths */
+  function hexOf(v){ v=(v||'').trim(); if(/^#[0-9a-f]{6}$/i.test(v))return v.toUpperCase(); return v; }
+  function lum(hx){ var c=[1,3,5].map(function(i){ var x=parseInt(hx.substr(i,2),16)/255; return x<=0.03928?x/12.92:Math.pow((x+0.055)/1.055,2.4); }); return .2126*c[0]+.7152*c[1]+.0722*c[2]; }
+  function ratio(a,b){ var l1=lum(a),l2=lum(b); if(l1<l2){var t=l1;l1=l2;l2=t;} return (l1+0.05)/(l2+0.05); }
+  function tok(name,theme){ var keep=h.getAttribute('data-theme'); h.setAttribute('data-theme',theme); var v=hexOf(getComputedStyle(h).getPropertyValue('--'+name)); if(keep)h.setAttribute('data-theme',keep); else h.removeAttribute('data-theme'); return v; }
+  function theme(){ var t=h.getAttribute('data-theme'); if(t)return t; return matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'; }
+  var P=[]; var bgs=['background','surface','surface-raised','surface-muted','surface-selected'];
+  ['text','text-muted','text-subtle'].forEach(function(f){ bgs.forEach(function(b){ P.push(['color-'+f,'color-'+b,4.5,'Text']); }); });
+  ['background','surface','surface-raised'].forEach(function(b){ P.push(['color-border-strong','color-'+b,3,'Input borders, control outlines']); });
+  P.push(['color-accent-ink','color-accent',4.5,'Text on accent fill']);
+  ['background','surface','surface-raised'].forEach(function(b){ P.push(['color-accent-fg','color-'+b,4.5,'Accent as text, dots and rules']); });
+  ['success','warning','danger','info'].forEach(function(s){ P.push(['color-'+s,'color-background',4.5,s+' text and icon']); P.push(['color-'+s,'color-'+s+'-bg',4.5,s+' on its tint']); P.push(['color-text','color-'+s+'-bg',4.5,'Body text on '+s+' tint']); });
+  ['blue','orange','green','purple','red'].forEach(function(r){ ['background','surface','surface-raised'].forEach(function(b){ P.push(['route-'+r,'color-'+b,4.5,'Route label, rule and dot']); }); P.push(['on-route','route-'+r,4.5,'Number in a filled node']); });
+  ['draft','published','locked'].forEach(function(s){ P.push(['status-'+s+'-fg','status-'+s+'-bg',4.5,s+' pill']); });
+  P.push(['color-background','color-text',4.5,'Primary button label']); P.push(['color-text','color-background',3,'Focus ring']);
+  function paint(){
+    var t=theme();
+    $$('[data-swatches]').forEach(function(box){ box.innerHTML=box.dataset.swatches.split(' ').map(function(n){ var v=tok(n,t), bgv=tok('color-background',t); var r=/^#/.test(v)&&/^#/.test(bgv)?ratio(v,bgv).toFixed(2)+':1':'';
+      return '<div class="sh-sw"><i style="background:var(--'+n+')"></i><b>'+n.replace('color-','')+'</b><code>'+v+'</code><span class="cr">'+r+' on background</span></div>'; }).join(''); });
+    $$('[data-hex]').forEach(function(c){ c.textContent=tok(c.dataset.hex,t); });
+    var tb=$('#ctable tbody'), rows='', fails=0;
+    P.forEach(function(p){ var lf=tok(p[0],'light'), lb=tok(p[1],'light'), df=tok(p[0],'dark'), db=tok(p[1],'dark'), l=ratio(lf,lb), d=ratio(df,db), ok=l>=p[2]&&d>=p[2]; if(!ok)fails++;
+      var sf=t==='dark'?df:lf, sb=t==='dark'?db:lb;
+      rows+='<tr><td><span class="sample" style="color:'+sf+';background:'+sb+'">'+p[0].replace('color-','')+'</span> on '+p[1].replace('color-','')+'</td><td>'+p[3]+'</td><td class="n">'+l.toFixed(2)+':1</td><td class="n">'+d.toFixed(2)+':1</td><td class="n">'+p[2]+':1</td><td class="'+(ok?'ok':'')+'">'+(ok?'Pass':'Fail')+'</td></tr>'; });
+    tb.innerHTML=rows; document.body.dataset.contrastFails=fails; cols();
+  }
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change',paint);
+  paint();
+})();
+</script>
+</body>
+</html>

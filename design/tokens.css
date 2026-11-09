@@ -31,8 +31,8 @@
   --color-text-disabled: #A1A1AA;
   --color-focus: #111113;
   --color-inverse-hover: #2E2E33;
-  --color-skeleton: #F4F4F5;
-  --color-skeleton-shine: #EDEDEF;
+  --color-skeleton: #EDEDEF;
+  --color-skeleton-shine: #FAFAFA;
   --color-bar: rgba(250, 250, 250, .88);
   --color-scrim: rgba(17, 17, 19, .48);
 
@@ -238,7 +238,7 @@
 }
 @media (min-width: 1024px) {
   :root {
-    --grid-columns: 12; --grid-gutter: 24px; --grid-margin: auto;
+    --grid-columns: 12; --grid-gutter: 24px; --grid-margin: 32px; /* content is also centred at --content-max */
     --section-gap: var(--space-16);
     --text-display-size: 56px; --text-display-line: 60px;
     --text-h1-size: 36px; --text-h1-line: 40px;
