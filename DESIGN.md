@@ -6,6 +6,15 @@ This file is the single source of truth. `design/tokens.css` implements it as CS
 
 Status: draft for review (branch `design-system`).
 
+**Review files** (all in `design/`, none used by the app yet):
+
+- `tokens.css`: the tokens. `components.css`: the components, plus the sheet's own layout at the end.
+- `components.html`: the component sheet (serve the repo and open it), with a theme switch and a grid overlay. `components-standalone.html`: the same with CSS and fonts inlined, to open after downloading.
+- `screenshots/`: the sheet at 390 px and 1280 px in both themes, and a roadbook day at 390 px.
+- `contrast-report.txt`: output of `ruby design/tools/check-contrast.rb`, which checks every pair in section 2.6 against `tokens.css`.
+- `tools/`: `check-contrast.rb`, `build-standalone.rb` (rebuilds the standalone copy) and `screenshots.sh` (headless Chrome on macOS). Review tooling only; the app keeps no build step.
+- `fonts/`: Geist and Geist Mono, with `OFL.txt`.
+
 ---
 
 ## 1. Principles
@@ -167,7 +176,7 @@ Not allowed (fail): `accent` as text or a thin rule on the light background (1.6
 
 - **Geist** (sans) for everything, and **Geist Mono** for numbers, times, distances and codes. Both by Vercel, released under the SIL Open Font Licence 1.1, which allows bundling with the app. Geist is a neo-grotesk in the Swiss tradition (Helvetica, Akzidenz, Inter) with a large x-height that stays clear at 13 px on a phone in sunlight, and its mono shares the sans's metrics, so data and words sit on the same baseline.
 - Weights used: Geist 400, 500, 600; Geist Mono 400, 500. No italics, no 700+.
-- Files: `design/fonts/` (woff2), added in Step 2 from the official `vercel/geist-font` release, with `OFL.txt` alongside.
+- Files: `design/fonts/` (woff2): Geist-Regular, Geist-Medium, Geist-SemiBold, GeistMono-Regular, GeistMono-Medium (about 207 KB in total), taken unmodified from Vercel's `geist` package v1.3.1 (`dist/fonts/`), with its licence as `OFL.txt`.
 - Fallback stacks: `"Geist", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif` and `"Geist Mono", ui-monospace, "SF Mono", Menlo, monospace`.
 - Barlow / Barlow Condensed (current) are retired from UI text. The logo stays an image.
 
@@ -230,7 +239,7 @@ Base unit 4 px. Named scale:
 |---|---|---|---|---|
 | Mobile (< 640) | 4 | 16 | 20 + safe-area left/right | Designed at 390 × 844: 4 columns of 75.5 px |
 | Tablet (640–1023) | 8 | 20 | 32 | Plan lists can run two columns |
-| Desktop (≥ 1024) | 12 | 24 | auto | Content max-width 1120 px; reading measure 680 px |
+| Desktop (≥ 1024) | 12 | 24 | 32 (min) | Content centred at max-width 1120 px; reading measure 680 px |
 
 Content sits on columns: labels and times take column 1 on mobile (stop timeline: node and time in column 1, content in 2–4).
 
@@ -412,7 +421,7 @@ Common states, used below: **default**, **hover** (pointer only, `@media (hover:
 ### 9.17 Skeleton loading
 
 - **Anatomy:** rectangles matching the final layout's lines (text lines at 60–90% width, `radius-xs`), nodes as circles.
-- **Tokens:** `surface-muted` fill; shimmer is a 1.2 s linear gradient sweep to `n5`/`surface-selected`; static under reduced motion. `aria-busy="true"` on the container and a visually hidden "Loading".
+- **Tokens:** `skeleton` fill (`#EDEDEF` light, `#1F1F23` dark); shimmer is a 1.2 s linear sweep of `skeleton-shine` (`#FAFAFA` / `#27272B`); static under reduced motion. `aria-busy="true"` on the container and a visually hidden "Loading".
 
 ### 9.18 Auth screen
 
