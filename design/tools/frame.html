@@ -1,0 +1,8 @@
+<!DOCTYPE html>
+<!-- Screenshot helper for design/tools/screenshots.sh: shows a page in an iframe of an exact width and height,
+     because headless Chrome won't make a window narrower than about 500 px. Usage: frame.html?w=390&h=8200&src=... -->
+<html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:#000;overflow:hidden}body{display:flex;justify-content:center;align-items:center;height:100vh}iframe{display:block;border:0;flex:0 0 auto}</style></head>
+<body><script>
+var q=new URLSearchParams(location.search), f=document.createElement('iframe');
+f.width=q.get('w')||390; f.height=q.get('h')||844; f.src=q.get('src'); document.body.appendChild(f);
+</script></body></html>
