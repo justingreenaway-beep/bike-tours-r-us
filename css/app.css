@@ -1270,3 +1270,16 @@ details.sfmore summary,details.bakmap summary{text-decoration:underline;text-dec
 .wxflags .wxflag.bad{background:var(--color-danger-bg);color:var(--color-danger)}
 .wxflags .wxflag.ok{background:var(--color-success-bg);color:var(--color-success)}
 .wxic{flex:0 0 28px;width:28px;font-size:24px;line-height:28px;text-align:center}
+
+/* v5.0.2 iOS date and time fields: Safari draws them with its own height, centred text and a minimum width
+   wider than half a form row, so they ended up shorter than the field beside them and pushed into it. */
+.frow{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.fl input[type=date],.fl input[type=time],.fl input[type=datetime-local]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;max-width:100%;height:var(--tap-min);line-height:24px;text-align:left;padding-top:0;padding-bottom:0}
+.fl input[type=date]::-webkit-date-and-time-value,.fl input[type=time]::-webkit-date-and-time-value{text-align:left;margin:0;min-height:24px;line-height:24px}
+.fl input[type=date]::-webkit-datetime-edit,.fl input[type=time]::-webkit-datetime-edit{padding:0}
+.fl input[type=number]{-moz-appearance:textfield}
+/* v5.0.2 review: 16px in every field so iPhone Safari doesn't zoom on tap; delete buttons line up with their field */
+.fl input[type=time],.fl input[type=date],.fl input[type=number]{font-size:16px}
+.qbfound select{font-size:16px;min-height:36px;padding:0 var(--space-2);border-color:var(--color-border-strong);border-radius:var(--radius-sm)}
+.frow3{align-items:end}
+.frow3 .ib{margin-bottom:var(--space-5)}
