@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='4.27';
+const APP_VERSION='5.0';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -217,8 +217,8 @@ function doRender(){
 document.addEventListener('click',e=>{ const t=e.target.closest('.tabbar [data-tab]'); if(t){S.tab=t.dataset.tab;sessionStorage.setItem('tru-tab',S.tab);window.scrollTo(0,0);render();} });
 
 function noTour(){
-  if(S.admin) return `<div class="empty"><h2 style="font-size:30px;text-transform:uppercase;margin-bottom:8px">No tours yet</h2><p>Head to the Plan tab to create a tour or bring in 2026.</p></div>`;
-  return `<div class="empty"><h2 style="font-size:30px;text-transform:uppercase;margin-bottom:8px">You\u2019re not on a tour yet</h2><p>When an organiser adds <b>${esc(S.user.email)}</b> to a tour’s crew list, it shows up here. Or plan your own and invite your mates.</p><div class="planbar" style="justify-content:center"><button type="button" class="btn primary" data-act="newtour">Plan a tour</button></div></div>
+  if(S.admin) return `<div class="empty"><h2 style="margin-bottom:8px">No tours yet</h2><p>Head to the Plan tab to create a tour or bring in 2026.</p></div>`;
+  return `<div class="empty"><h2 style="margin-bottom:8px">You\u2019re not on a tour yet</h2><p>When an organiser adds <b>${esc(S.user.email)}</b> to a tour’s crew list, it shows up here. Or plan your own and invite your mates.</p><div class="planbar" style="justify-content:center"><button type="button" class="btn primary" data-act="newtour">Plan a tour</button></div></div>
     <div class="card" style="font-size:14px">
       <p class="muted" style="margin:0">Signed in as ${esc(S.user.email)}<br>Firebase project: ${esc((CFG.firebase&&CFG.firebase.projectId)||'?')}<br>App version ${APP_VERSION}</p>
       <div class="planbar"><button type="button" class="btn small" data-act="recheck">Check again</button><button type="button" class="btn small" data-act="signout">Sign out</button></div></div>`;
@@ -272,13 +272,16 @@ function annBanner(){
   return `<div class="ann" role="status"><span class="nlbl">${annLabel(a)}, ${ago(a.at)}</span><p>${esc(a.text)}</p><button type="button" class="btn small" data-anndismiss="${esc(a.id)}">Got it</button></div>`;
 }
 document.addEventListener('click',e=>{ const d=e.target.closest('[data-anndismiss]'); if(d){ try{localStorage.setItem(annSeenKey(),d.dataset.anndismiss)}catch(x){} render(); } });
+// v5: arrive/depart sit in a time column left of the node (12-hour, am/pm small)
+function stimeHtml(s){ const f=hm=>{ const [h,m]=String(hm).split(':').map(Number); return isFinite(h)?`${h%12||12}:${pad(m||0)}<i>${h>=12?'pm':'am'}</i>`:''; };
+  return `<span class="stime">${s.arrive?`<span>${f(s.arrive)}</span>`:''}${s.depart?`<span class="${s.arrive?'dep':''}">${f(s.depart)}</span>`:''}</span>`; }
 function stopCard(s,k,day,extra){
   const big=(s.tags||[]).some(t=>/Start|Overnight|Finish/.test(t));
   const tags=(s.tags||[]).map(t=>`<span class="tag${t==='Fuel'?' fuel':''}">${t==='Fuel'&&s.fuelKm?'Fuel '+esc(s.fuelKm):esc(t)}</span>`).join('')+(s.option&&day?`<span class="tag opt">${esc(optLabel(day,s.option))} only</span>`:'');
   const bl=s.ref||!feat('bakeries')?'':bakeryList(s.town,{date:day&&dateFor(day),t:s.arrive||s.depart});
   const R_=RIDE()&&day;
-  return `<li class="stop${big?' big':''}${R_?rideStopClass(s,day):''}" id="stop-${esc(s.id)}"><span class="node">${k}</span><div class="card">
-    <div class="town">${esc(s.town)}</div>${timeText(s)?`<div class="time">${esc(timeText(s))}</div>`:''}
+  return `<li class="stop${big?' big':''}${R_?rideStopClass(s,day):''}" id="stop-${esc(s.id)}">${stimeHtml(s)}<span class="node">${k}</span><div class="card">
+    <div class="town">${esc(s.town)}</div>${s.timeNote?`<div class="time">${esc(s.timeNote)}</div>`:''}
     ${s.road?`<div class="road">${esc(s.road)}</div>`:''}${tags?`<div class="tags">${tags}</div>`:''}${extra||''}
     ${s.note?`<p class="note">${esc(s.note)}</p>`:''}${s.stay?`<div class="stay">${esc(s.stay)}</div>`:''}${s.ref?`<p class="ref">${esc(s.ref)}</p>`:''}
     ${s.fact?`<details class="fact" data-k="f-${esc(s.id)}"><summary>Did you know?</summary><p>${esc(s.fact)}</p></details>`:''}
@@ -535,7 +538,7 @@ function moveOldDinners(){ // once per tour, for editors on unlocked tours: nigh
 function planNights(){
   const L=locked(), names=crewNames(), days=daysSorted(), tab=S.nightTab==='dinner'?'dinner':'beds';
   setTimeout(moveOldDinners,0);
-  let h=`<h2>Nights</h2><div class="ntabs" role="tablist" aria-label="Nights"><button type="button" role="tab" data-ntab="beds" aria-selected="${tab==='beds'}">🛏 Accommodation</button><button type="button" role="tab" data-ntab="dinner" aria-selected="${tab==='dinner'}">🍽 Dinner</button></div>`;
+  let h=`<h2>Nights</h2><div class="ntabs" role="tablist" aria-label="Nights"><button type="button" role="tab" data-ntab="beds" aria-selected="${tab==='beds'}">Accommodation</button><button type="button" role="tab" data-ntab="dinner" aria-selected="${tab==='dinner'}">Dinner</button></div>`;
   if(!days.length) return h+'<div class="card"><p class="muted">Add days in Route first.</p></div>';
   const need=days.filter(needsNight), bar=ok=>need.length?`<div class="nbar">${need.map(d=>`<i class="${ok(d)?'y':'n'}" title="${esc(d.label)}"></i>`).join('')}</div>`:'';
   const head=(d,extra,btn)=>`<div class="prow" style="border:0;padding-top:0"><span class="dot"></span><div class="pmain"><b>${esc(d.label)}: ${esc(d.title||'Untitled')}</b><small>${dateFor(d)?(tab==='beds'?'Night of ':'')+esc(shortDate(dateFor(d))):'No date yet'}${extra?' · '+extra:''}</small></div>${btn?`<div class="pact">${btn}</div>`:''}</div>`;
