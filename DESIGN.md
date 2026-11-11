@@ -4,7 +4,7 @@ Editorial minimalism × Swiss grid precision. Influences: Linear, Vercel's Geist
 
 This file is the single source of truth. `design/tokens.css` implements it as CSS custom properties only. Nothing here is applied to the app yet: see section 10.
 
-Status: draft for review (branch `design-system`).
+Status: applied to the app in v5.0 (branch `apply-design`). Section 10 records how.
 
 **Review files** (all in `design/`, none used by the app yet):
 
@@ -178,7 +178,7 @@ Not allowed (fail): `accent` as text or a thin rule on the light background (1.6
 - Weights used: Geist 400, 500, 600; Geist Mono 400, 500. No italics, no 700+.
 - Files: `design/fonts/` (woff2): Geist-Regular, Geist-Medium, Geist-SemiBold, GeistMono-Regular, GeistMono-Medium (about 207 KB in total), taken unmodified from Vercel's `geist` package v1.3.1 (`dist/fonts/`), with its licence as `OFL.txt`.
 - Fallback stacks: `"Geist", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif` and `"Geist Mono", ui-monospace, "SF Mono", Menlo, monospace`.
-- Barlow / Barlow Condensed (current) are retired from UI text. The logo stays an image.
+- Barlow / Barlow Condensed are retired from UI text. The one exception is the Wrapped share images (canvas posters in ride.js), which keep their Barlow Condensed lettering in the dark palette; their layout was tuned to it. The logo stays an image, shown in the text colour (CSS filter) in the app bar, sign-in and loading screens.
 
 **Licence record:** Geist and Geist Mono, © 2023 Vercel, in collaboration with basement.studio. SIL Open Font License, Version 1.1 (https://openfontlicense.org). The licence text ships as `design/fonts/OFL.txt`.
 
@@ -433,7 +433,11 @@ Common states, used below: **default**, **hover** (pointer only, `@media (hover:
 - **Anatomy:** `background` fill, logo (48 px) flush left at the top margin, "Ride Together" (`h1`), status line (`body-small`, `text-muted`), a 2 px indeterminate progress rule along the bottom of the app bar position.
 - **States:** loading; slow (after 8 s the line reads "Still loading. Check your signal."); error ("Couldn't connect" + secondary "Try again"). Reduced motion: no progress animation, the status text carries it.
 
-## 10. Applying this later (notes only, nothing changed)
+## 10. Applying it to the app
+
+**Done in app v5.0.** `index.html` loads `design/tokens.css` before `css/app.css`. `css/app.css` was produced in two parts: the v4.27 rules converted to the tokens (Geist, weights 600 and below, no uppercase, small radii, `border-strong` control outlines, a text-colour focus ring), then a "v5 design layer" at the end that restyles each component below using the existing class names, so app.js hooks are unchanged. Template changes: the stop time column (`stimeHtml()` in app.js), line icons in Profile (`PIC` in profile.js), no emoji in the Nights tabs, no inline uppercase headings. `sw.js` is `tru-v10` and caches the Geist fonts. Cards became sections separated by hairlines; on phones dialogs open as bottom sheets.
+
+The original notes follow.
 
 ### 10.1 Token mapping from `css/app.css`
 
