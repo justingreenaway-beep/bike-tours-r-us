@@ -376,7 +376,7 @@ function rideBakeries(){
     <section class="sec"><h2>What I\u2019ve tried</h2><ul class="tried">${tried.length?tried.map(x=>`<li>${esc(x.name)}${m.ratings[x.id]?` <b>${m.ratings[x.id]}/10</b>`:''} <span class="muted">${esc(x.town)}</span></li>`).join(''):'<li class="muted" style="list-style:none;margin-left:-18px">Nothing ticked yet.</li>'}</ul>
       <div class="planbar"><button type="button" class="btn" data-wrapped="me">My Wrapped</button><button type="button" class="btn" data-wrapped="crew">Crew Wrapped</button>${tried.length||Object.keys(m.quiz).length?'<button type="button" class="btn small danger" data-ride="resetme">Clear my ticks and scores</button>':''}</div></section>`;
 }
-function notRiding(){ return `<div class="empty"><h2 style="font-size:28px;text-transform:uppercase;margin-bottom:8px">Not on this tour</h2><p>Ask the tour\u2019s organiser to add <b>${esc(S.user.email)}</b> to this tour\u2019s crew list.</p></div>`; }
+function notRiding(){ return `<div class="empty"><h2 style="margin-bottom:8px">Not on this tour</h2><p>Ask the tour\u2019s organiser to add <b>${esc(S.user.email)}</b> to this tour\u2019s crew list.</p></div>`; }
 
 /* ---------- Koala Court ---------- */
 function courtNights(){ // group days that end with an overnight stop or a booked bed
@@ -642,7 +642,8 @@ function pvEnd(e){ const D=PV.drag; if(!D||(e&&e.pointerId!==D.id))return; PV.dr
 document.addEventListener('pointerup',pvEnd); document.addEventListener('pointercancel',pvEnd);
 
 /* ---------- Wrapped (picture card) ---------- */
-const WR={W:1080,H:1350,bg:'#1B2530',ink:'#F4F5F2',mut:'#9AA6B0',vis:'#F2C200',red:'#F06A5C',d:['#4FA6F0','#F59A3A','#3CC57F','#AC86EE','#F06A5C']};
+// v5: the share images keep their Barlow Condensed poster lettering (fonts/ only), in the design system's dark colours
+const WR={W:1080,H:1350,bg:'#0A0A0B',ink:'#F4F4F5',mut:'#A8A8B0',vis:'#F2C200',red:'#F26B5E',d:['#5AA2F5','#F59A3A','#3CC57F','#B48CF5','#F26B5E']};
 function wrText(x,t,X,Y,maxW,lh,maxLines=2){ const words=String(t||'').split(' '); let line='',n=0;
   for(let i=0;i<words.length;i++){ const test=line?line+' '+words[i]:words[i]; if(x.measureText(test).width>maxW&&line){ x.fillText(n===maxLines-1?line+'\u2026':line,X,Y+n*lh); n++; line=words[i]; if(n>=maxLines)return n; } else line=test; }
   if(line){ x.fillText(line,X,Y+n*lh); n++; } return n; }
