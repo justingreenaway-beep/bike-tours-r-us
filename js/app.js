@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='5.2.1';
+const APP_VERSION='5.3';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -672,7 +672,7 @@ function editTourDialog(){
 async function placeSearch(q){
   const r=await fetch('https://geocoding-api.open-meteo.com/v1/search?count=6&language=en&format=json&countryCode=AU&name='+encodeURIComponent(q));
   if(!r.ok)throw new Error('geocode '+r.status); const j=await r.json();
-  return (j.results||[]).map(x=>({name:x.name,area:[x.admin2,x.admin1].filter(Boolean).join(', '),lat:+x.latitude.toFixed(5),lon:+x.longitude.toFixed(5)}));
+  return (j.results||[]).map(x=>({name:x.name,area:[x.admin2,x.admin1].filter(Boolean).join(', '),lat:+x.latitude.toFixed(5),lon:+x.longitude.toFixed(5),pop:x.population||null}));
 }
 /* v5.2: points of interest as stops (lookouts, servos, cafés, landmarks). OpenStreetMap Nominatim, one search per tap
    (its policy rules out search-as-you-type). A stop picked this way keeps place {kind, near, osm}; town holds the place's name. */
@@ -722,14 +722,32 @@ const hasLL=s=>s&&s.lat!=null&&s.lon!=null&&s.lat!==''&&isFinite(s.lat)&&isFinit
 const lineKey=st=>st.filter(hasLL).map(s=>`${s.id}:${(+s.lat).toFixed(4)},${(+s.lon).toFixed(4)}`).join('|');
 const fmtDur=min=>{ const h=Math.floor(min/60), m=Math.round(min%60); return h?`${h} h ${pad(m)} m`:`${m} m`; };
 async function routeVia(pts){
+  if(useValhalla())return (await valhallaRoute(pts))[0]; // v5.3: the tour avoids ferries or tolls
   const coords=pts.map(p=>`${(+p.lon).toFixed(5)},${(+p.lat).toFixed(5)}`).join(';');
   const r=await fetch(`https://routing.openstreetmap.de/routed-car/route/v1/driving/${coords}?overview=simplified&geometries=polyline`);
   if(!r.ok)throw new Error('route '+r.status); const j=await r.json(); if(j.code!=='Ok')throw new Error(j.code);
   const R=j.routes[0]; return {legs:R.legs.map(l=>({km:l.distance/1000,min:l.duration/60})),km:R.distance/1000,min:R.duration/60,line:R.geometry};
 }
-function decodeLine(str){ let i=0,lat=0,lon=0; const out=[];
-  while(i<str.length){ for(const k of [0,1]){ let b,sh=0,res=0; do{ b=str.charCodeAt(i++)-63; res|=(b&31)<<sh; sh+=5; }while(b>=32); const d=res&1?~(res>>1):res>>1; if(k===0)lat+=d; else lon+=d; } out.push([lat/1e5,lon/1e5]); }
+function decodeLine(str,prec){ let i=0,lat=0,lon=0; const out=[], f=10**(prec||5);
+  while(i<str.length){ for(const k of [0,1]){ let b,sh=0,res=0; do{ b=str.charCodeAt(i++)-63; res|=(b&31)<<sh; sh+=5; }while(b>=32); const d=res&1?~(res>>1):res>>1; if(k===0)lat+=d; else lon+=d; } out.push([lat/f,lon/f]); }
   return out; }
+function encodeLine(pts){ let la=0,lo=0,out=''; const enc=v=>{ v=v<0?~(v<<1):v<<1; let s=''; while(v>=32){ s+=String.fromCharCode((32|(v&31))+63); v>>=5; } return s+String.fromCharCode(v+63); };
+  pts.forEach(([a,b])=>{ const A=Math.round(a*1e5), B=Math.round(b*1e5); out+=enc(A-la)+enc(B-lo); la=A; lo=B; }); return out; }
+/* v5.3: avoid ferries / tolls. The FOSSGIS OSRM server can't exclude anything, so a tour that avoids either is routed with
+   FOSSGIS Valhalla (motorcycle costing, use_ferry/use_tolls 0). Its shapes are polyline6; we store polyline5 like OSRM. */
+const tourAvoid=()=>(S.tour&&S.tour.avoid)||{};
+const useValhalla=()=>{ const a=tourAvoid(); return !!(a.ferry||a.toll); };
+function viaOf(t){ const len=new Map(), first=new Map(); let n=0;
+  t.legs.forEach(l=>(l.maneuvers||[]).forEach(m=>{ const nm=(m.street_names||[])[0]; if(!nm)return; len.set(nm,(len.get(nm)||0)+(m.length||0)); if(!first.has(nm))first.set(nm,n++); }));
+  return [...len.entries()].sort((a,b)=>b[1]-a[1]).slice(0,2).map(x=>x[0]).sort((a,b)=>first.get(a)-first.get(b)).join(', '); }
+async function valhallaRoute(pts,alts){ const a=tourAvoid();
+  const body={locations:pts.map(p=>({lat:+(+p.lat).toFixed(5),lon:+(+p.lon).toFixed(5)})),costing:'motorcycle',
+    costing_options:{motorcycle:{use_ferry:a.ferry?0:.5,use_tolls:a.toll?0:.5}},units:'kilometers',directions_type:alts?'maneuvers':'none',...(alts&&pts.length===2?{alternates:2}:{})};
+  const r=await fetch('https://valhalla1.openstreetmap.de/route?json='+encodeURIComponent(JSON.stringify(body)));
+  if(!r.ok)throw new Error('route '+r.status); const j=await r.json(); if(!j.trip)throw new Error('route');
+  return [j.trip,...(j.alternates||[]).map(x=>x.trip)].map(t=>({legs:t.legs.map(l=>({km:l.summary.length,min:l.summary.time/60})),km:t.summary.length,min:t.summary.time/60,
+    line:encodeLine(t.legs.flatMap((l,i)=>{ const p=decodeLine(l.shape,6); return i?p.slice(1):p; })),toll:!!t.summary.has_toll,ferry:!!t.summary.has_ferry,via:alts?viaOf(t):''})); }
+
 
 let EST=null; // the estimate being reviewed
 async function estimateDay(dayId){

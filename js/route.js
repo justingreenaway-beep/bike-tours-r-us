@@ -73,7 +73,7 @@ function stopWarnings(day,optOnly){ // stopId -> [warnings], checked along every
 }
 const TAG_PILL={'Meet up':'meet','Split':'meet','Start':'','Fuel':'fuel','Overnight':'','Finish':'','Bakery stop':'','Lunch':'','Coffee':'','Breakfast':''};
 function planRoute(days,L){
-  let h=`<h2>Days</h2><div class="card rlist" data-rlist="day">${days.map((d,i)=>{ const dt=dateFor(d), n=stopsOf(d.id).length;
+  let h=`${avoidHtml(L)}<h2>Days</h2><div class="card rlist" data-rlist="day">${days.map((d,i)=>{ const dt=dateFor(d), n=stopsOf(d.id).length;
     return `<div class="rrow${d.id===S.planDay?' sel':''}" data-rid="${esc(d.id)}" style="--c:var(--${esc(d.colour||'blue')})">${selOn('day')||L?'':`<span class="grip" data-grip="day" aria-label="Drag to reorder">≡</span>`}<span class="dot"></span>
       <div class="rmain" data-pickday="${esc(d.id)}"><b>${esc(d.label)}: ${esc(d.title||'Untitled')}</b><small>${dt?esc(shortDate(dt))+' · ':''}${n} stop${n===1?'':'s'}${d.km?' · '+esc(d.km)+' km':''}${d.who?' · '+esc(d.who):''}</small></div>
       ${pact('day',d.id,`<button type="button" class="ib" data-rowmenu="day|${esc(d.id)}" aria-label="More for ${esc(d.label)}">⋯</button>`)}</div>`; }).join('')||'<p class="muted">No days yet.</p>'}
@@ -104,8 +104,8 @@ function planRoute(days,L){
       <div class="rrow" data-rid="${esc(s.id)}"${g?` style="--c:var(--${esc(g.colour||'blue')})"`:''}>${selOn('stop')||L?'':`<span class="grip" data-grip="stop" aria-label="Drag to reorder">≡</span>`}<span class="rnum${big?' big':''}">${num[s.id]||i+1}</span>
         <div class="rmain" data-editstop="${esc(s.id)}"><b>${esc(s.town||'Unnamed stop')}${(s.tags||[]).filter(t=>TAG_PILL[t]!=null).map(t=>` <span class="pill ${TAG_PILL[t]}">${esc(t==='Bakery stop'?'Bakery':t)}</span>`).join('')}${s.option&&O.length?` <span class="pill">Only on ${esc(optLabel(day,s.option))}</span>`:''}</b>
           <small>${s.place?esc(placeLine(s))+' · ':''}${k!=null&&k!==''?esc(k)+' km':'— km'}${tm?' · '+esc(tm):leaveHint[s.id]?' · '+esc(leaveHint[s.id]):''}</small>${(W[s.id]||[]).map(w=>`<span class="rwarn">${esc(w)}</span>`).join('')}</div>
-        ${pact('stop',s.id,`<button type="button" class="ib" data-stopmenu="${esc(s.id)}" aria-label="More for ${esc(s.town)}"${L?' disabled':''}>⋯</button>`)}</div>`; }).join(''); })()||'<p class="muted">No stops yet. Use Quick build to add a day’s towns in one go.</p>'}
-    ${selBar('stop',st.map(s=>s.id),`<button type="button" class="btn primary small" data-act="addstop"${L?' disabled':''}>+ Add stop</button><button type="button" class="btn small" data-quickbuild="${esc(day.id)}"${L?' disabled':''}>Quick build</button>`,L)}
+        ${pact('stop',s.id,`<button type="button" class="ib" data-stopmenu="${esc(s.id)}" aria-label="More for ${esc(s.town)}"${L?' disabled':''}>⋯</button>`)}</div>`; }).join(''); })()||'<p class="muted">No stops yet. Use Suggest a route to plan it from a start and a finish, or Quick build to type the towns.</p>'}
+    ${selBar('stop',st.map(s=>s.id),`<button type="button" class="btn primary small" data-act="addstop"${L?' disabled':''}>+ Add stop</button><button type="button" class="btn small" data-autoroute="${esc(day.id)}"${L?' disabled':''}>Suggest a route</button><button type="button" class="btn small" data-quickbuild="${esc(day.id)}"${L?' disabled':''}>Quick build</button>`,L)}
     ${day.estimatedAt?`<p class="edited">Distances worked out ${ago(day.estimatedAt)} by OpenStreetMap routing${day.fixedFigures?'; the day’s own figures are kept':''}.</p>`:''}</div>`;
   return h;
 }
@@ -769,3 +769,158 @@ document.addEventListener('click',async e=>{
     ops.push({op:'set',path:tp('days',dayId),data:{groups:left,...(left.length?{}:{paths:null}),...stamp()},merge:true});
     try{ await FB.batch(ops); closeDlg(); toast('Group deleted'); scheduleAutoEstimate(dayId,500); }catch(x){ toast('Couldn’t delete it.'); } return; }
 });
+
+/* ---------- v5.3: suggest a route from a start and a finish ----------
+   OSRM offers up to three routes (alternatives=3, "via" = its road summary). The chosen route is sampled every ~15 km and
+   each point reverse-geocoded with Nominatim at locality level (one request a second, its usage limit); each town is then
+   looked up in Open-Meteo for its centre and population. Stops are suggested about every "Stop about every" minutes of
+   riding, preferring the bigger town in each window; Coffee / Lunch / Shake a leg and Fuel (tour fuel rule) are suggested.
+   Existing stops on the day are kept and everything is put in order along the route. */
+const AR={dayId:null,from:null,to:null,opts:{from:[],to:[]},routes:[],pick:0,towns:null,busy:false,timer:null,pts:null,cum:null,total:0,min:0,finishAt:null,map:null};
+const sameName=(a,b)=>String(a||'').toLowerCase()===String(b||'').toLowerCase();
+const arDay=()=>S.days.find(d=>d.id===AR.dayId)||{};
+function arStops(){ const day=arDay(), O=dayOpts(day), G=dayGroups(day); return stopsOf(day.id,O.length?planOptOf(day):undefined,G.length?null:undefined); }
+function autoRouteDialog(dayId){
+  Object.assign(AR,{dayId,routes:[],pick:0,towns:null,busy:false,opts:{from:[],to:[]},pts:null,cum:null});
+  const day=arDay(), st=arStops(), ll=st.filter(hasLL), end=s=>({name:s.town,lat:+s.lat,lon:+s.lon,stopId:s.id});
+  AR.from=ll.length?end(ll[0]):null; AR.to=ll.length>1?end(ll[ll.length-1]):null;
+  const dep=(st[0]&&st[0].depart)||'08:30';
+  dlg(`<h3>Suggest a route: ${esc(day.label||'')}</h3>
+   <p class="muted" style="margin:-2px 0 10px">Pick where the day starts and finishes. The app finds the roads, then suggests towns to stop at along the way.</p>
+   ${arEnd('from')}${arEnd('to')}
+   ${avoidHtml(locked())}
+   <div class="frow">${field('Leave at','ardep',dep,{type:'time'})}<label class="fl">Stop about every<select name="arevery">${[45,60,75,90,120].map(m=>`<option value="${m}"${m===75?' selected':''}>${fmtDur(m)}</option>`).join('')}</select></label></div>
+   <div id="arres"></div><div class="dbtns" id="arbtns"></div>`);
+  arButtons();
+}
+function arEnd(k){ const p=AR[k], label=k==='from'?'Start':'Finish';
+  return `<div class="arend" data-arend="${k}"><label class="fl">${label}<input name="ar${k}" value="${esc(p?p.name:'')}" autocomplete="off" placeholder="A town, e.g. ${k==='from'?'Canberra':'Bathurst'}"></label><div class="townsug" id="arsug-${k}"></div>${p?`<div class="pinchip"><span class="pinname">📍 ${esc(p.name)}<small>${p.stopId?'From this day’s stops':esc(p.area||'')}</small></span> ✓</div>`:''}</div>`; }
+function arButtons(){ const b=$('#arbtns'); if(!b)return; const n=arNewCount();
+  b.innerHTML=AR.towns?`<button type="button" class="btn primary" data-ar="build"${n?'':' disabled'}>Add ${n} stop${n===1?'':'s'}</button><button type="button" class="btn" data-ar="routes">Pick another route</button><button type="button" class="btn" data-close>Cancel</button>`
+   :AR.routes.length?`<button type="button" class="btn primary" data-ar="scan"${AR.busy?' disabled':''}>Suggest stops</button><button type="button" class="btn" data-close>Cancel</button>`
+   :`<button type="button" class="btn primary" data-ar="routes"${AR.busy?' disabled':''}>Find routes</button><button type="button" class="btn" data-close>Cancel</button>`; }
+const arNewCount=()=>AR.towns?AR.towns.filter(t=>t.on&&!t.existing).length+(AR.from&&!AR.from.stopId?1:0)+(AR.to&&!AR.to.stopId?1:0):0;
+function arReset(){ AR.routes=[]; AR.towns=null; const r=$('#arres'); if(r)r.innerHTML=''; arButtons(); }
+async function arSearch(k){ const q=val('ar'+k), box=$('#arsug-'+k); if(!box)return; if(q.length<2){ box.innerHTML=''; return; }
+  let o=[]; try{ o=await placeSearch(q); }catch(e){} if(!$('#arsug-'+k)||val('ar'+k)!==q||(AR[k]&&AR[k].name===q))return;
+  AR.opts[k]=o; box.innerHTML=o.length?o.slice(0,5).map((p,i)=>`<button type="button" data-arpick="${k}|${i}"><b>${esc(p.name)}</b> <small>${esc(p.area||'')}</small></button>`).join(''):`<p class="sugmsg">No town called “${esc(q)}”.</p>`; }
+async function arRoutes(){
+  if(!AR.from||!AR.to){ dlgError('Pick a start and a finish from the lists.'); return; }
+  if(kmBetween(AR.from,AR.to)<2){ dlgError('The start and finish are the same place. For a loop, pick the town at the far end as the finish, then add the way home.'); return; }
+  const er=$('#dlg .err'); if(er)er.remove();
+  AR.busy=true; AR.towns=null; arButtons(); $('#arres').innerHTML='<p class="muted">Finding routes…</p>';
+  try{ if(useValhalla())AR.routes=await valhallaRoute([AR.from,AR.to],true); else { const c=[AR.from,AR.to].map(p=>`${(+p.lon).toFixed(5)},${(+p.lat).toFixed(5)}`).join(';');
+    const r=await fetch(`https://routing.openstreetmap.de/routed-car/route/v1/driving/${c}?overview=full&geometries=polyline&alternatives=3&steps=true`); const j=await r.json();
+    if(j.code!=='Ok')throw new Error(j.code);
+    AR.routes=j.routes.map(x=>({km:x.distance/1000,min:x.duration/60,line:x.geometry,via:(x.legs[0]&&x.legs[0].summary)||''})); } AR.pick=0;
+  }catch(e){ AR.routes=[]; }
+  AR.busy=false; if(!$('#arres'))return; arRenderRoutes(); arButtons(); }
+function arRenderRoutes(){ const box=$('#arres'); if(!box)return;
+  if(!AR.routes.length){ box.innerHTML='<p class="warnbox">Couldn’t find a route between those towns. Check your signal and try again.</p>'; return; }
+  const q=AR.routes[0];
+  box.innerHTML=`<p class="arhd">${AR.routes.length===1?'One route':AR.routes.length+' routes'}</p><div class="arroutes">${AR.routes.map((r,i)=>`<label class="arroute"><input type="radio" name="arroute" value="${i}"${i===AR.pick?' checked':''}><i style="--g:var(--${i?['orange','purple','green'][i-1]:'blue'})"></i><span><b>${Math.round(r.km)} km · ${fmtDur(r.min)} riding</b><small>${r.via?'Via '+esc(r.via):'Route '+(i+1)}${i?` · ${fmtDur(Math.max(0,r.min-q.min))} longer`:' · Quickest'}${r.toll?' · <span class="arwarn">Has tolls</span>':''}${r.ferry?' · <span class="arwarn">Uses a ferry</span>':''}</small></span></label>`).join('')}</div><div class="map armap"></div>`;
+  arMap(); }
+async function arMap(){ const el=$('#dlg .armap'); if(!el)return; try{ await loadLeaflet(); }catch(e){ el.remove(); return; } if(!document.body.contains(el))return;
+  if(AR.map){ try{AR.map.remove();}catch(e){} } const m=AR.map=L.map(el,{scrollWheelZoom:false,tap:true,attributionControl:true});
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(m);
+  const cv=c=>getComputedStyle(document.documentElement).getPropertyValue('--'+c).trim()||'#2387E0', cols=['blue','orange','purple','green'];
+  let all=[]; AR.routes.map((r,i)=>i).sort((a,b)=>(a===AR.pick)-(b===AR.pick)).forEach(i=>{ const p=decodeLine(AR.routes[i].line); all=all.concat(p);
+    L.polyline(p,{color:cv(cols[i]),weight:i===AR.pick?6:3,opacity:i===AR.pick?1:.55}).addTo(m); });
+  const on=AR.towns?AR.towns.filter(t=>t.on):[];
+  [AR.from,...on,AR.to].forEach((p,i,a)=>{ L.circleMarker([+p.lat,+p.lon],{radius:i&&i<a.length-1?6:8,color:'#fff',weight:2,fillColor:i&&i<a.length-1?cv('ink'):cv(cols[AR.pick]),fillOpacity:1}).bindPopup(`<b>${esc(p.name)}</b>`).addTo(m); });
+  m.fitBounds(all,{padding:[16,16]}); }
+function arAlong(p){ let best=1e9,bi=0; const c=Math.cos(p.lat*Math.PI/180);
+  AR.pts.forEach((q,i)=>{ const d=(q[0]-p.lat)**2+((q[1]-p.lon)*c)**2; if(d<best){best=d;bi=i;} });
+  return {km:AR.cum[bi],off:kmBetween(p,{lat:AR.pts[bi][0],lon:AR.pts[bi][1]})}; }
+async function arScan(){ const R=AR.routes[AR.pick]; if(!R)return; AR.busy=true; arButtons();
+  const pts=AR.pts=decodeLine(R.line), cum=AR.cum=[0]; for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+kmBetween({lat:pts[i-1][0],lon:pts[i-1][1]},{lat:pts[i][0],lon:pts[i][1]}));
+  const total=AR.total=cum[cum.length-1]; AR.min=R.min;
+  const step=Math.max(15,total/16), samples=[]; for(let k=step/2;k<total-3;k+=step){ const i=Math.max(0,cum.findIndex(c=>c>=k)); samples.push({lat:pts[i][0],lon:pts[i][1]}); }
+  const found=new Map(), box=()=>$('#arres');
+  for(let n=0;n<samples.length;n++){ if(!box())return; box().innerHTML=`<p class="muted">Looking for towns along the route… ${n+1} of ${samples.length}</p><div class="arbar"><i style="width:${Math.round((n+1)/samples.length*100)}%"></i></div>`;
+    const s=samples[n];
+    try{ const h=await osmFetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=13&addressdetails=1&lat=${s.lat.toFixed(5)}&lon=${s.lon.toFixed(5)}`), a=h.address||{};
+      const name=/^(city|town|village|hamlet|suburb|locality|neighbourhood|quarter|isolated_dwelling)$/.test(h.addresstype||'')?h.name:(a.town||a.village||a.city||a.hamlet||a.suburb||'');
+      if(name&&!found.has(name.toLowerCase()))found.set(name.toLowerCase(),{name,type:h.addresstype||'',lat:+(+h.lat).toFixed(5),lon:+(+h.lon).toFixed(5),near:s}); }catch(e){}
+    if(n<samples.length-1)await new Promise(r=>setTimeout(r,1100)); }
+  if(!box())return; box().innerHTML='<p class="muted">Checking the towns…</p>';
+  const list=[...found.values()].filter(t=>!sameName(t.name,AR.from.name)&&!sameName(t.name,AR.to.name));
+  const look=async t=>{ let r=null; for(let k=0;k<2&&!r;k++){ try{ r=await placeSearch(t.name); }catch(e){ await new Promise(z=>setTimeout(z,800)); } } if(!r)return;
+    const near=r.map(p=>({p,d:kmBetween(p,t.near)})).filter(x=>x.d<15), exact=near.filter(x=>sameName(x.p.name,t.name)), o=(exact.length?exact:near).sort((a,b)=>a.d-b.d)[0];
+    if(o){ t.lat=o.p.lat; t.lon=o.p.lon; t.area=o.p.area; t.pop=o.p.pop; } };
+  for(let i=0;i<list.length;i+=3)await Promise.all(list.slice(i,i+3).map(look)); // a few at a time, so none get turned away
+  let towns=list.map(t=>({...t,...arAlong(t)})).filter(t=>t.off<=10&&t.km>3&&t.km<total-3&&kmBetween(t,AR.from)>3&&kmBetween(t,AR.to)>3);
+  const mids=arStops().filter(s=>hasLL(s)&&s.id!==AR.from.stopId&&s.id!==AR.to.stopId).map(s=>({name:s.town,lat:+s.lat,lon:+s.lon,stopId:s.id,existing:true,tags:s.tags||[],...arAlong({lat:+s.lat,lon:+s.lon})}));
+  towns=towns.filter(t=>!mids.some(m=>sameName(m.name,t.name)||kmBetween(m,t)<2));
+  AR.towns=[...towns,...mids].sort((a,b)=>a.km-b.km); arSuggest(); AR.busy=false; arRenderTowns(); arButtons(); }
+function arSuggest(){ const T=AR.towns, every=+val('arevery')||75, brk=every*AR.total/AR.min; T.forEach(t=>{ t.on=!!t.existing; }); let last=0;
+  while(AR.total-last>brk*1.15){ const target=last+brk, win=T.filter(t=>t.km>last+brk*.55&&t.km<=last+brk*1.3);
+    let pick=win.find(t=>t.existing);
+    if(!pick&&win.length)pick=win.map(t=>({t,s:Math.log10((t.pop||20)+10)-Math.abs(t.km-target)/brk})).sort((a,b)=>b.s-a.s)[0].t;
+    if(!pick)pick=T.filter(t=>t.km>last+brk*.4).sort((a,b)=>a.km-b.km)[0]; if(!pick)break; pick.on=true; last=pick.km; }
+  arTag(); }
+function arTag(){ const T=AR.towns, spd=AR.total/AR.min, rule=Number(S.tour.fuelRangeKm)||0, on=T.filter(t=>t.on); let clock=toMin(val('ardep'))??510, prev=0, lunch=false, fuel=0;
+  on.forEach((t,i)=>{ t.sug=[]; t.arr=Math.round(clock+(t.km-prev)/spd); const own=t.existing?t.tags:null;
+    if(own){ if(own.includes('Lunch'))lunch=true; }
+    else if(!lunch&&t.arr>=11*60+30&&t.arr<=14*60){ t.sug.push('Lunch'); lunch=true; }
+    else t.sug.push(i===0&&t.arr<11*60?'Coffee':'Shake a leg');
+    const next=i<on.length-1?on[i+1].km:AR.total;
+    if(own){ if(own.includes('Fuel'))fuel=t.km; } else if(rule&&next-fuel>rule){ t.sug.push('Fuel'); fuel=t.km; }
+    t.dep=t.arr+dwellOf(own||t.sug); clock=t.dep; prev=t.km; });
+  T.filter(t=>!t.on).forEach(t=>{ t.sug=[]; t.arr=null; });
+  AR.finishAt=Math.round(clock+(AR.total-prev)/spd); }
+function arKind(t){ if(t.existing)return 'Already in this day'; if(t.pop)return `${t.pop>=2000?'Town':'Village'} of ${t.pop.toLocaleString()}`; return /city|town/.test(t.type)?'Town':'Locality'; }
+function arRenderTowns(){ const box=$('#arres'); if(!box)return; const R=AR.routes[AR.pick], T=AR.towns, on=T.filter(t=>t.on), rule=Number(S.tour.fuelRangeKm)||0, dep=toMin(val('ardep'))??510;
+  const marks=[0,...on.map(t=>t.km),AR.total], longest=Math.max(...marks.slice(1).map((k,i)=>k-marks[i]));
+  let fa=0, gap=0; on.forEach(t=>{ if(t.sug.includes('Fuel')||(t.existing&&t.tags.includes('Fuel'))){ gap=Math.max(gap,t.km-fa); fa=t.km; } }); gap=Math.max(gap,AR.total-fa);
+  const pills=t=>(t.existing?t.tags:t.sug).filter(x=>DWELL[x]!=null).map(x=>`<span class="pill${x==='Fuel'?' fuel':''}">${esc(x)}</span>`).join('');
+  box.innerHTML=`<div class="qbsum"><div>${Math.round(AR.total)} km<small>distance</small></div><div>${fmtDur(AR.min)}<small>riding</small></div><div>${t12(toHM(AR.finishAt))}<small>finish, with stops</small></div></div>
+   ${R.via?`<p class="hint" style="margin:8px 0 0">Via ${esc(R.via)}</p>`:''}<p class="arhd">${T.length?`${on.length} of ${T.length} towns along the way ticked · longest stretch ${Math.round(longest)} km`:'No towns found along this route'}</p>
+   <ul class="arlist"><li class="arfix"><span class="ark">0 km</span><span class="art"><b>${esc(AR.from.name)}</b><small>Start · leave ${esc(t12(toHM(dep)))}</small></span></li>
+   ${T.map((t,i)=>`<li class="${t.on?'on':''}"><label><input type="checkbox" data-artown="${i}"${t.on?' checked':''}${t.existing?' disabled':''}><span class="ark">${Math.round(t.km)} km</span><span class="art"><b>${esc(t.name)}</b><small>${esc(arKind(t))}${t.on&&t.arr!=null?' · about '+esc(t12(toHM(t.arr))):''}</small>${t.on?`<span class="artags">${pills(t)}</span>`:''}</span></label></li>`).join('')}
+   <li class="arfix"><span class="ark">${Math.round(AR.total)} km</span><span class="art"><b>${esc(AR.to.name)}</b><small>Finish · arrive about ${esc(t12(toHM(AR.finishAt)))}</small></span></li></ul>
+   ${rule&&gap>rule?`<p class="warnbox">⛽ ${Math.round(gap)} km without fuel: over the ${rule} km rule. Tick a town in that stretch.</p>`:''}
+   <p class="hint">Tick or untick towns to change the plan. Times are estimates; after adding, the day is re-routed through the towns you picked.</p>
+   <div class="map armap"></div>`;
+  arMap(); }
+async function arBuild(){ const day=arDay(), all=stopsOf(day.id), now=stamp(), empty=!all.length, dep=val('ardep')||null;
+  const last=daysSorted().filter(d=>d.kind!=='solo').slice(-1)[0], fin=S.tour.kind==='day'||day.kind==='solo'||(last&&last.id===day.id)?'Finish':'Overnight';
+  const mk=(p,tags,x)=>({dayId:day.id,town:p.name,road:'',arrive:null,depart:null,km:null,fuelKm:'',tags,option:null,group:null,note:'',fact:'',stay:'',lat:p.lat,lon:p.lon,...x,...now});
+  const items=[];
+  if(!AR.from.stopId)items.push({km:-1,id:FB.newId(tp('stops')),data:mk(AR.from,['Start'],{depart:empty?dep:null})});
+  AR.towns.filter(t=>t.on&&!t.existing).forEach(t=>items.push({km:t.km,id:FB.newId(tp('stops')),data:mk(t,t.sug,empty?{arrive:toHM(t.arr),depart:toHM(t.dep)}:{})}));
+  if(!AR.to.stopId)items.push({km:AR.total+1,id:FB.newId(tp('stops')),data:mk(AR.to,[fin],{arrive:empty?toHM(AR.finishAt):null})});
+  let pk=-1; all.forEach(s=>{ const k=s.id===AR.from.stopId?-1:s.id===AR.to.stopId?AR.total+1:hasLL(s)?arAlong({lat:+s.lat,lon:+s.lon}).km:pk+.001; pk=k; items.push({km:k,id:s.id}); });
+  items.sort((a,b)=>a.km-b.km);
+  const ops=items.map((it,i)=>it.data?{op:'set',path:tp('stops',it.id),data:{...it.data,order:i}}:{op:'set',path:tp('stops',it.id),data:{order:i},merge:true});
+  if(!day.title)ops.push({op:'set',path:tp('days',day.id),data:{title:`${AR.from.name} to ${AR.to.name}`,...now},merge:true});
+  const n=items.filter(x=>x.data).length;
+  try{ await FB.batch(ops); closeDlg(); toast(`${n} stop${n===1?'':'s'} added`); scheduleAutoEstimate(day.id,400); }catch(e){ dlgError('Couldn’t add them. Check your signal.'); } }
+document.addEventListener('input',e=>{ if(!e.target.matches||!e.target.matches('#dlg [name="arfrom"],#dlg [name="arto"]'))return; const k=e.target.name.slice(2);
+  if(AR[k]&&e.target.value.trim()!==AR[k].name){ AR[k]=null; const pc=e.target.closest('.arend').querySelector('.pinchip'); if(pc)pc.remove(); arReset(); }
+  clearTimeout(AR.timer); AR.timer=setTimeout(()=>arSearch(k),350); });
+document.addEventListener('change',e=>{ if(!AR.dayId||!e.target.closest||!e.target.closest('#dlg'))return;
+  if(e.target.name==='arroute'){ AR.pick=+e.target.value; arMap(); return; }
+  const c=e.target.closest('[data-artown]'); if(c){ AR.towns[+c.dataset.artown].on=c.checked; arTag(); arRenderTowns(); arButtons(); return; }
+  if(AR.towns&&e.target.name==='arevery'){ arSuggest(); arRenderTowns(); arButtons(); }
+  if(AR.towns&&e.target.name==='ardep'){ arTag(); arRenderTowns(); } });
+document.addEventListener('click',e=>{
+  const o=e.target.closest('[data-autoroute]'); if(o){ autoRouteDialog(o.dataset.autoroute); return; }
+  const ap=e.target.closest('[data-arpick]'); if(ap){ const [k,i]=ap.dataset.arpick.split('|'); AR[k]=AR.opts[k][+i]; const w=ap.closest('.arend'); w.outerHTML=arEnd(k); arReset(); return; }
+  const b=e.target.closest('[data-ar]'); if(!b||b.disabled)return;
+  if(b.dataset.ar==='routes')arRoutes(); else if(b.dataset.ar==='scan')arScan(); else if(b.dataset.ar==='build')arBuild(); });
+
+/* v5.3: route preferences for the whole tour, tour.avoid {ferry, toll}; saved as soon as they change, then every day is re-routed.
+   Closed roads can't be switched: both routers always skip roads OpenStreetMap marks closed or under construction, and live
+   closures aren't available without a state API key, so the app links to each state's live traffic map instead. */
+const LIVE_TRAFFIC=[['NSW','https://www.livetraffic.com'],['VIC','https://traffic.vicroads.vic.gov.au'],['QLD','https://qldtraffic.qld.gov.au'],['SA','https://traffic.sa.gov.au'],['WA','https://travelmap.mainroads.wa.gov.au'],['NT','https://roadreport.nt.gov.au']];
+function avoidHtml(L){ const a=tourAvoid();
+  return `<div class="avoid"><div class="fl">Routes avoid<div class="chips">${[['ferry','Ferries'],['toll','Tolls']].map(([k,t])=>`<label><input type="checkbox" data-avoid="${k}"${a[k]?' checked':''}${L?' disabled':''}>${t}</label>`).join('')}</div></div>
+    <p class="hint">Closed roads are always avoided when OpenStreetMap marks them closed or under construction. Live closures (floods, fires, roadworks) aren’t available to the app, so check before you ride: ${LIVE_TRAFFIC.map(([s,u])=>`<a href="${u}" target="_blank" rel="noopener">${s}</a>`).join(' · ')}.</p></div>`; }
+document.addEventListener('change',async e=>{ const c=e.target.closest&&e.target.closest('[data-avoid]'); if(!c||!S.editor||locked())return;
+  const k=c.dataset.avoid, avoid={...tourAvoid(),[k]:c.checked}, word=k==='ferry'?'ferries':'tolls';
+  $$(`[data-avoid="${k}"]`).forEach(x=>{ x.checked=c.checked; });
+  try{ await FB.set(tp(),{avoid,...stamp()},true); S.tour.avoid=avoid; }catch(x){ toast('Couldn’t save that. Check your signal.'); return; }
+  toast(c.checked?`Routes now avoid ${word}`:`Routes can use ${word} again`);
+  daysSorted().forEach((d,i)=>scheduleAutoEstimate(d.id,800+i*1500)); // re-route every day with the new preference
+  if(AR.dayId&&$('#arres')&&(AR.routes.length||AR.towns))arRoutes(); });
