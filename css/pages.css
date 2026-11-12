@@ -1,24 +1,30 @@
-/* Ride Together: privacy and support pages */
-@font-face{font-family:"Barlow";src:url(../fonts/Barlow-Regular.ttf) format("truetype");font-weight:400;font-display:swap}
-@font-face{font-family:"Barlow";src:url(../fonts/Barlow-SemiBold.ttf) format("truetype");font-weight:600;font-display:swap}
-@font-face{font-family:"Barlow Condensed";src:url(../fonts/BarlowCondensed-ExtraBold.ttf) format("truetype");font-weight:800;font-display:swap}
-:root{--bg:#ECEEEA;--surface:#fff;--ink:#1B2530;--muted:#596570;--rule:#CBD1CB;--vis:#F2C200;--blue:#1F6FB8;--tile:#1B2530}
-@media (prefers-color-scheme:dark){:root{--bg:#11161B;--surface:#1B2530;--ink:#F4F5F2;--muted:#AEB8C1;--rule:#2F3943;--blue:#7DB8F0}}
+/* Ride Together: privacy and support pages, v5 design system (loads design/tokens.css first) */
+@font-face{font-family:"Geist";src:url(../design/fonts/Geist-Regular.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Geist";src:url(../design/fonts/Geist-Medium.woff2) format("woff2");font-weight:500;font-display:swap}
+@font-face{font-family:"Geist";src:url(../design/fonts/Geist-SemiBold.woff2) format("woff2");font-weight:600;font-display:swap}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:400 16.5px/1.55 "Barlow",system-ui,sans-serif;-webkit-text-size-adjust:100%}
-header{background:var(--tile);color:#F4F5F2;padding:calc(18px + env(safe-area-inset-top)) 18px 18px}
-header .in{max-width:760px;margin:0 auto;display:flex;align-items:center;gap:12px}
-header img{width:64px;height:auto}
-header b{font:800 26px/1 "Barlow Condensed","Arial Narrow",sans-serif;text-transform:uppercase}
-main{max-width:760px;margin:0 auto;padding:22px 18px 60px}
-h1{font:800 38px/1 "Barlow Condensed","Arial Narrow",sans-serif;text-transform:uppercase;margin:0 0 6px}
-h2{font:800 23px/1.1 "Barlow Condensed","Arial Narrow",sans-serif;text-transform:uppercase;margin:28px 0 6px}
-h3{font:600 17px/1.3 "Barlow",sans-serif;margin:16px 0 2px}
-p,li{margin:6px 0}
-ul{padding-left:20px}
-a{color:var(--blue);font-weight:600}
-.meta{color:var(--muted);font-size:14.5px}
-.card{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:14px 16px;margin:12px 0}
-.contact{border-left:6px solid var(--vis)}
-.todo{background:#FFF3C4;color:#5A4500;border-radius:6px;padding:1px 6px;font-weight:600}
-footer{max-width:760px;margin:0 auto;padding:0 18px 40px;color:var(--muted);font-size:14px}
+html{background:var(--color-background)}
+body{margin:0;background:var(--color-background);color:var(--color-text);font:400 16px/24px var(--font-sans);-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
+header{border-bottom:1px solid var(--color-border);padding:calc(var(--space-3) + var(--safe-t)) max(var(--space-5),var(--safe-r)) var(--space-3) max(var(--space-5),var(--safe-l))}
+header .in{max-width:680px;margin:0 auto;display:flex;align-items:center;gap:var(--space-3);min-height:28px}
+header img{width:36px;height:auto;filter:brightness(0)}
+header b{font:600 17px/24px var(--font-sans);letter-spacing:-.01em}
+main{max-width:680px;margin:0 auto;padding:var(--space-12) max(var(--space-5),var(--safe-r)) var(--space-20) max(var(--space-5),var(--safe-l))}
+h1{font:600 30px/36px var(--font-sans);letter-spacing:-.03em;margin:0 0 var(--space-2);text-wrap:balance}
+.meta{color:var(--color-text-muted);margin:0 0 var(--space-8);max-width:var(--measure)}
+h2{font:600 22px/28px var(--font-sans);letter-spacing:-.02em;border-top:2px solid var(--color-text);padding-top:var(--space-3);margin:var(--space-12) 0 var(--space-4)}
+h3{font:600 17px/24px var(--font-sans);letter-spacing:-.01em;margin:var(--space-6) 0 var(--space-1)}
+p,li{max-width:var(--measure)}
+p{margin:0 0 var(--space-3)}
+ul{margin:0 0 var(--space-3);padding-left:20px}
+li{margin:0 0 var(--space-2)}
+li::marker{color:var(--color-text-subtle)}
+b{font-weight:600}
+a{color:var(--color-text);text-decoration:underline;text-decoration-color:var(--color-border-strong);text-underline-offset:3px}
+a:hover{text-decoration-color:currentColor}
+a:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px;border-radius:var(--radius-xs)}
+.card{border-left:2px solid var(--color-accent-fg);padding:var(--space-1) 0 var(--space-1) var(--space-4);margin:0 0 var(--space-6)}
+.card p:last-child{margin-bottom:0}
+main>p:last-child{border-top:1px solid var(--color-border);padding-top:var(--space-4);margin-top:var(--space-12);color:var(--color-text-muted);font-size:14px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) header img{filter:brightness(0) invert(1)}}
+:root[data-theme="dark"] header img{filter:brightness(0) invert(1)}
