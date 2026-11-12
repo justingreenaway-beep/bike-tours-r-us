@@ -1324,12 +1324,4 @@ details.sfmore summary,details.bakmap summary{text-decoration:underline;text-dec
 #dlg .avoid{margin:6px 0 10px}
 .arwarn{color:var(--color-danger)}
 
-/* v5.4: vehicles on the profile, one per tour */
-.vtours{margin:12px 0 0}
-.vthd{margin:0 0 6px;font:500 11px/16px var(--font-sans);letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-muted)}
-.vthd small{text-transform:none;letter-spacing:0;font-size:12px;margin-left:4px}
-.vtour{display:grid;grid-template-columns:1fr minmax(0,52%);align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--color-border)}
-.vtour span{display:grid;gap:1px;min-width:0}
-.vtour b{font:500 15px/20px var(--font-sans)}
-.vtour .vpick{font:400 13px/18px var(--font-sans);color:var(--color-danger)}
-.vtour select.vsel{margin-top:0}
+/* v5.4: vehicles on the profile (no styles needed since 5.4.1) */
