@@ -15,7 +15,7 @@ const profileOf=name=>{ const v=Object.values(R.riders).find(r=>r.name===name); 
 const riderOf=name=>Object.entries(R.riders).map(([id,v])=>({id,...v})).find(r=>r.name===name)||null;
 function bikeText(b){ if(!b)return ''; return [b.year,b.make,b.model].filter(Boolean).join(' ')+(b.colour?` · ${b.colour}`:''); }
 /* v5.4: several vehicles per person, motorcycle or car, in profile.vehicles [{id,type,year,make,model,colour,fuelRange}].
-   Each tour's rider record holds the one taken on that tour (riders/{uid}.vehicle = id; one per tour). Profiles from before
+   v5.4.1: no per-tour choice any more (riders/{uid}.vehicle from v5.4 is ignored). Profiles from before
    v5.4 have bike{} and fuelRange instead: vehiclesOf() reads them as one motorcycle (id 'v1'). bike{} is still written
    (the first motorcycle) for older copies of the app. */
 const VTYPES={motorcycle:'Motorcycle',car:'Car'};
@@ -24,37 +24,23 @@ function vehiclesOf(pr){ pr=pr||{}; if(Array.isArray(pr.vehicles))return pr.vehi
 const vName=v=>v?[v.year,v.make,v.model].filter(Boolean).join(' ')||VTYPES[v.type]||'Vehicle':'';
 const vText=v=>v?vName(v)+(v.colour?` · ${v.colour}`:''):'';
 const vIcon=v=>v&&v.type==='car'?PIC.car:PIC.bike;
-function tourVehicle(r){ if(!r)return null; const vs=vehiclesOf(r.profile); return vs.find(v=>v.id===r.vehicle)||(vs.length===1?vs[0]:null); }
-const myTourVehicle=()=>tourVehicle(R.riders[myUid()]);
+// the range Today warns with: the shortest set on a motorcycle, else on any vehicle
+function fuelVehicle(pr){ const vs=vehiclesOf(pr).filter(v=>Number(v.fuelRange)>0), b=vs.filter(v=>v.type!=='car'), pool=b.length?b:vs; return pool.sort((a,c)=>a.fuelRange-c.fuelRange)[0]||null; }
+const myFuelVehicle=()=>fuelVehicle(myProfile());
 const bikeCompat=vs=>{ const b=vs.find(v=>v.type==='motorcycle'); return b?{year:b.year,make:b.make,model:b.model,colour:b.colour}:null; };
-function vehTourPick(vs){ const uid=myUid(), cur=(R.riders[uid]||{}).vehicle;
-  const list=(P.tours||[]).filter(x=>x.member).map(x=>({id:x.t.id,name:x.t.name||x.t.id,start:x.t.startDate||'',cur:x.t.id===S.tourId?cur:(x.doc||{}).vehicle}));
-  if(!list.length&&S.tour&&canRide())list.push({id:S.tourId,name:S.tour.name||S.tourId,start:S.tour.startDate||'',cur});
-  if(!list.length)return '';
-  list.sort((a,b)=>(b.start||'').localeCompare(a.start||''));
-  return `<div class="vtours"><p class="vthd">Taking on each tour <small>one per tour</small></p>${list.map(x=>{ const sel=vs.find(v=>v.id===x.cur)||(vs.length===1?vs[0]:null);
-    return `<label class="vtour"><span><b>${esc(x.name)}</b>${sel?'':'<small class="vpick">Pick one</small>'}</span><select class="vsel" data-vehtour="${esc(x.id)}">${sel?'':'<option value="">Choose…</option>'}${vs.map(v=>`<option value="${esc(v.id)}"${sel&&sel.id===v.id?' selected':''}>${esc(vName(v))}${v.type==='car'?' (car)':''}</option>`).join('')}</select></label>`; }).join('')}</div>`; }
-async function setTourVehicle(tourId,vid){ const uid=myUid();
-  await FB.set(`tours/${tourId}/riders/${uid}`,{vehicle:vid||null},true);
-  if(tourId===S.tourId&&R.riders[uid])R.riders[uid]={...R.riders[uid],vehicle:vid||null};
-  (P.tours||[]).forEach(x=>{ if(x.t.id===tourId)x.doc={...(x.doc||{}),vehicle:vid||null}; }); }
 function vehicleDialog(id){ const vs=vehiclesOf(myProfile()), v=vs.find(x=>x.id===id)||{type:'motorcycle'};
   dlg(`<h3>${id?'Edit vehicle':'Add a vehicle'}</h3>
     <div class="fl">Type<div class="chips">${Object.entries(VTYPES).map(([k,l])=>`<label><input type="radio" name="vtype" value="${k}"${(v.type||'motorcycle')===k?' checked':''}>${l}</label>`).join('')}</div></div>
     <div class="frow">${field('Year','vyear',v.year,{type:'number',ph:'2019'})}${field('Colour','vcolour',v.colour,{ph:'e.g. vivid black'})}</div>
     <div class="frow">${field('Make','vmake',v.make,{ph:'e.g. Harley-Davidson'})}${field('Model','vmodel',v.model,{ph:'e.g. Fat Boy'})}</div>
     ${field('Fuel range (km on a full tank)','vfuel',v.fuelRange,{type:'number',ph:'e.g. 220'})}
-    <p class="hint" style="margin:-4px 0 8px">Used on Today to warn you before you run short, when it’s less than the tour’s fuel rule.</p>
+    <p class="hint" style="margin:-4px 0 8px">Today warns you before you run short, using the shortest range on your motorcycles, when it’s less than the tour’s fuel rule.</p>
     <div class="dbtns"><button type="button" class="btn primary" data-vehsave="${esc(id||'')}">Save</button><button type="button" class="btn" data-close>Cancel</button>${id?`<button type="button" class="btn danger" data-vehdel="${esc(id)}">Remove</button>`:''}</div>`); }
 async function vehSave(id){ const base=await newestProfile(), before=vehiclesOf(base), vs=before.map(x=>({...x})), fr=Number(val('vfuel'))||0;
   const v={id:id||'v'+Date.now().toString(36),type:($('#dlg input[name="vtype"]:checked')||{}).value||'motorcycle',year:val('vyear'),make:val('vmake'),model:val('vmodel'),colour:val('vcolour'),fuelRange:fr>0?fr:null};
   if(!v.make&&!v.model){ dlgError('Add the make or the model.'); return; }
   const i=vs.findIndex(x=>x.id===v.id); if(i>=0)vs[i]=v; else vs.push(v);
   await saveProfile({vehicles:vs,bike:bikeCompat(vs)});
-  // going from one vehicle to two: tours that were using the only one keep it, rather than asking
-  if(i<0&&before.length===1){ const keep=before[0].id, tours=(P.tours||[]).filter(x=>x.member);
-    if(!tours.length&&S.tour)tours.push({t:S.tour,doc:R.riders[myUid()]});
-    for(const x of tours){ const cur=x.t.id===S.tourId?(R.riders[myUid()]||{}).vehicle:(x.doc||{}).vehicle; if(!cur)try{ await setTourVehicle(x.t.id,keep); }catch(e){} } }
   closeDlg(); toast(id?'Vehicle saved':`${vName(v)} added`); render(); }
 async function vehDel(id){ const base=await newestProfile(), vs=vehiclesOf(base).filter(x=>x.id!==id), v=vehiclesOf(base).find(x=>x.id===id);
   if(!confirm(`Remove ${vName(v)} from your profile?`))return;
@@ -63,9 +49,6 @@ document.addEventListener('click',async e=>{
   const a=e.target.closest('[data-veh]'); if(a){ dlg('<p class="muted">Loading your details…</p>'); await newestProfile(); vehicleDialog(a.dataset.veh==='new'?null:a.dataset.veh); return; }
   const s=e.target.closest('[data-vehsave]'); if(s){ try{ await vehSave(s.dataset.vehsave||null); }catch(x){ dlgError('Couldn’t save. Check your signal and try again.'); } return; }
   const d=e.target.closest('[data-vehdel]'); if(d){ try{ await vehDel(d.dataset.vehdel); }catch(x){ dlgError('Couldn’t remove it. Check your signal.'); } return; } });
-document.addEventListener('change',async e=>{ const s=e.target.closest&&e.target.closest('[data-vehtour]'); if(!s||!s.value)return;
-  try{ await setTourVehicle(s.dataset.vehtour,s.value); const v=vehiclesOf(myProfile()).find(x=>x.id===s.value); toast(`${vName(v)} for this tour`); render(); }
-  catch(x){ toast('Couldn’t save that. Check your signal.'); } });
 function avatar(name,pr,size){ const c=pr&&pr.colour&&AV_COLOURS.includes(pr.colour)?pr.colour:'ink', s=size||44;
   return pr&&pr.photo?`<span class="av" style="width:${s}px;height:${s}px"><img src="${pr.photo}" alt=""></span>`
     :`<span class="av" style="width:${s}px;height:${s}px;font-size:${Math.round(s*.48)}px;background:var(--${c})">${esc(String(name||'?').trim()[0]||'?').toUpperCase()}</span>`; }
@@ -150,8 +133,7 @@ function profileView(){
         <button type="button" class="linkb" data-prof="edit-about" style="margin-top:6px">Edit name, photo and colour</button></div></div>
 
     ${(()=>{ const vs=vehiclesOf(pr); return `<div class="prsec"><div class="prsh"><h2>My vehicles</h2><small>Seen by riders on your tours</small><button type="button" class="linkb" data-veh="new">Add</button></div>
-      <div class="card pcard">${vs.length?vs.map(v=>row(vIcon(v),VTYPES[v.type]||'Motorcycle',`<b>${esc(vText(v))}</b>${v.fuelRange?` · ${esc(v.fuelRange)} km a tank`:''}`,`<button type="button" class="linkb" data-veh="${esc(v.id)}">Edit</button>`)).join(''):'<p class="muted" style="margin:10px 0">Add the motorcycle or car you tour in. Got more than one? Add them all, then pick one for each tour.</p>'}</div>
-      ${vs.length?vehTourPick(vs):''}</div>`; })()}
+      <div class="card pcard">${vs.length?vs.map(v=>row(vIcon(v),VTYPES[v.type]||'Motorcycle',`<b>${esc(vText(v))}</b>${v.fuelRange?` · ${esc(v.fuelRange)} km a tank`:''}`,`<button type="button" class="linkb" data-veh="${esc(v.id)}">Edit</button>`)).join(''):'<p class="muted" style="margin:10px 0">Add the motorcycle or car you tour in. Got more than one? Add them all.</p>'}</div></div>`; })()}
 
     <div class="prsec"><div class="prsh"><h2>On the crew list</h2><small>Seen by riders on your tours</small><button type="button" class="linkb" data-prof="edit-crew">Edit</button></div>
       <div class="card pcard">${row(PIC.phone,'Mobile',pr.mobile?`<b>${esc(pr.mobile)}</b>`:none,pr.mobile?`<span class="pact">${pr.showMobile?'Shown to crew':'Hidden'}</span>`:'')}</div></div>
@@ -163,7 +145,7 @@ function profileView(){
 
     <div class="prsec"><div class="prsh"><h2>Tour preferences</h2><small>Help with rooms, dinners and fuel</small><button type="button" class="linkb" data-prof="edit-prefs">Edit</button></div>
       <div class="card pcard">${row(PIC.bed,'Room',pr.room?`<b>${esc(pr.room)}</b>`:none)}${row(PIC.food,'Dietary needs',pr.dietary?`<b>${esc(pr.dietary)}</b>`:'<b>None</b>')}
-        ${S.tour?(()=>{ const tv=myTourVehicle(); return row(PIC.fuel,'Fuel range on this tour',tv&&tv.fuelRange?`<b>${esc(tv.fuelRange)} km</b> (${esc(vName(tv))})${S.tour.fuelRangeKm?` · group rule is ${esc(S.tour.fuelRangeKm)} km`:''}`:'<span class="muted">Set it on your vehicle</span>'); })():''}
+        ${S.tour?(()=>{ const tv=myFuelVehicle(); return row(PIC.fuel,'Fuel range',tv&&tv.fuelRange?`<b>${esc(tv.fuelRange)} km</b> (${esc(vName(tv))})${S.tour.fuelRangeKm?` · group rule is ${esc(S.tour.fuelRangeKm)} km`:''}`:'<span class="muted">Set it on your vehicle</span>'); })():''}
         ${row(PIC.nav,'Navigate opens in',`<b>${esc(NAV_APPS[pr.navApp||''])}</b>`)}</div></div>
 
     <div class="prsec"><div class="prsh"><h2>My tours</h2><small>Across every tour you’ve ridden</small></div>
@@ -222,7 +204,7 @@ function personCard(name){
   const row=(ic,label,val)=>`<div class="prw"><span class="pic">${ic}</span><div class="pt"><small>${label}</small>${val}</div></div>`;
   dlg(`<div class="phead" style="margin:0 0 10px">${avatar(name,pr,64)}<div><h3 style="margin:0">${esc(name)}</h3>${pr.nickname?`<div class="nick">“${esc(pr.nickname)}”</div>`:''}${role.length?`<div class="chips">${role.map(x=>`<span class="chip">${esc(x)}</span>`).join('')}</div>`:''}</div></div>
     ${!r?'<p class="muted">Hasn’t opened this tour in the app yet.</p>':''}
-    <div class="card pcard">${(()=>{ const tv=tourVehicle(r); return tv?row(vIcon(tv),tv.type==='car'?'Driving':'Riding',`<b>${esc(vText(tv))}</b>`):''; })()}${tonight?row(PIC.bed,'Tonight',`<b>${esc(tonight)}</b>`):''}
+    <div class="card pcard">${vehiclesOf(pr).map(v=>row(vIcon(v),VTYPES[v.type]||'Motorcycle',`<b>${esc(vText(v))}</b>`)).join('')}${tonight?row(PIC.bed,'Tonight',`<b>${esc(tonight)}</b>`):''}
       ${row(PIC.bakery,'This tour',`<b>${ticks} ${ticks===1?'bakery':'bakeries'}</b> · ${against} Koala Court charge${against===1?'':'s'} against`)}
       ${pr.dietary?row(PIC.food,'Dietary needs',`<b>${esc(pr.dietary)}</b>`):''}</div>
     ${em.name||em.phone||pr.medical?`<div class="card pcard psafe" style="margin-top:10px">${row(PIC.sos,'Emergency contact',`<b>${esc(em.name||'')}</b>${em.relation?` (${esc(em.relation)})`:''}${em.phone?` · <a href="${telUrl(em.phone)}">${esc(em.phone)}</a>`:''}`)}${pr.medical?row(PIC.med,'Medical notes',`<b>${esc(pr.medical)}</b>`):''}</div>`:''}

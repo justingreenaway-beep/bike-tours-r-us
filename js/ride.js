@@ -317,7 +317,7 @@ function meetCard(d,times,i,grp,opt){
 function todayDay(d){
   const col=`var(--${esc(d.colour||'blue')})`, opt=optFor(d), grp=viewGrp(d), times=dayTimes(d,opt,grp), L=liveOn(d);
   let i=L?times.findIndex(x=>x.s.id===L.stopId):-1; const started=i>=0; if(i<0)i=0;
-  const cur=times[i], nx=times[i+1], rule=Number(S.tour.fuelRangeKm)||0, myR=typeof myTourVehicle==='function'?Number((myTourVehicle()||{}).fuelRange)||0:0, mine=myR&&(!rule||myR<rule), range=mine?myR:rule;
+  const cur=times[i], nx=times[i+1], rule=Number(S.tour.fuelRangeKm)||0, myR=typeof myFuelVehicle==='function'?Number((myFuelVehicle()||{}).fuelRange)||0:0, mine=myR&&(!rule||myR<rule), range=mine?myR:rule;
   if(!cur) return `<div class="tdhead" style="--c:${col}"><span class="tdday">${esc(d.label)}</span><h2>${esc(d.title)}</h2></div><p class="muted">No stops yet.</p>`;
   let lf=0; for(let j=i;j>=0;j--){ if((times[j].s.tags||[]).includes('Fuel')||j===0){lf=j;break} }
   const since=cur.km!=null&&times[lf].km!=null?cur.km-times[lf].km:null;
