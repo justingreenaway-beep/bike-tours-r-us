@@ -1290,3 +1290,36 @@ details.sfmore summary,details.bakmap summary{text-decoration:underline;text-dec
 .pinchip .pinname{flex:1;min-width:0}
 .pinchip .pinname small{display:block;font-weight:400;opacity:.85}
 .stop .poi{font:400 13px/18px var(--font-sans);color:var(--color-text-muted);margin-top:1px}
+
+/* v5.3: suggest a route */
+.arend{margin-bottom:4px}
+.arhd{margin:14px 0 6px;font:500 11px/16px var(--font-sans);letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-muted)}
+.arroutes{display:grid;border-top:1px solid var(--color-border)}
+.arroute{display:flex;align-items:center;gap:10px;min-height:var(--tap-min);padding:10px 0;border-bottom:1px solid var(--color-border);cursor:pointer}
+.arroute input{width:18px;height:18px;margin:0;accent-color:var(--color-text);flex:none}
+.arroute i{width:18px;height:4px;border-radius:2px;background:var(--g);flex:none}
+.arroute span{display:grid;gap:1px;min-width:0}
+.arroute b{font:500 15px/20px var(--font-sans)}
+.arroute small{font:400 13px/18px var(--font-sans);color:var(--color-text-muted)}
+#dlg .armap{height:220px;margin:12px 0 4px;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--color-border)}
+.arbar{height:4px;background:var(--color-surface-muted);border-radius:2px;overflow:hidden;margin:6px 0 4px}
+.arbar i{display:block;height:100%;background:var(--color-text);transition:width .3s}
+.arlist{list-style:none;margin:0;padding:0;border-top:1px solid var(--color-border)}
+.arlist li{border-bottom:1px solid var(--color-border)}
+.arlist label,.arlist .arfix{display:grid;grid-template-columns:22px 56px 1fr;align-items:start;gap:8px;padding:10px 0;min-height:var(--tap-min);cursor:pointer}
+.arlist .arfix{grid-template-columns:56px 1fr;padding-left:30px;cursor:default}
+.arlist input{width:18px;height:18px;margin:2px 0 0;accent-color:var(--color-text)}
+.arlist .ark{font:400 13px/20px var(--font-mono);color:var(--color-text-muted)}
+.arlist .art{display:grid;gap:1px;min-width:0}
+.arlist .art b{font:500 15px/20px var(--font-sans)}
+.arlist .art small{font:400 13px/18px var(--font-sans);color:var(--color-text-muted)}
+.arlist li:not(.on):not(:has(.arfix)) .art b{font-weight:400;color:var(--color-text-muted)}
+.arlist .artags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+
+/* v5.3: route preferences (avoid ferries / tolls) */
+.avoid{margin:16px 0 14px}
+.avoid .fl{margin-bottom:4px}
+.avoid .hint{margin:4px 0 0;font:400 13px/18px var(--font-sans);color:var(--color-text-muted)}
+.avoid .hint a{color:var(--color-text)}
+#dlg .avoid{margin:6px 0 10px}
+.arwarn{color:var(--color-danger)}
