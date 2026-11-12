@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='5.2';
+const APP_VERSION='5.2.1';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -337,7 +337,7 @@ document.addEventListener('click',e=>{ const g=e.target.closest('[data-tab-go]')
 
 /* ---------- Plan (editors) ---------- */
 function planNoTour(){
-  return `<div class="plan"><h2>Plan</h2><div class="card"><h3>Plan a tour</h3><p class="muted" style="margin:0 0 10px">Start from scratch or copy one of your earlier tours. You’ll be its owner, and you can invite others to help as editors from the crew list.</p>
+  return `<div class="plan"><h2>Tour Planner</h2><div class="card"><h3>Plan a tour</h3><p class="muted" style="margin:0 0 10px">Start from scratch or copy one of your earlier tours. You’ll be its owner, and you can invite others to help as editors from the crew list.</p>
     <div class="planbar"><button type="button" class="btn primary" data-act="newtour">Plan a tour</button>${S.admin?'<button type="button" class="btn" data-act="import2026">Bring in the 2026 tour</button>':''}</div></div></div>`;
 }
 function viewPlan(){
@@ -349,7 +349,7 @@ function viewPlan(){
   const nrep=(S.reports||[]).filter(r=>r.status==='open').length;
   let h=`<div class="plan">${verifyNotice()}${nrep?`<div class="notice">${nrep} report${nrep===1?'':'s'} from riders to review. <button type="button" class="linkb" data-psec="crew">Review</button></div>`:''}${S.tourId==='2026'&&empty?'<div class="notice"><b>The 2026 route didn’t come through.</b> The days, stops and bakeries are missing. <div class="planbar"><button type="button" class="btn small primary" data-act="import2026">Reload 2026 details</button></div></div>':''}
    ${S.tourId!=='2026'&&empty&&others.length?'<div class="notice">This tour has no days or bakeries yet. Start from an earlier tour’s route? <div class="planbar"><button type="button" class="btn small primary" data-act="copyroute">Copy route and bakeries</button></div></div>':''}${L?'<p class="notice">This tour is locked, so its route can\u2019t be changed. Unlock it below to edit.</p>':''}
-   <h2>Tour</h2><div class="card"><div class="prow" style="border:0;padding-top:0"><div class="pmain"><b>${esc(T.name||T.id)}</b><small>${T.startDate?`${T.kind==='day'?'Day ride: ':'Day 1: '}${esc(longDate(dateFor({offset:0})))}`:'No start date yet'}${T.subtitle?` \u2022 ${esc(T.subtitle)}`:''}</small>${ownerLine(T)}</div><div class="pact"><button type="button" class="btn small" data-act="edittour"${L?' disabled':''}>Edit</button></div></div>
+   <h2>Tour Planner</h2><div class="card"><div class="prow" style="border:0;padding-top:0"><div class="pmain"><b>${esc(T.name||T.id)}</b><small>${T.startDate?`${T.kind==='day'?'Day ride: ':'Day 1: '}${esc(longDate(dateFor({offset:0})))}`:'No start date yet'}${T.subtitle?` \u2022 ${esc(T.subtitle)}`:''}</small>${ownerLine(T)}</div><div class="pact"><button type="button" class="btn small" data-act="edittour"${L?' disabled':''}>Edit</button></div></div>
      <div class="statusrow" role="group" aria-label="Who can see it">${[['draft','Draft'],['published','Published'],['locked','Locked']].map(([k,l])=>`<button type="button" class="btn small" data-status="${k}" aria-pressed="${T.status===k}">${l}</button>`).join('')}</div>
      <p class="muted" style="font-size:13.5px;margin:4px 0 0">${T.status==='draft'?'Draft: only this tour’s editors can see it.':T.status==='published'?'Published: everyone on the crew list can see it.':'Locked: visible to the crew, route frozen.'}</p>${edited(T)}
      <div class="planbar"><button type="button" class="btn small" data-act="newtour">New tour</button>${has2026||!S.admin?'':'<button type="button" class="btn small" data-act="import2026">Bring in the 2026 tour</button>'}<button type="button" class="btn small" data-act="announce">Send the crew an update</button>${canDeleteTour(T)?'<button type="button" class="btn small danger" data-act="deltour">Delete tour</button>':''}${S.tourId==='2026'&&RIDE()&&S.admin?'<button type="button" class="btn small" data-ride="import26crew">Bring in 2026 crew results</button>':''}</div>
