@@ -77,7 +77,7 @@ function planRoute(days,L){
     return `<div class="rrow${d.id===S.planDay?' sel':''}" data-rid="${esc(d.id)}" style="--c:var(--${esc(d.colour||'blue')})">${selOn('day')||L?'':`<span class="grip" data-grip="day" aria-label="Drag to reorder">≡</span>`}<span class="dot"></span>
       <div class="rmain" data-pickday="${esc(d.id)}"><b>${esc(d.label)}: ${esc(d.title||'Untitled')}</b><small>${dt?esc(shortDate(dt))+' · ':''}${n} stop${n===1?'':'s'}${d.km?' · '+esc(d.km)+' km':''}${d.who?' · '+esc(d.who):''}</small></div>
       ${pact('day',d.id,`<button type="button" class="ib" data-rowmenu="day|${esc(d.id)}" aria-label="More for ${esc(d.label)}">⋯</button>`)}</div>`; }).join('')||'<p class="muted">No days yet.</p>'}
-    ${S.tour.kind==='day'?`<p class="muted" style="font-size:13px;margin:6px 0 4px">Day ride: one day. To add more days, switch to a multi-day tour in Tour details.${S.days.length>1?` ${S.days.length-1} more ${S.days.length===2?'day is':'days are'} kept but hidden.`:''}</p>`:selBar('day',days.map(d=>d.id),`<button type="button" class="btn primary small" data-act="addday"${L?' disabled':''}>+ Add day</button>`,L)}</div>`;
+    ${S.tour.kind==='day'&&!days.length?`<div class="planbar"><button type="button" class="btn primary small" data-restoreday${L?' disabled':''}>+ Add the day</button></div>`:S.tour.kind==='day'?`<p class="muted" style="font-size:13px;margin:6px 0 4px">Day ride: one day. To add more days, switch to a multi-day tour in Tour details.${S.days.length>1?` ${S.days.length-1} more ${S.days.length===2?'day is':'days are'} kept but hidden.`:''}</p>`:selBar('day',days.map(d=>d.id),`<button type="button" class="btn primary small" data-act="addday"${L?' disabled':''}>+ Add day</button>`,L)}</div>`;
   const day=days.find(d=>d.id===S.planDay); if(!day)return h;
   const G=dayGroups(day), O=dayOpts(day), popt=planOptOf(day), plan=plannedOpt(day);
   const st=stopsOf(day.id,popt), W=stopWarnings(day,popt), col=esc(day.colour||'blue'), dt=dateFor(day);
@@ -173,7 +173,7 @@ function rowMenu(spec){
   const arrMoves=(k,i,n)=>(i>0?B(`data-rm="top|${k}|${i}"`,'⤒ Move to the top'):'')+(i<n-1?B(`data-rm="bottom|${k}|${i}"`,'⤓ Move to the bottom'):'');
   let title='', items='';
   if(kind==='day'){ const d=S.days.find(x=>x.id===key); if(!d)return; title=`${d.label}: ${d.title||'Untitled'}`;
-    items=B(`data-editday="${esc(key)}"`,'✎ Edit day')+B(`data-pickday="${esc(key)}" data-close`,'☰ Show its stops')+B(`data-del="day|${esc(key)}"`,'Delete day','del'); }
+    items=B(`data-editday="${esc(key)}"`,'✎ Edit day')+B(`data-pickday="${esc(key)}" data-close`,'☰ Show its stops')+(S.tour.kind==='day'?B(`data-clearday="${esc(key)}"`,'Clear day','del'):B(`data-del="day|${esc(key)}"`,'Delete day','del')); }
   if(kind==='bak'){ const b=S.bakeries.find(x=>x.id===key); if(!b)return; const list=bakeriesIn(b.town), i=list.findIndex(x=>x.id===key); title=b.name;
     items=B(`data-editbak="${esc(key)}"`,'✎ Edit')+(hasLL(b)?'':B(`data-baklocate="${esc(key)}"`,'📍 Find on the map'))+(i>0?B(`data-rm="top|bak|${esc(key)}"`,'⤒ Make it the top pick'):'')+(i<list.length-1?B(`data-rm="bottom|bak|${esc(key)}"`,'⤓ Move to the bottom'):'')+B(`data-del="bakery|${esc(key)}"`,'Delete','del'); }
   if(kind==='night'){ const n=S.nights.find(x=>x.id===key); if(!n)return; const list=nightsOf(n.dayId), i=list.findIndex(x=>x.id===key); title=n.place||'Bed';
@@ -410,7 +410,7 @@ function dayDialog(day){
      <label class="fl chk"><input type="checkbox" name="fixedFigures"${day.fixedFigures?' checked':''}> Use my own distance and times instead of working them out</label>
      <div class="frow">${field('Distance (km)','km',day.km,{ph:'335'})}${field('Riding time','ride',day.ride,{ph:'4 h 20 m'})}</div>${field('Time with stops','total',day.total,{ph:'5 h 50 m'})}</details>
    <input type="hidden" name="kind" value="${day.kind==='solo'?'solo':'group'}"><input type="hidden" name="who" value="${esc(day.who||'')}">${T.startDate?`<input type="hidden" name="offset" value="${esc(day.offset??0)}">`:''}
-   <div class="dbtns"><button type="button" class="btn primary" data-save="day" data-id="${isNew?'':esc(day.id)}">Save</button><button type="button" class="btn" data-close>Cancel</button>${isNew?'':`<button type="button" class="btn danger" data-del="day|${esc(day.id)}">Delete day</button>`}</div>`);
+   <div class="dbtns"><button type="button" class="btn primary" data-save="day" data-id="${isNew?'':esc(day.id)}">Save</button><button type="button" class="btn" data-close>Cancel</button>${isNew?'':S.tour.kind==='day'?`<button type="button" class="btn danger" data-clearday="${esc(day.id)}">Clear day</button>`:`<button type="button" class="btn danger" data-del="day|${esc(day.id)}">Delete day</button>`}</div>`);
 }
 function dayFormSync(){ // turn the friendly controls back into the fields the save code expects
   const some=($('#dlg input[name="whomode"]:checked')||{}).value==='some', names=$$('#dlg input[name="whoname"]:checked').map(x=>x.value);
@@ -924,3 +924,21 @@ document.addEventListener('change',async e=>{ const c=e.target.closest&&e.target
   toast(c.checked?`Routes now avoid ${word}`:`Routes can use ${word} again`);
   daysSorted().forEach((d,i)=>scheduleAutoEstimate(d.id,800+i*1500)); // re-route every day with the new preference
   if(AR.dayId&&$('#arres')&&(AR.routes.length||AR.towns))arRoutes(); });
+
+/* v5.4.2: a day ride has exactly one day, and there's no "+ Add day" for it, so its day is cleared rather than deleted:
+   stops, beds and dinners go, and the day keeps its place (label, colour, order, date offset) with the route details reset. */
+const DAY_CLEAR={title:'',km:null,ride:'',total:'',feel:'',roads:'',fuelNote:'',best:null,alt:null,line:null,lineKey:null,altLine:null,altLineKey:null,
+  estimatedAt:null,paths:null,options:null,planned:null,groups:null,fixedFigures:null,leader:'',sweep:'',who:''};
+async function clearDay(id){ const d=S.days.find(x=>x.id===id); if(!d)return;
+  const st=stopsOf(id), ns=nightsOf(id), dn=S.dinners.filter(x=>x.dayId===id);
+  const parts=[st.length?`its ${st.length} stop${st.length===1?'':'s'}`:'',ns.length?`${ns.length} bed${ns.length===1?'':'s'}`:'',dn.length?'the dinner':''].filter(Boolean);
+  if(!confirm(`Clear this day?${parts.length?` This removes ${andList(parts)}, and resets the title and route.`:' This resets the title and route.'} The day itself stays. This can’t be undone.`))return;
+
+  return save(()=>FB.batch([{op:'set',path:tp('days',id),data:{...DAY_CLEAR,...stamp()},merge:true},...st.map(s=>({op:'del',path:tp('stops',s.id)})),
+    ...ns.map(x=>({op:'del',path:tp('nights',x.id)})),...dn.map(x=>({op:'del',path:tp('dinners',x.id)}))]),'Day cleared'); }
+async function restoreRideDay(){ const id=FB.newId(tp('days'));
+  await save(()=>FB.set(tp('days',id),{order:0,offset:0,label:'The ride',title:'',kind:'group',colour:'blue',...stamp()}),'Day added');
+  S.planDay=id; render(); }
+document.addEventListener('click',e=>{
+  const c=e.target.closest('[data-clearday]'); if(c){ clearDay(c.dataset.clearday); return; }
+  if(e.target.closest('[data-restoreday]'))restoreRideDay(); });

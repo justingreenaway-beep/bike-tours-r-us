@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='5.4.1';
+const APP_VERSION='5.4.2';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -1063,6 +1063,7 @@ async function doSave(btn){
 }
 async function doDelete(spec){
   const [kind,id,extra]=spec.split('|');
+  if(kind==='day'&&S.tour.kind==='day'&&typeof clearDay==='function')return clearDay(id); // v5.4.2: a day ride keeps its day
   if(kind==='day'){ const n=stopsOf(id).length, nn=nightsOf(id).length; if(!confirm(`Delete this day${n?` and its ${n} stops`:''}${nn?`${n?',':' and'} its bed and dinner`:''}? This can\u2019t be undone.`))return;
     return save(()=>FB.batch([{op:'del',path:tp('days',id)},...stopsOf(id).map(s=>({op:'del',path:tp('stops',s.id)})),...nightsOf(id).map(x=>({op:'del',path:tp('nights',x.id)})),...S.dinners.filter(x=>x.dayId===id).map(x=>({op:'del',path:tp('dinners',x.id)}))]),'Day deleted'); }
   if(kind==='bakery'){ if(!confirm('Delete this bakery?'))return; return save(()=>FB.del(tp('bakeries',id)),'Bakery deleted'); }
