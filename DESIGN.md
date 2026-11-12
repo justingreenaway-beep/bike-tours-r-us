@@ -178,7 +178,7 @@ Not allowed (fail): `accent` as text or a thin rule on the light background (1.6
 - Weights used: Geist 400, 500, 600; Geist Mono 400, 500. No italics, no 700+.
 - Files: `design/fonts/` (woff2): Geist-Regular, Geist-Medium, Geist-SemiBold, GeistMono-Regular, GeistMono-Medium (about 207 KB in total), taken unmodified from Vercel's `geist` package v1.3.1 (`dist/fonts/`), with its licence as `OFL.txt`.
 - Fallback stacks: `"Geist", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif` and `"Geist Mono", ui-monospace, "SF Mono", Menlo, monospace`.
-- Barlow / Barlow Condensed are retired from UI text. The one exception is the Wrapped share images (canvas posters in ride.js), which keep their Barlow Condensed lettering in the dark palette; their layout was tuned to it. The logo stays an image, shown in the text colour (CSS filter) in the app bar, sign-in and loading screens.
+- Barlow / Barlow Condensed are retired (v5.1 also moved the Wrapped share images to Geist and Geist Mono). The logo is the cruiser line drawing: in the app it is drawn in the text colour (CSS filter); the app icon (v5.1) is the drawing in white on a near-black #111113 tile.
 
 **Licence record:** Geist and Geist Mono, © 2023 Vercel, in collaboration with basement.studio. SIL Open Font License, Version 1.1 (https://openfontlicense.org). The licence text ships as `design/fonts/OFL.txt`.
 
