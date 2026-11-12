@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='5.4.3';
+const APP_VERSION='5.5';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -148,17 +148,26 @@ async function loadTours(){
   S.tours=list.filter(d=>d.exists).map(d=>({id:d.id,...d.data})).filter(t=>canEditTour(t)||t.status!=='draft').sort((a,b)=>(b.year||0)-(a.year||0)||String(a.startDate||'9999').localeCompare(String(b.startDate||'9999'))||String(a.name||'').localeCompare(String(b.name||'')));
   renderTourSelect();
 }
+/* v5.5: admins load every tour (they look after them all), but the tour list shows only tours they're on (crew, editor or
+   owner) plus the open one, unless they switch on "Show all tours" (per phone, localStorage 'tru-alltours'). S.tours stays
+   the full list, so name and id checks still see every tour. */
+const isMyTour=t=>!!t&&((t.memberEmails||[]).map(lc).includes(S.user.email)||(t.editors||[]).map(lc).includes(S.user.email)||t.ownerUid===S.user.uid);
+const allToursOn=()=>{ try{ return localStorage.getItem('tru-alltours')==='1'; }catch(e){ return false; } };
+function shownTours(){ if(!S.admin||allToursOn())return S.tours; return S.tours.filter(t=>isMyTour(t)||t.id===S.tourId); }
 function pickDefaultTour(){ // the upcoming or current tour, otherwise the most recent
-  const today=iso(new Date());
-  const live=S.tours.filter(t=>t.startDate&&t.status!=='draft'&&iso(new Date(new Date(t.startDate).getTime()+5*864e5))>=today).sort((a,b)=>a.startDate.localeCompare(b.startDate))[0];
-  return live||S.tours[0]||null;
+  const today=iso(new Date()), list=shownTours().length?shownTours():S.tours;
+  const live=list.filter(t=>t.startDate&&t.status!=='draft'&&iso(new Date(new Date(t.startDate).getTime()+5*864e5))>=today).sort((a,b)=>a.startDate.localeCompare(b.startDate))[0];
+  return live||list[0]||null;
 }
 function renderTourSelect(){
   const sel=$('#toursel');
-  sel.innerHTML=S.tours.map(t=>`<option value="${esc(t.id)}"${t.id===S.tourId?' selected':''}>${esc(t.name||t.id)}${t.status==='draft'?' (draft)':''}</option>`).join('')+'<option value="__new">+ Plan a new tour\u2026</option>';
+  const all=allToursOn(), hidden=S.admin?S.tours.filter(t=>!isMyTour(t)&&t.id!==S.tourId).length:0;
+  sel.innerHTML=shownTours().map(t=>`<option value="${esc(t.id)}"${t.id===S.tourId?' selected':''}>${esc(t.name||t.id)}${t.status==='draft'?' (draft)':''}${S.admin&&all&&!isMyTour(t)?' · not on it':''}</option>`).join('')+'<option value="__new">+ Plan a new tour\u2026</option>'
+    +(S.admin&&S.tours.some(t=>!isMyTour(t))?`<option value="__all">${all?'Show only my tours':hidden?`Show all tours (${hidden} more)`:'Show all tours'}</option>`:'');
   sel.hidden=false;
 }
-$('#toursel').addEventListener('change',e=>{ const v=e.target.value; if(v==='__new'){ e.target.value=S.tourId||''; newTourDialog(); return } openTour(v); });
+$('#toursel').addEventListener('change',e=>{ const v=e.target.value; if(v==='__new'){ e.target.value=S.tourId||''; newTourDialog(); return }
+  if(v==='__all'){ const on=!allToursOn(); try{ localStorage.setItem('tru-alltours',on?'1':''); }catch(x){} renderTourSelect(); toast(on?'Showing every tour':'Showing only tours you’re on'); return } openTour(v); });
 
 function openTour(id){
   S.unsub.forEach(f=>{try{f()}catch(e){}}); S.unsub=[];
@@ -344,7 +353,7 @@ function viewPlan(){
   const T=S.tour, L=locked(), days=daysSorted();
   if(!S.planDay||!days.some(d=>d.id===S.planDay)) S.planDay=days[0]?days[0].id:null;
   const has2026=S.tours.some(t=>t.id==='2026');
-  const empty=!days.length&&!S.bakeries.length, others=S.tours.filter(t=>t.id!==S.tourId);
+  const empty=!days.length&&!S.bakeries.length, others=shownTours().filter(t=>t.id!==S.tourId);
   ensureVerifyCheck();
   const nrep=(S.reports||[]).filter(r=>r.status==='open').length;
   let h=`<div class="plan">${verifyNotice()}${nrep?`<div class="notice">${nrep} report${nrep===1?'':'s'} from riders to review. <button type="button" class="linkb" data-psec="crew">Review</button></div>`:''}${S.tourId==='2026'&&empty?'<div class="notice"><b>The 2026 route didn’t come through.</b> The days, stops and bakeries are missing. <div class="planbar"><button type="button" class="btn small primary" data-act="import2026">Reload 2026 details</button></div></div>':''}
@@ -374,7 +383,7 @@ function planCrew(){
     <div class="rlist flush">${crew.map(c=>rrowHtml({kind:'crew',rid:c.name,title:esc(c.name||'No name')+' '+RP[roleOf(c.email)],sub:c.email?esc(c.email):'',
       warns:c.email?[]:['No email yet, so they can\u2019t see the tour'],open:`data-editcrew="${esc(c.name)}|${esc(c.email||'')}"`,menu:`crew|${c.name}|${c.email||''}`})).join('')||'<p class="muted">Nobody yet.</p>'}</div>
     <p class="muted" style="font-size:13px;margin:6px 0 0">Always in name order.</p>
-    <div class="planbar"><button type="button" class="btn primary small" data-act="addcrew">+ Add rider</button>${S.tours.filter(t=>t.id!==S.tourId).length?'<button type="button" class="btn small" data-act="copycrew">Copy crew from another tour</button>':''}</div></div>`;
+    <div class="planbar"><button type="button" class="btn primary small" data-act="addcrew">+ Add rider</button>${shownTours().filter(t=>t.id!==S.tourId).length?'<button type="button" class="btn small" data-act="copycrew">Copy crew from another tour</button>':''}</div></div>`;
   h+=`<h2>Roles</h2><div class="card"><p class="muted" style="margin:0 0 6px;font-size:14px">Shown to riders under “The crew” in the roadbook. Day leaders and sweeps are set on each day in Route.</p>
     <div class="rlist flush" data-rlist="roles">${roles.map((r,i)=>rrowHtml({kind:'roles',rid:i,grip:true,title:esc(r.role),sub:esc(r.name||'Nobody yet'),
       warns:r.name&&!crewNames().includes(r.name)?[`${r.name} isn’t on the crew list`]:[],open:`data-editrole="${i}"`,menu:`roles|${i}`})).join('')||'<p class="muted">No roles yet.</p>'}</div>
@@ -624,7 +633,7 @@ function planBrief(){
     <div class="rlist flush" data-rlist="brief">${B.map((c,i)=>{ const txt=[...(c.p||[]),...(c.li||[])].join(' ');
       return rrowHtml({kind:'brief',rid:i,grip:true,title:esc(c.h||'Untitled'),sub:esc(txt.length>90?txt.slice(0,90)+'…':txt),
         warns:txt?[]:['No text yet'],open:`data-editbrief="${i}"`,menu:`brief|${i}`}); }).join('')||'<p class="muted">No brief yet.</p>'}</div>
-    <div class="planbar"><button type="button" class="btn primary small" data-act="addbrief">+ Add card</button>${!B.length&&S.tours.some(t=>t.id!==S.tourId&&(t.brief||[]).length)?'<button type="button" class="btn small" data-act="copybrief">Copy from another tour</button>':''}</div></div>`+(RIDE()&&feat('checklist')?planChecklist():'');
+    <div class="planbar"><button type="button" class="btn primary small" data-act="addbrief">+ Add card</button>${!B.length&&shownTours().some(t=>t.id!==S.tourId&&(t.brief||[]).length)?'<button type="button" class="btn small" data-act="copybrief">Copy from another tour</button>':''}</div></div>`+(RIDE()&&feat('checklist')?planChecklist():'');
 }
 function briefDialog(i){
   const isNew=i==null, c=isNew?{}:(S.tour.brief||[])[i]||{};
@@ -874,7 +883,7 @@ function newTourDialog(){
   dlg(`<h3>Plan a tour</h3>${tourKindSeg('multi')}<div class="frow">${field('Year','year',yr,{type:'number'})}${field('Name','name','',{ph:'e.g. High Country Run'})}</div>
    <p class="muted" id="sameyear" style="font-size:13.5px;margin:-4px 0 10px">${sameYearNote(yr)}</p>
    <div class="frow">${field('Start date (optional)','startDate','',{type:'date'})}<label class="fl" id="ndayswrap">How many days<input name="ndays" type="number" min="2" max="21" value="3"></label></div>
-   <label class="fl">Start from<select name="copyFrom"><option value="">A blank tour</option>${S.tours.filter(canEditTour).map(t=>`<option value="${esc(t.id)}">A copy of ${esc(t.name||t.id)}</option>`).join('')}</select></label>
+   <label class="fl">Start from<select name="copyFrom"><option value="">A blank tour</option>${shownTours().filter(canEditTour).map(t=>`<option value="${esc(t.id)}">A copy of ${esc(t.name||t.id)}</option>`).join('')}</select></label>
    <p class="muted" style="font-size:13.5px;margin:0 0 6px">A copy brings across the days, stops, bakeries, brief and crew list, ready to edit. Dates are left blank and it starts as a draft.</p>
    <div class="dbtns"><button type="button" class="btn primary" data-save="newtour">Create</button><button type="button" class="btn" data-close>Cancel</button></div>`);
 }
@@ -906,9 +915,9 @@ document.addEventListener('click',async e=>{
   if(act==='addday')return dayDialog();
   if(act==='addstop')return stopDialog();
   if(act==='addcrew')return crewDialog();
-  if(act==='copycrew'){ const others=S.tours.filter(t=>t.id!==S.tourId);
+  if(act==='copycrew'){ const others=shownTours().filter(t=>t.id!==S.tourId);
     return dlg(`<h3>Copy crew</h3><label class="fl">From<select name="from">${others.map(t=>`<option value="${esc(t.id)}">${esc(t.name||t.id)}</option>`).join('')}</select></label><p class="muted" style="font-size:13.5px">Riders already on this tour are kept; new names are added.</p><div class="dbtns"><button type="button" class="btn primary" data-save="copycrew">Copy</button><button type="button" class="btn" data-close>Cancel</button></div>`); }
-  if(act==='copyroute'){ const others=S.tours.filter(t=>t.id!==S.tourId);
+  if(act==='copyroute'){ const others=shownTours().filter(t=>t.id!==S.tourId);
     return dlg(`<h3>Copy route</h3><label class="fl">From<select name="from">${others.map(t=>`<option value="${esc(t.id)}">${esc(t.name||t.id)}</option>`).join('')}</select></label><p class="muted" style="font-size:13.5px">Brings across the days, stops and bakeries, ready to edit. Beds, crew and dates aren’t changed.</p><div class="dbtns"><button type="button" class="btn primary" data-save="copyroute">Copy</button><button type="button" class="btn" data-close>Cancel</button></div>`); }
   if(act==='hadd')return $('#hrows').insertAdjacentHTML('beforeend',hoursRow());
   if(act==='radd')return $('#rrows').insertAdjacentHTML('beforeend',roomRow());
@@ -918,7 +927,7 @@ document.addEventListener('click',async e=>{
   if(act==='announce')return announceDialog(false);
   if(act==='starterroles'){ const roles=['Tour leader','2IC','Sweep','Koala Court judge','Koala Court deputy','Dinner bookings'].map(role=>({role,name:''}));
     try{await FB.update(`tours/${S.tourId}`,{roles,...stamp()}); toast('Roles added. Tap each one to pick who.');}catch(x){toast('Couldn’t add those.')} return }
-  if(act==='copybrief'){ const others=S.tours.filter(t=>t.id!==S.tourId&&(t.brief||[]).length);
+  if(act==='copybrief'){ const others=shownTours().filter(t=>t.id!==S.tourId&&(t.brief||[]).length);
     return dlg(`<h3>Copy brief</h3><label class="fl">From<select name="from">${others.map(t=>`<option value="${esc(t.id)}">${esc(t.name||t.id)} (${t.brief.length} cards)</option>`).join('')}</select></label><div class="dbtns"><button type="button" class="btn primary" data-save="copybrief">Copy</button><button type="button" class="btn" data-close>Cancel</button></div>`); }
   const rd=e.target.closest('[data-rowdel]'); if(rd){ rd.closest('.drow').remove(); return }
   const ps=e.target.closest('[data-psec]'); if(ps){ S.planSec=ps.dataset.psec; S.selMode=null; S.sel=new Set(); sessionStorage.setItem('tru-psec',S.planSec); render(); return }
