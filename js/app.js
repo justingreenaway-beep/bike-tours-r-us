@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='5.4.2';
+const APP_VERSION='5.4.3';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -655,7 +655,11 @@ document.addEventListener('click',e=>{ if(e.target.closest('[data-close]'))close
 const val=n=>{const el=$(`#dlg [name="${n}"]`);return el?el.value.trim():''};
 const field=(label,name,v,opts={})=>opts.area?`<label class="fl">${label}<textarea name="${name}" maxlength="${opts.max||600}" placeholder="${esc(opts.ph||'')}">${esc(v||'')}</textarea></label>`:
   `<label class="fl">${label}<input name="${name}" type="${opts.type||'text'}" value="${esc(v??'')}" maxlength="${opts.max||120}" placeholder="${esc(opts.ph||'')}"${opts.step?` step="${opts.step}"`:''}></label>`;
-function dlgError(t){ let p=$('#dlg .err'); if(!p){ $('#dlg .dbtns').insertAdjacentHTML('beforebegin','<p class="err"></p>'); p=$('#dlg .err'); } p.textContent=t; }
+function dlgError(t){ const bar=$('#dlg .dbtns'); let p=$('#dlg .dlgerr');
+  if(!p){ if(bar)bar.insertAdjacentHTML('afterbegin','<p class="err dlgerr" role="alert"></p>'); else $('#dlg').insertAdjacentHTML('beforeend','<p class="err dlgerr" role="alert"></p>'); p=$('#dlg .dlgerr'); }
+  p.textContent=t; const a=document.activeElement; if(a&&a.blur&&$('#dlg').contains(a)&&a.matches('input,textarea'))a.blur(); // v5.4.3: close the keyboard so the message shows
+  return p; }
+document.addEventListener('click',e=>{ if(e.target.closest('#dlg [data-reload]'))location.reload(); });
 async function save(fn,okMsg){ try{ await fn(); closeDlg(); if(okMsg)toast(okMsg); }catch(e){ dlgError(e&&e.code==='permission-denied'?(S.admin||S.verified?'You don\u2019t have permission to change this tour.':'Firebase refused it. Check your email is verified (Plan shows how), then try again.'):'Couldn\u2019t save. Check your signal and try again.'); } }
 
 function editTourDialog(){
@@ -874,9 +878,11 @@ function newTourDialog(){
    <p class="muted" style="font-size:13.5px;margin:0 0 6px">A copy brings across the days, stops, bakeries, brief and crew list, ready to edit. Dates are left blank and it starts as a draft.</p>
    <div class="dbtns"><button type="button" class="btn primary" data-save="newtour">Create</button><button type="button" class="btn" data-close>Cancel</button></div>`);
 }
-function sameYearNote(yr){ const same=S.tours.filter(t=>Number(t.year)===Number(yr));
-  return same.length?`Already in ${esc(yr)}: ${same.map(t=>esc(t.name||t.id)).join(', ')}. Give this one a different name.`:'You can add more than one tour in a year; give each its own name.'; }
-document.addEventListener('input',e=>{ if(e.target.matches('#dlg [name="year"]')&&$('#sameyear'))$('#sameyear').innerHTML=sameYearNote(e.target.value); });
+function sameYearNote(yr,name){ const same=S.tours.filter(t=>Number(t.year)===Number(yr)), n=lc(name);
+  if(!same.length)return 'You can add more than one tour in a year; give each its own name.';
+  const clash=n&&same.find(t=>lc(t.name)===n); // v5.4.3: only warn when the name typed is already taken that year
+  return clash?`<span class="err">There’s already a tour called ${esc(clash.name)} in ${esc(yr)}. Give this one a different name.</span>`:`Also in ${esc(yr)}: ${same.map(t=>esc(t.name||t.id)).join(', ')}.`; }
+document.addEventListener('input',e=>{ if(e.target.matches('#dlg [name="year"],#dlg [name="name"]')&&$('#sameyear'))$('#sameyear').innerHTML=sameYearNote(val('year'),val('name')); });
 function newTourId(year,name){ // e.g. "2027-high-country"; older tours keep their plain-year ids ("2026", "2027")
   const base=`${year}-${slug(name).slice(0,40)||'tour'}`; let id=base, n=2;
   while(S.tours.some(t=>t.id===id))id=`${base}-${n++}`;
@@ -1055,9 +1061,14 @@ async function doSave(btn){
     if(S.tours.some(t=>Number(t.year)===year&&String(t.name||'').trim().toLowerCase()===name.toLowerCase())){dlgError(`There\u2019s already a tour called ${name} in ${year}. Give this one a different name.`);return}
     const id=newTourId(year,name);
     const from=val('copyFrom');
-    if(!S.admin&&await checkVerified()===false){ dlgError('Check your email first: editors need a verified email.'); const b=$('#dlg .dbtns'); if(b&&!$('#dlg [data-act="vsend"]'))b.insertAdjacentHTML('beforebegin','<div class="planbar"><button type="button" class="btn small primary" data-act="vsend">Send me the link</button><button type="button" class="btn small" data-act="vcheck">I’ve tapped the link</button></div>'); return; }
+    if(!S.admin&&await checkVerified()===false){ dlgError('Check your email first: editors need a verified email.'); const b=$('#dlg .dlgerr'); if(b&&!$('#dlg [data-act="vsend"]'))b.insertAdjacentHTML('afterend','<div class="planbar"><button type="button" class="btn small primary" data-act="vsend">Send me the link</button><button type="button" class="btn small" data-act="vcheck">I’ve tapped the link</button></div>'); return; }
     const kind=($('#dlg input[name="tkind"]:checked')||{}).value||'multi', ndays=kind==='day'?1:Math.max(2,Math.min(21,Number(val('ndays'))||2)), sd=val('startDate');
     if(sd&&Number(sd.slice(0,4))!==year){dlgError(`The start date isn’t in ${year}.`);return}
+    if(!S.admin&&S.verified){ try{ await createTour(id,{name,year,kind,ndays,startDate:sd},from||null); closeDlg(); toast(kind==='day'?'Day ride created':'Tour created'); }
+      catch(e){ if(e&&e.code==='permission-denied'){ const p=dlgError('Your email is verified, but the app is still using your earlier sign-in. Reload the app, then tap Create again.');
+          if(!$('#dlg [data-reload]'))p.insertAdjacentHTML('afterend','<div class="planbar"><button type="button" class="btn small primary" data-reload>Reload the app</button></div>'); }
+        else dlgError('Couldn\u2019t save. Check your signal and try again.'); }
+      return; }
     return save(async()=>{ await createTour(id,{name,year,kind,ndays,startDate:sd},from||null); },kind==='day'?'Day ride created':'Tour created');
   }
 }
