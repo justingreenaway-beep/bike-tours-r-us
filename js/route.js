@@ -103,7 +103,7 @@ function planRoute(days,L){
       return `${i&&!L&&!selOn('stop')?`<button type="button" class="rins" data-insert="${esc(st[i-1].id)}">+ Add stop here</button>`:''}${hd}
       <div class="rrow" data-rid="${esc(s.id)}"${g?` style="--c:var(--${esc(g.colour||'blue')})"`:''}>${selOn('stop')||L?'':`<span class="grip" data-grip="stop" aria-label="Drag to reorder">≡</span>`}<span class="rnum${big?' big':''}">${num[s.id]||i+1}</span>
         <div class="rmain" data-editstop="${esc(s.id)}"><b>${esc(s.town||'Unnamed stop')}${(s.tags||[]).filter(t=>TAG_PILL[t]!=null).map(t=>` <span class="pill ${TAG_PILL[t]}">${esc(t==='Bakery stop'?'Bakery':t)}</span>`).join('')}${s.option&&O.length?` <span class="pill">Only on ${esc(optLabel(day,s.option))}</span>`:''}</b>
-          <small>${k!=null&&k!==''?esc(k)+' km':'— km'}${tm?' · '+esc(tm):leaveHint[s.id]?' · '+esc(leaveHint[s.id]):''}</small>${(W[s.id]||[]).map(w=>`<span class="rwarn">${esc(w)}</span>`).join('')}</div>
+          <small>${s.place?esc(placeLine(s))+' · ':''}${k!=null&&k!==''?esc(k)+' km':'— km'}${tm?' · '+esc(tm):leaveHint[s.id]?' · '+esc(leaveHint[s.id]):''}</small>${(W[s.id]||[]).map(w=>`<span class="rwarn">${esc(w)}</span>`).join('')}</div>
         ${pact('stop',s.id,`<button type="button" class="ib" data-stopmenu="${esc(s.id)}" aria-label="More for ${esc(s.town)}"${L?' disabled':''}>⋯</button>`)}</div>`; }).join(''); })()||'<p class="muted">No stops yet. Use Quick build to add a day’s towns in one go.</p>'}
     ${selBar('stop',st.map(s=>s.id),`<button type="button" class="btn primary small" data-act="addstop"${L?' disabled':''}>+ Add stop</button><button type="button" class="btn small" data-quickbuild="${esc(day.id)}"${L?' disabled':''}>Quick build</button>`,L)}
     ${day.estimatedAt?`<p class="edited">Distances worked out ${ago(day.estimatedAt)} by OpenStreetMap routing${day.fixedFigures?'; the day’s own figures are kept':''}.</p>`:''}</div>`;
@@ -291,7 +291,7 @@ document.addEventListener('click',async e=>{
 });
 
 /* ---------- 2 + 3: the stop form, with town search as you type and suggested times ---------- */
-const SF={ctx:null,leg:null,sugA:null,sugD:null,picked:null,timer:null,opts:[]};
+const SF={ctx:null,leg:null,sugA:null,sugD:null,picked:null,timer:null,opts:[],pois:null,poiQ:''};
 function stopDialog(stop,ctx){
   const isNew=!stop; stop=stop||{tags:[]}; ctx=ctx||{};
   const dayId=stop.dayId||S.planDay, day=S.days.find(d=>d.id===dayId)||{}, G=dayGroups(day), O=dayOpts(day);
@@ -302,10 +302,11 @@ function stopDialog(stop,ctx){
   const st=stopsOf(dayId,so||popt,G.length?(sg||G[0].id):undefined), at=isNew?(ctx.first?-1:ctx.after?st.findIndex(s=>s.id===ctx.after):st.length-1):st.findIndex(s=>s.id===stop.id)-1;
   const prev=at>=0?st[at]:null, next=isNew?st[at+1]||null:st[st.findIndex(s=>s.id===stop.id)+1]||null;
   SF.ctx={isNew,id:stop.id||null,dayId,prev,next,path:st,key:pathKey(G.length?(sg||G[0].id):undefined,so||popt),after:isNew?(ctx.first?'__first':ctx.after||null):null}; SF.leg=null; SF.sugA=null; SF.sugD=null; SF.opts=[];
-  SF.picked=hasLL(stop)?{name:stop.town,area:'',lat:stop.lat,lon:stop.lon}:null;
+  SF.picked=hasLL(stop)?{name:stop.town,area:'',lat:stop.lat,lon:stop.lon,...(stop.place?{poi:true,kind:stop.place.kind,near:stop.place.near,osm:stop.place.osm}:{})}:null; SF.pois=null; SF.poiQ='';
+  const pl=stop.place||{};
   const common=G.length?[...COMMON_TAGS,'Meet up','Split']:COMMON_TAGS, tags=new Set(stop.tags||[]), extra=TAGS.filter(t=>!common.includes(t)), showExtra=extra.some(t=>tags.has(t));
   dlg(`<h3>${isNew?'Add a stop':'Edit stop'}</h3>${prev?`<p class="muted" style="margin:-2px 0 8px;font-size:13px">After ${esc(prev.town)}${next?`, before ${esc(next.town)}`:''}</p>`:''}
-   <label class="fl">Town or place<input name="town" value="${esc(stop.town||'')}" maxlength="120" placeholder="Start typing, e.g. Gundagai" autocomplete="off"></label>
+   <label class="fl">Town or place<input name="town" value="${esc(stop.town||'')}" maxlength="120" placeholder="A town or a place, e.g. Gundagai or Dog on the Tuckerbox" autocomplete="off"></label>
    <div id="townsug" class="townsug"></div><div id="townpin">${pinChip()}</div>
    ${G.length||O.length?`<div class="frow">${G.length?`<label class="fl">Who stops here<select name="sgroup"><option value="">Everyone</option>${G.map(g=>`<option value="${esc(g.id)}"${sg===g.id?' selected':''}>${esc(g.name)} only</option>`).join('')}</select></label>`:''}${O.length?`<label class="fl">Route option<select name="option"><option value="">Every option</option>${O.map(o=>`<option value="${o.id}"${so===o.id?' selected':''}>Only on ${esc(o.label)}</option>`).join('')}</select></label>`:''}</div>`:''}
    <div class="frow">${field('Arrive','arrive',stop.arrive,{type:'time'})}${field('Depart','depart',stop.depart,{type:'time'})}</div>
@@ -322,18 +323,35 @@ function stopDialog(stop,ctx){
      ${field('Fuel note','fuelKm',stop.fuelKm,{ph:'e.g. 118 km'})}
      ${stop.timeNote?field('Imported time text (clear it to use the times above)','timeNote',stop.timeNote):''}
      <div class="frow">${field('Latitude','lat',stop.lat,{type:'number',step:'any'})}${field('Longitude','lon',stop.lon,{type:'number',step:'any'})}</div></details>
-   <input type="hidden" name="km" value="${esc(stop.km??'')}">
+   <input type="hidden" name="km" value="${esc(stop.km??'')}"><input type="hidden" name="pkind" value="${esc(pl.kind||'')}"><input type="hidden" name="pnear" value="${esc(pl.near||'')}"><input type="hidden" name="posm" value="${esc(pl.osm||'')}">
    <div class="dbtns"><button type="button" class="btn primary" data-save="stop" data-id="${isNew?'':esc(stop.id)}"${SF.ctx.after?` data-after="${esc(SF.ctx.after)}"`:''}>Save</button>${isNew?`<button type="button" class="btn vis" data-save="stop" data-next="1"${SF.ctx.after?` data-after="${esc(SF.ctx.after)}"`:''}>Save &amp; add next</button>`:''}<button type="button" class="btn" data-close>Cancel</button>${isNew?'':`<button type="button" class="btn danger" data-del="stop|${esc(stop.id)}">Delete</button>`}</div>`);
   sfUpdate(); if(SF.picked)sfLeg();
 }
-function pinChip(){ const p=SF.picked; return p?`<div class="pinchip">📍 ${esc(p.name)}${p.area?`, ${esc(String(p.area).split(', ').pop())}`:''} ✓ <button type="button" class="linkb" data-pinchange>Change</button></div>`:''; }
-function sfSetPick(p){ SF.picked=p; const lat=$('#dlg [name="lat"]'), lon=$('#dlg [name="lon"]'); if(lat){lat.value=p?p.lat:''; lon.value=p?p.lon:'';}
+function pinChip(){ const p=SF.picked; return p?`<div class="pinchip"><span class="pinname">📍 ${esc(p.name)}${p.poi?`<small>${esc([p.kind,p.near?'near '+p.near:''].filter(Boolean).join(' · '))}</small>`:p.area?`, ${esc(String(p.area).split(', ').pop())}`:''}</span> ✓ <button type="button" class="linkb" data-pinchange>Change</button></div>`:''; }
+function sfSetPick(p){ SF.picked=p; const lat=$('#dlg [name="lat"]'), lon=$('#dlg [name="lon"]'); if(lat){lat.value=p?p.lat:''; lon.value=p?p.lon:'';} sfPlace(p&&p.poi?p:null);
   if(p){ const t=$('#dlg [name="town"]'); if(t)t.value=p.name; } $('#townpin').innerHTML=pinChip(); $('#townsug').innerHTML=''; SF.leg=null; sfUpdate(); if(p)sfLeg(); }
 async function sfSearch(){ const q=val('town'); const box=$('#townsug'); if(!box)return; if(q.length<2){ box.innerHTML=''; return; }
   try{ SF.opts=await placeSearch(q); }catch(e){ SF.opts=[]; } if(!$('#townsug')||val('town')!==q)return;
   const near=[SF.ctx&&SF.ctx.prev,SF.ctx&&SF.ctx.next].filter(hasLL); // nearest to the neighbouring stops first
   if(near.length)SF.opts.sort((a,b)=>Math.min(...near.map(n=>kmBetween(a,n)))-Math.min(...near.map(n=>kmBetween(b,n))));
-  box.innerHTML=SF.opts.length?SF.opts.slice(0,5).map((o,i)=>`<button type="button" data-townpick="${i}"><b>${esc(o.name)}</b> <small>${esc(o.area||'')}</small></button>`).join(''):`<p class="muted" style="margin:4px 0;font-size:13px">No town by that name. You can still save it; add the location under More details.</p>`; }
+  sfDraw(); }
+/* v5.2: towns first, then "Search places" (OpenStreetMap points of interest, searched on tap) */
+function sfNear(){ const c=SF.ctx||{}, n=[c.prev,c.next].filter(hasLL); return n.length?n:(c.path||[]).filter(hasLL).slice(0,2); }
+function sfPlace(p){ ['pkind','pnear','posm'].forEach((k,i)=>{ const el=$(`#dlg [name="${k}"]`); if(el)el.value=p?([p.kind,p.near,p.osm][i]||''):''; }); }
+function sfDraw(){ const box=$('#townsug'); if(!box)return; const q=val('town'); if(q.length<2){ box.innerHTML=''; return; }
+  const near=sfNear(), dist=o=>near.length?Math.round(Math.min(...near.map(n=>kmBetween(o,n)))):null;
+  const towns=SF.opts.length?`<p class="sughd">Towns</p>`+SF.opts.slice(0,5).map((o,i)=>`<button type="button" data-townpick="${i}"><b>${esc(o.name)}</b> <small>${esc(o.area||'')}</small></button>`).join(''):'';
+  let pl;
+  if(SF.pois==='busy')pl=`<p class="sughd">Places</p><p class="sugmsg">Searching OpenStreetMap…</p>`;
+  else if(Array.isArray(SF.pois)&&SF.poiQ===q)pl=`<p class="sughd">Places</p>`+(SF.pois.length?SF.pois.map((o,i)=>{ const d=dist(o); return `<button type="button" data-poipick="${i}"><b>${esc(o.name)}</b> <small>${esc([o.kind,o.area].filter(Boolean).join(' · '))}${d!=null?` · ${d} km away`:''}</small></button>`; }).join('')
+    :`<p class="sugmsg">Nothing on OpenStreetMap called “${esc(q)}”${near.length?' near this part of the route':''}. Try other words, or save it as typed and add the location under More details.</p>`);
+  else pl=`<button type="button" class="sugplaces" data-poisearch><b>Search places for “${esc(q)}”</b> <small>Lookouts, servos, cafés, landmarks${near.length?' near this part of the route':''}</small></button>`;
+  box.innerHTML=(towns||(Array.isArray(SF.pois)?'':`<p class="sugmsg">No town called “${esc(q)}”.</p>`))+pl; }
+async function sfPoiSearch(){ const q=val('town'); if(q.length<2||SF.pois==='busy')return; SF.pois='busy'; SF.poiQ=q; sfDraw();
+  let r; try{ r=await poiSearch(q,sfNear()); }catch(e){ r=null; } if(!$('#townsug'))return;
+  if(!r){ SF.pois=null; sfDraw(); $('#townsug').insertAdjacentHTML('beforeend','<p class="sugmsg">Couldn’t reach OpenStreetMap. Check your signal and try again.</p>'); return; }
+  const near=sfNear(); if(near.length)r.sort((a,b)=>Math.min(...near.map(n=>kmBetween(a,n)))-Math.min(...near.map(n=>kmBetween(b,n))));
+  SF.pois=r; if(val('town')===q)sfDraw(); else SF.pois=null; }
 async function sfLeg(){ const c=SF.ctx, p=SF.picked; if(!c||!p||!c.prev||!hasLL(c.prev))return;
   try{ const R=await routeVia([c.prev,p]); SF.leg={km:R.km,min:R.min}; }catch(e){ SF.leg=null; } sfUpdate(); }
 function sfUpdate(){ // suggested times, km, and warnings
@@ -355,12 +373,14 @@ function sfUpdate(){ // suggested times, km, and warnings
     kmBox.innerHTML=here!=null?`<span>${here} km into the day <small>(worked out)</small></span>${since!=null&&c.prev?`<span>${since} km since fuel${fuel?` at ${esc(fuel.town)}`:''}</span>`:''}${since!=null&&rule&&since>rule&&!tags.includes('Fuel')?`<p class="warnbox">⛽ Over the ${rule} km fuel rule. Make this a fuel stop?</p>`:since!=null&&rule&&tags.includes('Fuel')?`<p class="okbox">✓ Fuel here resets the count.</p>`:''}`:'';
     const kmIn=$('#dlg [name="km"]'); if(kmIn&&here!=null)kmIn.value=here; }
 }
-document.addEventListener('input',e=>{ if(e.target.matches('#dlg [name="town"]')&&SF.ctx){ if(SF.picked&&val('town')!==SF.picked.name){ SF.picked=null; $('#townpin').innerHTML=''; const lat=$('#dlg [name="lat"]'); if(lat){lat.value='';$('#dlg [name="lon"]').value='';} SF.leg=null; sfUpdate(); }
+document.addEventListener('input',e=>{ if(e.target.matches('#dlg [name="town"]')&&SF.ctx){ if(SF.pois!=='busy'&&SF.poiQ!==val('town'))SF.pois=null; if(SF.picked&&val('town')!==SF.picked.name){ SF.picked=null; sfPlace(null); $('#townpin').innerHTML=''; const lat=$('#dlg [name="lat"]'); if(lat){lat.value='';$('#dlg [name="lon"]').value='';} SF.leg=null; sfUpdate(); }
   clearTimeout(SF.timer); SF.timer=setTimeout(sfSearch,350); } });
 document.addEventListener('change',e=>{ if(SF.ctx&&e.target.closest&&e.target.closest('#dlg')&&(e.target.name==='tag'||e.target.name==='arrive'||e.target.name==='depart'))sfUpdate(); });
 document.addEventListener('click',e=>{
   const tp_=e.target.closest('[data-townpick]'); if(tp_){ sfSetPick(SF.opts[+tp_.dataset.townpick]); return; }
-  if(e.target.closest('[data-pinchange]')){ SF.picked=null; $('#townpin').innerHTML=''; const t=$('#dlg [name="town"]'); if(t){t.focus();} sfSearch(); return; }
+  const pp=e.target.closest('[data-poipick]'); if(pp&&Array.isArray(SF.pois)){ sfSetPick(SF.pois[+pp.dataset.poipick]); return; }
+  if(e.target.closest('[data-poisearch]')){ sfPoiSearch(); return; }
+  if(e.target.closest('[data-pinchange]')){ SF.picked=null; sfPlace(null); $('#townpin').innerHTML=''; const t=$('#dlg [name="town"]'); if(t){t.focus();} sfSearch(); return; }
   if(e.target.closest('[data-usesug]')){ if(SF.sugA!=null)$('#dlg [name="arrive"]').value=toHM(SF.sugA); const tags=$$('#dlg input[name="tag"]:checked').map(x=>x.value); const a=toMin(val('arrive'));
     if(a!=null&&!tags.includes('Ride through')&&!tags.includes('Overnight')&&!tags.includes('Finish'))$('#dlg [name="depart"]').value=toHM(a+dwellOf(tags)); sfUpdate(); return; }
   if(e.target.closest('[data-moretags]')){ $('#dlg .extratags').hidden=false; $('#dlg .moretags').hidden=true; return; }
@@ -418,7 +438,7 @@ const hasHours=b=>Array.isArray(b.hoursSpec)&&b.hoursSpec.length>0;
 function bakTownPlan(){ // route towns in day order (with each visit's date and time), then bakery towns off the route
   const towns=new Map();
   daysSorted().forEach(d=>{ const est=typeof dayTimes==='function'?dayTimes(d,null):null, date=dateFor(d);
-    stopsOf(d.id).forEach(s=>{ if(!s.town||s.ref)return; const x=est&&est.find(e=>e.s.id===s.id), mins=x?(x.arr??x.dep):null;
+    stopsOf(d.id).forEach(s=>{ if(!s.town||s.ref||s.place)return; const x=est&&est.find(e=>e.s.id===s.id), mins=x?(x.arr??x.dep):null;
       const t=s.arrive||s.depart||(mins!=null&&typeof min2hm==='function'?min2hm(mins):'');
       if(!towns.has(s.town))towns.set(s.town,{town:s.town,day:d,visits:[]});
       towns.get(s.town).visits.push({day:d,stop:s,date,t,est:!s.arrive&&!s.depart&&!!t}); }); });

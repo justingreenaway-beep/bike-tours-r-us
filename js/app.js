@@ -2,7 +2,7 @@
    Tours live in Firestore: tours/{tourId} with days, stops, bakeries, nights and announcements sub-collections.
    Editors (set once in Firestore at admins/editors) see the Plan tab; riders see published tours they're a member of. */
 'use strict';
-const APP_VERSION='5.1';
+const APP_VERSION='5.2';
 const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLOURS=['blue','orange','green','purple','red'];
@@ -281,11 +281,11 @@ function stopCard(s,k,day,extra){
   const bl=s.ref||!feat('bakeries')?'':bakeryList(s.town,{date:day&&dateFor(day),t:s.arrive||s.depart});
   const R_=RIDE()&&day;
   return `<li class="stop${big?' big':''}${R_?rideStopClass(s,day):''}" id="stop-${esc(s.id)}">${stimeHtml(s)}<span class="node">${k}</span><div class="card">
-    <div class="town">${esc(s.town)}</div>${s.timeNote?`<div class="time">${esc(s.timeNote)}</div>`:''}
+    <div class="town">${esc(s.town)}</div>${s.place?`<div class="poi">${esc(placeLine(s))}</div>`:''}${s.timeNote?`<div class="time">${esc(s.timeNote)}</div>`:''}
     ${s.road?`<div class="road">${esc(s.road)}</div>`:''}${tags?`<div class="tags">${tags}</div>`:''}${extra||''}
     ${s.note?`<p class="note">${esc(s.note)}</p>`:''}${s.stay?`<div class="stay">${esc(s.stay)}</div>`:''}${s.ref?`<p class="ref">${esc(s.ref)}</p>`:''}
     ${s.fact?`<details class="fact" data-k="f-${esc(s.id)}"><summary>Did you know?</summary><p>${esc(s.fact)}</p></details>`:''}
-    ${bl||s.audit||(R_&&!s.ref)?`<details class="audit" data-k="a-${esc(s.id)}"><summary>Bakery audit${bl?` (${(bl.match(/<li>/g)||[]).length})`:''}</summary>${s.audit?`<p class="verdict">${esc(s.audit)}</p>`:''}${R_?rideAuditBits(s):''}${bl?`<ol class="bk">${bl}</ol>`:''}</details>`:''}
+    ${bl||s.audit||(R_&&!s.ref&&!s.place)?`<details class="audit" data-k="a-${esc(s.id)}"><summary>Bakery audit${bl?` (${(bl.match(/<li>/g)||[]).length})`:''}</summary>${s.audit?`<p class="verdict">${esc(s.audit)}</p>`:''}${R_?rideAuditBits(s):''}${bl?`<ol class="bk">${bl}</ol>`:''}</details>`:''}
     ${R_?rideStopBits(s,day):''}
   </div></li>`;
 }
@@ -674,6 +674,34 @@ async function placeSearch(q){
   if(!r.ok)throw new Error('geocode '+r.status); const j=await r.json();
   return (j.results||[]).map(x=>({name:x.name,area:[x.admin2,x.admin1].filter(Boolean).join(', '),lat:+x.latitude.toFixed(5),lon:+x.longitude.toFixed(5)}));
 }
+/* v5.2: points of interest as stops (lookouts, servos, cafés, landmarks). OpenStreetMap Nominatim, one search per tap
+   (its policy rules out search-as-you-type). A stop picked this way keeps place {kind, near, osm}; town holds the place's name. */
+const POI_KIND={viewpoint:'Lookout',fuel:'Servo',cafe:'Café',restaurant:'Restaurant',pub:'Pub',bar:'Bar',fast_food:'Takeaway',bakery:'Bakery',
+  attraction:'Attraction',museum:'Museum',picnic_site:'Picnic area',toilets:'Toilets',waterfall:'Waterfall',dam:'Dam',peak:'Peak',
+  information:'Visitor info',park:'Park',camp_site:'Campground',caravan_site:'Caravan park',beach:'Beach',memorial:'Memorial',
+  monument:'Monument',artwork:'Artwork',bridge:'Bridge',hotel:'Hotel',motel:'Motel',winery:'Winery',brewery:'Brewery',
+  supermarket:'Supermarket',parking:'Car park',rest_area:'Rest area',nature_reserve:'Nature reserve',national_park:'National park'};
+const poiKind=h=>POI_KIND[h.type]||POI_KIND[h.category]||String(h.type||h.category||'Place').replace(/_/g,' ').replace(/^./,c=>c.toUpperCase());
+async function poiSearch(q,near){ // near: neighbouring stops {lat,lon,town}; results nearest them first
+  near=near||[]; let vb='';
+  if(near.length){ const la=near.map(n=>+n.lat), lo=near.map(n=>+n.lon), d=1;
+    vb=`&viewbox=${Math.min(...lo)-d},${Math.max(...la)+d},${Math.max(...lo)+d},${Math.min(...la)-d}`; }
+  const url=x=>'https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=au&addressdetails=1&limit=10'+vb+'&q='+encodeURIComponent(x);
+  const ok=h=>h.category!=='boundary'&&(h.category!=='highway'||/services|rest_area/.test(h.type))&&h.category!=='landuse';
+  let hits=(await osmFetch(url(q))).filter(ok);
+  // OpenStreetMap wants close names ("Big Merino" misses "The Big Merino"), so also try with a neighbouring town; Nominatim allows ~1 request a second
+  const towns=[...new Set(near.map(n=>n.place&&n.place.near||n.town).filter(t=>t&&!q.toLowerCase().includes(t.toLowerCase())))];
+  for(const t of towns.slice(0,2)){ if(hits.length>=3)break; await new Promise(r=>setTimeout(r,1100)); try{ hits=hits.concat((await osmFetch(url(q+' '+t))).filter(ok)); }catch(e){} }
+  const seen=new Set(), kept=[];
+  hits.forEach(h=>{ const k=h.osm_type+h.osm_id; if(seen.has(k))return; seen.add(k); const nm=(h.name||'').toLowerCase();
+    const dup=kept.find(x=>(x.name||'').toLowerCase()===nm&&kmBetween({lat:+x.lat,lon:+x.lon},{lat:+h.lat,lon:+h.lon})<.3);
+    if(dup){ if(dup.category==='building'&&h.category!=='building')kept[kept.indexOf(dup)]=h; return; } kept.push(h); });
+  return kept.map(h=>{ const a=h.address||{};
+    const near_=a.town||a.village||a.city||a.suburb||a.hamlet||a.municipality||a.county||'';
+    const nm=h.name||String(h.display_name||'').split(',')[0];
+    return {name:nm,kind:poiKind(h),near:near_&&near_!==nm?near_:'',area:[near_,a.state].filter(x=>x&&x!==nm).join(', '),
+      lat:+(+h.lat).toFixed(5),lon:+(+h.lon).toFixed(5),osm:h.osm_type+'/'+h.osm_id,poi:true}; }); }
+const placeLine=s=>s&&s.place?[s.place.kind,s.place.near?'near '+s.place.near:''].filter(Boolean).join(' · '):'';
 let placeResults=[];
 async function placeLookup(auto){
   const town=val('town'), box=$('#placeres'); if(!box)return;
@@ -802,7 +830,7 @@ async function drawMap(det){
     if(path.length>1)L.polyline(path,{color:r.col,weight:isMain?5:4,opacity:isMain||inPlan?.85:.55,dashArray:fresh?null:'8 8'}).addTo(m);
     if(isMain) st.forEach((s,i)=>{ if(!hasLL(s))return; seen.add(s.id); const big=(s.tags||[]).some(t=>/Start|Overnight|Finish|Meet up|Split/.test(t)); const k=kmFor(s,pathKey(r.grp,opt));
       L.marker([+s.lat,+s.lon],{icon:L.divIcon({className:'mk',html:`<span style="--c:${r.col}" class="${big?'big':''}">${i+1}</span>`,iconSize:[28,28],iconAnchor:[14,14]})})
-        .bindPopup(`<b>${esc(s.town)}</b>${timeText(s)?'<br>'+esc(timeText(s)):''}${k!=null&&k!==''?`<br>${esc(k)} km into the day`:''}`).addTo(m); });
+        .bindPopup(`<b>${esc(s.town)}</b>${s.place?'<br>'+esc(placeLine(s)):''}${timeText(s)?'<br>'+esc(timeText(s)):''}${k!=null&&k!==''?`<br>${esc(k)} km into the day`:''}`).addTo(m); });
     else st.forEach(s=>{ if(!hasLL(s)||seen.has(s.id))return; seen.add(s.id); L.circleMarker([+s.lat,+s.lon],{radius:7,color:'#fff',weight:2,fillColor:r.col,fillOpacity:1}).bindPopup(`<b>${esc(s.town)}</b><br>${esc(r.name||'')}${timeText(s)?' · '+esc(timeText(s)):''}`).addTo(m); });
   });
   const towns=new Set(stopsOf(day.id,opt).map(s=>s.town));
@@ -973,6 +1001,7 @@ async function doSave(btn){
       tags:$$('#dlg input[name="tag"]:checked').map(x=>x.value),option:val('option')?Number(val('option')):null,note:val('note'),fact:val('fact'),stay:val('stay'),
       lat:num(val('lat')),lon:num(val('lon')),...stamp()};
     if($('#dlg [name="timeNote"]')) data.timeNote=val('timeNote');
+    if($('#dlg [name="pkind"]')) data.place=val('pkind')?{kind:val('pkind'),near:val('pnear'),osm:val('posm')}:null; // v5.2: a point of interest, not a town
     if($('#dlg [name="sgroup"]')) data.group=val('sgroup')||null; // v4.27: the group this stop is for (empty = everyone)
     const dayId=existing?existing.dayId:S.planDay, after=btn.dataset.after||null, next=btn.dataset.next==='1';
     if(!existing){ data.dayId=dayId; const st=stopsOf(dayId); data.order=st.length?Math.max(...st.map(s=>s.order||0))+1:0; }
