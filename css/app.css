@@ -1325,3 +1325,7 @@ details.sfmore summary,details.bakmap summary{text-decoration:underline;text-dec
 .arwarn{color:var(--color-danger)}
 
 /* v5.4: vehicles on the profile (no styles needed since 5.4.1) */
+
+/* v5.4.3: dialog errors sit in the sticky button bar, so they stay on screen above the keyboard */
+.dbtns .dlgerr,.dbtns .planbar{flex-basis:100%;margin:0}
+#sameyear .err{margin:0;font-size:inherit}
